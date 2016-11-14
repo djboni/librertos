@@ -34,23 +34,23 @@ struct task_t {
 
 static struct librertos_state_t {
     int8_t        SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    int8_t        CurrentTaskPriority; /* Current task priority. */
+    priority_t    CurrentTaskPriority; /* Current task priority. */
     struct task_t Task[LIBRERTOS_NUMBER_OF_TASKS]; /* Task data. */
 } state;
 
 /** Initialize OS. Must be called before any other OS function. */
 void OS_init(void)
 {
-    int8_t i;
+    priority_t priority;
 
     state.SchedulerLock = 0;
     state.CurrentTaskPriority = -1;
 
-    for(i = 0; i < LIBRERTOS_NUMBER_OF_TASKS; ++i)
+    for(priority = 0; priority < LIBRERTOS_NUMBER_OF_TASKS; ++priority)
     {
-        state.Task[i].TaskState = TASKSTATE_NOTINITIALIZED;
-        state.Task[i].TaskFunction = (taskFunction_t)0;
-        state.Task[i].TaskParameter = (taskParameter_t)0;
+        state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
+        state.Task[priority].TaskFunction = (taskFunction_t)0;
+        state.Task[priority].TaskParameter = (taskParameter_t)0;
     }
 }
 
@@ -67,7 +67,7 @@ void OS_schedule(void)
     }
     else
     {
-        int8_t priority;
+        priority_t priority;
 
         do {
             /* Schedule higher priority task. */
@@ -87,7 +87,7 @@ void OS_schedule(void)
                 taskParameter_t taskParameter;
 
                 /* Save last task priority. */
-                int8_t lastTaskPrio = state.CurrentTaskPriority;
+                priority_t lastTaskPrio = state.CurrentTaskPriority;
 
                 /* Set current task priority. */
                 state.CurrentTaskPriority = priority;
@@ -143,7 +143,7 @@ void OS_schedulerUnlock(void)
 
 /** Create task. */
 void OS_taskCreate(
-        int8_t priority,
+        priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter)
 {
@@ -156,7 +156,7 @@ void OS_taskCreate(
 }
 
 /** Delete task. */
-void OS_taskDelete(int8_t priority)
+void OS_taskDelete(priority_t priority)
 {
     ASSERT(priority < LIBRERTOS_NUMBER_OF_TASKS);
     ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
@@ -167,7 +167,7 @@ void OS_taskDelete(int8_t priority)
 }
 
 /** Return current task priority. */
-int8_t OS_taskGetCurrentPriority(void)
+priority_t OS_taskGetCurrentPriority(void)
 {
     return state.CurrentTaskPriority;
 }

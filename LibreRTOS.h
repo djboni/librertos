@@ -24,6 +24,7 @@ extern "C" {
 #include <stdint.h>
 #include "projdefs.h"
 
+typedef int8_t priority_t;
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
@@ -35,11 +36,11 @@ void OS_schedulerLock(void);
 void OS_schedulerUnlock(void);
 
 void OS_taskCreate(
-        int8_t priority,
+        priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter);
-void OS_taskDelete(int8_t priority);
-int8_t OS_taskGetCurrentPriority(void);
+void OS_taskDelete(priority_t priority);
+priority_t OS_taskGetCurrentPriority(void);
 
 #ifdef __cplusplus
 }
