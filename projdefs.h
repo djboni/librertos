@@ -24,9 +24,9 @@ extern "C" {
 #include <assert.h>
 
 /* LibreRTOS definitions. */
-#define LIBRERTOS_MAX_PIORITY        2
-#define LIBRERTOS_PREEMPTION         0
-#define LIBRERTOS_ENABLE_TASKDELETE  0
+#define LIBRERTOS_MAX_PIORITY        2  /* integer > 0 */
+#define LIBRERTOS_PREEMPTION         0  /* boolean */
+#define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
 
 /* Assert macro. */
 #define ASSERT(x) assert(x)
