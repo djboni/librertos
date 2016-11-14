@@ -39,6 +39,7 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter);
 void OS_taskDelete(int8_t priority);
+int8_t OS_taskGetCurrentPriority(void);
 
 #ifdef __cplusplus
 }

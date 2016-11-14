@@ -165,3 +165,9 @@ void OS_taskDelete(int8_t priority)
     state.Task[priority].TaskFunction = (taskFunction_t)0;
     state.Task[priority].TaskParameter = (taskParameter_t)0;
 }
+
+/** Return current task priority. */
+int8_t OS_taskGetCurrentPriority(void)
+{
+    return state.CurrentTaskPriority;
+}
