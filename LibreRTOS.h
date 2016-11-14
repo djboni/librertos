@@ -52,6 +52,8 @@ priority_t OS_taskGetCurrentPriority(void);
 void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
 
+#define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
+
 #ifdef __cplusplus
 }
 #endif

@@ -41,7 +41,7 @@ void OS_init(void)
     priority_t priority;
 
     state.SchedulerLock = 0;
-    state.CurrentTaskPriority = -1;
+    state.CurrentTaskPriority = LIBRERTOS_SCHEDULER_NOT_RUNNING;
 
     for(priority = 0; priority < LIBRERTOS_MAX_PIORITY; ++priority)
     {
@@ -150,6 +150,15 @@ void OS_taskCreate(
     state.Task[priority].TaskFunction = function;
     state.Task[priority].TaskParameter = parameter;
     state.Task[priority].TaskState = TASKSTATE_READY;
+
+    #if (LIBRERTOS_PREEMPTION != 0)
+    {
+        priority_t currentTaskPriority = OS_taskGetCurrentPriority();
+        if(     priority > currentTaskPriority &&
+                currentTaskPriority != LIBRERTOS_SCHEDULER_NOT_RUNNING)
+            OS_schedule();
+    }
+    #endif
 }
 
 /** Delete task. */
