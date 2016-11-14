@@ -30,9 +30,9 @@ struct task_t {
 };
 
 static struct librertos_state_t {
-    int8_t        SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    priority_t    CurrentTaskPriority; /* Current task priority. */
-    struct task_t Task[LIBRERTOS_MAX_PIORITY]; /* Task data. */
+    schedulerLock_t SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    priority_t      CurrentTaskPriority; /* Current task priority. */
+    struct task_t   Task[LIBRERTOS_MAX_PIORITY]; /* Task data. */
 } state;
 
 static void _OS_schedulerUnlock_withoutPreempt(void);

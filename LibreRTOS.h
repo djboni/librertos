@@ -39,6 +39,7 @@ extern "C" {
 typedef int8_t priority_t;
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
+typedef int8_t schedulerLock_t;
 
 void OS_init(void);
 
