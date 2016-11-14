@@ -25,11 +25,15 @@ extern "C" {
 #include "projdefs.h"
 
 #ifndef LIBRERTOS_MAX_PIORITY
-#define LIBRERTOS_MAX_PIORITY  2  /* integer > 0 */
+#define LIBRERTOS_MAX_PIORITY        2  /* integer > 0 */
 #endif
 
 #ifndef LIBRERTOS_PREEMPTION
-#define LIBRERTOS_PREEMPTION   0  /* boolean */
+#define LIBRERTOS_PREEMPTION         0  /* boolean */
+#endif
+
+#ifndef LIBRERTOS_ENABLE_TASKDELETE
+#define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
 #endif
 
 typedef int8_t priority_t;
