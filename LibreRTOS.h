@@ -41,6 +41,8 @@ void OS_taskCreate(
         taskParameter_t parameter);
 void OS_taskDelete(priority_t priority);
 priority_t OS_taskGetCurrentPriority(void);
+void OS_taskSuspend(priority_t priority);
+void OS_taskResume(priority_t priority);
 
 #ifdef __cplusplus
 }

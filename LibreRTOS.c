@@ -19,6 +19,7 @@
 enum taskState_t {
     TASKSTATE_READY = 0,
     TASKSTATE_BLOCKED,
+    TASKSTATE_SUUSPENDED,
     TASKSTATE_NOTINITIALIZED
 };
 
@@ -174,4 +175,25 @@ void OS_taskDelete(priority_t priority)
 priority_t OS_taskGetCurrentPriority(void)
 {
     return state.CurrentTaskPriority;
+}
+
+void OS_taskSuspend(priority_t priority)
+{
+    ASSERT(priority < LIBRERTOS_NUMBER_OF_TASKS);
+    ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
+
+    state.Task[priority].TaskState = TASKSTATE_SUUSPENDED;
+}
+
+void OS_taskResume(priority_t priority)
+{
+    ASSERT(priority < LIBRERTOS_NUMBER_OF_TASKS);
+    ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
+
+    state.Task[priority].TaskState = TASKSTATE_READY;
+
+    #if (LIBRERTOS_PREEMPTION != 0)
+        if(priority > OS_taskGetCurrentPriority())
+            OS_schedule();
+    #endif
 }
