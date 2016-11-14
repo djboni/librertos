@@ -15,6 +15,8 @@
  */
 
 #include "LibreRTOS.h"
+#include "OSlist.h"
+#include <stddef.h>
 
 enum taskState_t {
     TASKSTATE_READY = 0,
@@ -24,17 +26,31 @@ enum taskState_t {
 };
 
 struct task_t {
-    enum taskState_t TaskState;
-    taskFunction_t   TaskFunction;
-    taskParameter_t  TaskParameter;
+    enum taskState_t          TaskState;
+    taskFunction_t            TaskFunction;
+    taskParameter_t           TaskParameter;
+
+    #if (LIBRERTOS_TICK != 0)
+        struct taskListNode_t TaskBlockedNode;
+    #endif
 };
 
 static struct librertos_state_t {
-    schedulerLock_t SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    priority_t      CurrentTaskPriority; /* Current task priority. */
-    struct task_t   Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
+    schedulerLock_t       SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    priority_t            CurrentTaskPriority; /* Current task priority. */
+
+    #if (LIBRERTOS_TICK != 0)
+        tick_t            Tick; /* OS tick. */
+        tick_t            DelayedTicks; /* OS delayed tick (scheduler was locked). */
+        struct taskHeadList_t BlockedTaskList1; /* List with blocked tasks. */
+        struct taskHeadList_t BlockedTaskList2; /* List with blocked tasks (overflowed). */
+    #endif
+
+    struct task_t         Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
 } state;
 
+static void _OS_tickInvertBlockedTasksLists(void);
+static void _OS_tickUnblockTimedoutTasks(void);
 static void _OS_schedulerUnlock_withoutPreempt(void);
 
 /** Initialize OS. Must be called before any other OS function. */
@@ -45,13 +61,62 @@ void OS_init(void)
     state.SchedulerLock = 0;
     state.CurrentTaskPriority = LIBRERTOS_SCHEDULER_NOT_RUNNING;
 
+    #if (LIBRERTOS_TICK != 0)
+        state.Tick = 0U;
+        state.DelayedTicks = 0U;
+        OS_listHeadInit(&state.BlockedTaskList1);
+        OS_listHeadInit(&state.BlockedTaskList2);
+    #endif
+
     for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
     {
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
-        state.Task[priority].TaskFunction = (taskFunction_t)0;
-        state.Task[priority].TaskParameter = (taskParameter_t)0;
+        state.Task[priority].TaskFunction = (taskFunction_t)NULL;
+        state.Task[priority].TaskParameter = (taskParameter_t)NULL;
+
+        #if (LIBRERTOS_TICK != 0)
+            OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
+        #endif
     }
 }
+
+#if (LIBRERTOS_TICK != 0)
+
+    /* Invert blocked tasks lists. Called by unblock timedout tasks function. */
+    static void _OS_tickInvertBlockedTasksLists(void)
+    {
+        struct taskHeadList_t temp = state.BlockedTaskList1;
+        state.BlockedTaskList2 = state.BlockedTaskList1;
+        state.BlockedTaskList1 = temp;
+    }
+
+    /* Unblock tasks that have timedout. Called by scheduler unlock function. */
+    static void _OS_tickUnblockTimedoutTasks(void)
+    {
+        /* Unblock tasks that have timed-out. */
+
+        if(state.Tick == 0)
+            _OS_tickInvertBlockedTasksLists();
+
+        while(  state.BlockedTaskList1.ListLength != 0 &&
+                state.BlockedTaskList1.ListHead->TickToWakeup == state.Tick)
+        {
+            struct taskListNode_t* node = state.BlockedTaskList1.ListHead;
+            OS_listRemove(node);
+            state.Task[node->TaskPriority].TaskState = TASKSTATE_READY;
+        }
+    }
+
+    /** Increment OS tick. Called by the tick interrupt (defined by the
+     user). */
+    void OS_tick(void)
+    {
+        OS_schedulerLock();
+        ++state.DelayedTicks;
+        OS_schedulerUnlock();
+    }
+
+#endif /* LIBRERTOS_TICK */
 
 /** Schedule a task. May be called in the main loop and after interrupt
  handling. */
@@ -180,6 +245,24 @@ void OS_schedulerLock(void)
 /* Unlock scheduler (recursive lock). */
 static void _OS_schedulerUnlock_withoutPreempt(void)
 {
+    #if (LIBRERTOS_TICK != 0)
+        if(state.SchedulerLock == 1)
+        {
+            while(state.DelayedTicks != 0)
+            {
+                CRITICAL_VAL();
+                CRITICAL_ENTER();
+                {
+                    --state.DelayedTicks;
+                    ++state.Tick;
+                }
+                CRITICAL_EXIT();
+
+                _OS_tickUnblockTimedoutTasks();
+            }
+        }
+    #endif
+
     --state.SchedulerLock;
 }
 
@@ -207,6 +290,10 @@ void OS_taskCreate(
 
     state.Task[priority].TaskFunction = function;
     state.Task[priority].TaskParameter = parameter;
+    #if (LIBRERTOS_TICK != 0)
+        OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
+    #endif
+
     state.Task[priority].TaskState = TASKSTATE_READY;
 
     #if (LIBRERTOS_PREEMPTION != 0)
@@ -230,6 +317,16 @@ void OS_taskCreate(
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
         state.Task[priority].TaskFunction = (taskFunction_t)0;
         state.Task[priority].TaskParameter = (taskParameter_t)0;
+
+        OS_schedulerLock();
+        #if (LIBRERTOS_TICK != 0)
+            if(state.Task[priority].TaskBlockedNode.ListInserted != NULL)
+            {
+                /* Remove task from blocked list. */
+                OS_listRemove(&state.Task[priority].TaskBlockedNode);
+            }
+        #endif
+        _OS_schedulerUnlock_withoutPreempt();
     }
 
 #endif /* LIBRERTOS_ENABLE_TASKDELETE */
@@ -262,3 +359,41 @@ void OS_taskResume(priority_t priority)
     }
     #endif
 }
+
+#if (LIBRERTOS_TICK != 0)
+
+    /** Delay task. */
+    void OS_taskDelay(tick_t ticksToDelay)
+    {
+        /* Insert task in the blocked tasks list. */
+
+        OS_schedulerLock();
+        if(ticksToDelay != 0)
+        {
+            tick_t tickNow = (tick_t)(state.Tick + state.DelayedTicks);
+            tick_t tickToWakeup = (tick_t)(tickNow + ticksToDelay);
+
+            struct taskHeadList_t* blockedTaskList;
+            struct taskListNode_t* taskBlockedNode =
+                    &state.Task[OS_taskGetCurrentPriority()].TaskBlockedNode;
+
+            if(tickToWakeup > tickNow)
+            {
+                /* Not overflowed. */
+                blockedTaskList = &state.BlockedTaskList1;
+            }
+            else
+            {
+                /* Overflowed. */
+                blockedTaskList = &state.BlockedTaskList2;
+            }
+
+            /* Insert task on list. */
+            OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
+
+            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_BLOCKED;
+        }
+        _OS_schedulerUnlock_withoutPreempt();
+    }
+
+#endif /* LIBRERTOS_TICK */

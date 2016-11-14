@@ -32,16 +32,19 @@ extern "C" {
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_TICK
+#define LIBRERTOS_TICK               0  /* boolean */
+#endif
+
 #ifndef LIBRERTOS_ENABLE_TASKDELETE
 #define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
 #endif
 
-typedef int8_t priority_t;
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
-typedef int8_t schedulerLock_t;
 
 void OS_init(void);
+void OS_tick(void);
 
 void OS_schedule(void);
 int8_t OS_schedulerIsLocked(void);
@@ -56,6 +59,7 @@ void OS_taskDelete(priority_t priority);
 priority_t OS_taskGetCurrentPriority(void);
 void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
+void OS_taskDelay(tick_t ticksToDelay);
 
 #define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
 

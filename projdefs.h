@@ -26,7 +26,12 @@ extern "C" {
 /* LibreRTOS definitions. */
 #define LIBRERTOS_MAX_PRIORITY       2  /* integer > 0 */
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
+#define LIBRERTOS_TICK               1  /* boolean */
 #define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
+
+typedef int8_t priority_t;
+typedef int8_t schedulerLock_t;
+typedef uint16_t tick_t;
 
 /* Assert macro. */
 #define ASSERT(x) assert(x)
