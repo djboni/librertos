@@ -46,7 +46,7 @@ typedef void(*taskFunction_t)(taskParameter_t);
 void OS_init(void);
 void OS_tick(void);
 
-void OS_schedule(void);
+void OS_scheduler(void);
 int8_t OS_schedulerIsLocked(void);
 void OS_schedulerLock(void);
 void OS_schedulerUnlock(void);

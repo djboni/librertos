@@ -90,7 +90,8 @@ void OS_init(void)
         state.BlockedTaskList1 = temp;
     }
 
-    /* Unblock tasks that have timedout. Called by scheduler unlock function. */
+    /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
+     unlock function. */
     static void _OS_tickUnblockTimedoutTasks(void)
     {
         /* Unblock tasks that have timed-out. */
@@ -120,7 +121,7 @@ void OS_init(void)
 
 /** Schedule a task. May be called in the main loop and after interrupt
  handling. */
-void OS_schedule(void)
+void OS_scheduler(void)
 {
     /* Atomically test and lock scheduler. */
     INTERRUPTS_DISABLE();
@@ -274,7 +275,7 @@ void OS_schedulerUnlock(void)
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
-        OS_schedule();
+        OS_scheduler();
     }
     #endif
 }
@@ -301,7 +302,7 @@ void OS_taskCreate(
         priority_t currentTaskPriority = OS_taskGetCurrentPriority();
         if(     priority > currentTaskPriority &&
                 currentTaskPriority != LIBRERTOS_SCHEDULER_NOT_RUNNING)
-            OS_schedule();
+            OS_scheduler();
     }
     #endif
 }
@@ -355,7 +356,7 @@ void OS_taskResume(priority_t priority)
     #if (LIBRERTOS_PREEMPTION != 0)
     {
         if(priority > OS_taskGetCurrentPriority())
-            OS_schedule();
+            OS_scheduler();
     }
     #endif
 }
