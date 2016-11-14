@@ -32,7 +32,7 @@ struct task_t {
 static struct librertos_state_t {
     schedulerLock_t SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
     priority_t      CurrentTaskPriority; /* Current task priority. */
-    struct task_t   Task[LIBRERTOS_MAX_PIORITY]; /* Task data. */
+    struct task_t   Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
 } state;
 
 static void _OS_schedulerUnlock_withoutPreempt(void);
@@ -45,7 +45,7 @@ void OS_init(void)
     state.SchedulerLock = 0;
     state.CurrentTaskPriority = LIBRERTOS_SCHEDULER_NOT_RUNNING;
 
-    for(priority = 0; priority < LIBRERTOS_MAX_PIORITY; ++priority)
+    for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
     {
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
         state.Task[priority].TaskFunction = (taskFunction_t)0;
@@ -77,7 +77,7 @@ void OS_schedule(void)
 
             priority_t priority;
 
-            for(    priority = LIBRERTOS_MAX_PIORITY - 1;
+            for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
                     priority > state.CurrentTaskPriority;
                     --priority)
             {
@@ -202,7 +202,7 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter)
 {
-    ASSERT(priority < LIBRERTOS_MAX_PIORITY);
+    ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(state.Task[priority].TaskState == TASKSTATE_NOTINITIALIZED);
 
     state.Task[priority].TaskFunction = function;
@@ -224,7 +224,7 @@ void OS_taskCreate(
     /** Delete task. */
     void OS_taskDelete(priority_t priority)
     {
-        ASSERT(priority < LIBRERTOS_MAX_PIORITY);
+        ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
         ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
 
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
@@ -242,7 +242,7 @@ priority_t OS_taskGetCurrentPriority(void)
 
 void OS_taskSuspend(priority_t priority)
 {
-    ASSERT(priority < LIBRERTOS_MAX_PIORITY);
+    ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
 
     state.Task[priority].TaskState = TASKSTATE_SUUSPENDED;
@@ -250,7 +250,7 @@ void OS_taskSuspend(priority_t priority)
 
 void OS_taskResume(priority_t priority)
 {
-    ASSERT(priority < LIBRERTOS_MAX_PIORITY);
+    ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
 
     state.Task[priority].TaskState = TASKSTATE_READY;
