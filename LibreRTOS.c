@@ -32,6 +32,10 @@ struct task_t {
 #define LIBRERTOS_NUMBER_OF_TASKS 4
 #endif
 
+#ifndef LIBRERTOS_PREEMPTION
+#define LIBRERTOS_PREEMPTION 0
+#endif
+
 static struct librertos_state_t {
     int8_t        SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
     priority_t    CurrentTaskPriority; /* Current task priority. */
