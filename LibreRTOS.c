@@ -35,6 +35,8 @@ static struct librertos_state_t {
     struct task_t Task[LIBRERTOS_MAX_PIORITY]; /* Task data. */
 } state;
 
+static void _OS_schedulerUnlock_withoutPreempt(void);
+
 /** Initialize OS. Must be called before any other OS function. */
 void OS_init(void)
 {
@@ -64,7 +66,12 @@ void OS_schedule(void)
     }
     else
     {
+        /* Scheduler unlocked. */
+
         priority_t priority;
+
+        OS_schedulerLock();
+        INTERRUPTS_ENABLE();
 
         do {
             /* Schedule higher priority task. */
@@ -73,8 +80,19 @@ void OS_schedule(void)
                     priority > state.CurrentTaskPriority;
                     --priority)
             {
+                /* CurrentTaskPriority cannot change when scheduler is locked.
+                 No need to disable interrupts.
+                 Task[].TaskState may change even with scheduler locked. Need to
+                 disable interrupts only if TaskState load is not atomic. To be
+                 on the safe side, interrupts are ALWAYS disabled to load
+                 TaskState. */
+                INTERRUPTS_DISABLE();
                 if(state.Task[priority].TaskState == TASKSTATE_READY)
+                {
+                    INTERRUPTS_ENABLE();
                     break;
+                }
+                INTERRUPTS_ENABLE();
             }
             if(priority > state.CurrentTaskPriority)
             {
@@ -93,19 +111,19 @@ void OS_schedule(void)
                 taskFunction = state.Task[priority].TaskFunction;
                 taskParameter = state.Task[priority].TaskParameter;
 
-                INTERRUPTS_ENABLE();
+                _OS_schedulerUnlock_withoutPreempt();
 
                 /* Run task. */
                 taskFunction(taskParameter);
 
-                INTERRUPTS_DISABLE();
+                OS_schedulerLock();
                 /* Restore last task priority. */
                 state.CurrentTaskPriority = lastTaskPrio;
             }
             else
             {
                 /* No higher priority task ready. */
-                INTERRUPTS_ENABLE();
+                _OS_schedulerUnlock_withoutPreempt();
                 break;
             }
 
@@ -127,11 +145,17 @@ void OS_schedulerLock(void)
     ++state.SchedulerLock;
 }
 
+/* Unlock scheduler (recursive lock). */
+static void _OS_schedulerUnlock_withoutPreempt(void)
+{
+    --state.SchedulerLock;
+}
+
 /** Unlock scheduler (recursive lock). Current task may be preempted if
  scheduler is unlocked. */
 void OS_schedulerUnlock(void)
 {
-    --state.SchedulerLock;
+    _OS_schedulerUnlock_withoutPreempt();
 
     #if (LIBRERTOS_PREEMPTION != 0)
         OS_schedule();
