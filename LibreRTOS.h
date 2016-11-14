@@ -24,6 +24,14 @@ extern "C" {
 #include <stdint.h>
 #include "projdefs.h"
 
+#ifndef LIBRERTOS_MAX_PIORITY
+#define LIBRERTOS_MAX_PIORITY  2  /* integer > 0 */
+#endif
+
+#ifndef LIBRERTOS_PREEMPTION
+#define LIBRERTOS_PREEMPTION   0  /* boolean */
+#endif
+
 typedef int8_t priority_t;
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);

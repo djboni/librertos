@@ -29,14 +29,6 @@ struct task_t {
     taskParameter_t  TaskParameter;
 };
 
-#ifndef LIBRERTOS_MAX_PIORITY
-#define LIBRERTOS_MAX_PIORITY 2
-#endif
-
-#ifndef LIBRERTOS_PREEMPTION
-#define LIBRERTOS_PREEMPTION 0
-#endif
-
 static struct librertos_state_t {
     int8_t        SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
     priority_t    CurrentTaskPriority; /* Current task priority. */
