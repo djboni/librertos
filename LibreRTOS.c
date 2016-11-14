@@ -69,13 +69,13 @@ void OS_schedule(void)
     {
         /* Scheduler unlocked. */
 
-        priority_t priority;
-
         OS_schedulerLock();
         INTERRUPTS_ENABLE();
 
         do {
             /* Schedule higher priority task. */
+
+            priority_t priority;
 
             for(    priority = LIBRERTOS_MAX_PIORITY - 1;
                     priority > state.CurrentTaskPriority;
