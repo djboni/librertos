@@ -14,6 +14,7 @@
  limitations under the License.
  */
 
+#include "LibreRTOS.h"
 #include "OSlist.h"
 
 #define LIST_HEAD(x) ((struct taskListNode_t*)x)
@@ -65,6 +66,22 @@ void OS_listInsert(
 
     pos->ListPrevious->ListNext = node;
     pos->ListPrevious = node;
+
+    ++list->ListLength;
+}
+
+void OS_listInsertAfter(
+        struct taskHeadList_t* list,
+        struct taskListNode_t* pos,
+        struct taskListNode_t* node)
+{
+    node->ListInserted = list;
+
+    node->ListNext = pos->ListNext;
+    node->ListPrevious = pos;
+
+    pos->ListNext->ListPrevious = node;
+    pos->ListNext = node;
 
     ++list->ListLength;
 }

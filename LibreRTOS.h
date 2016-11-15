@@ -43,6 +43,8 @@ extern "C" {
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
+
+
 void OS_init(void);
 void OS_tick(void);
 
@@ -60,6 +62,48 @@ priority_t OS_taskGetCurrentPriority(void);
 void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
 void OS_taskDelay(tick_t ticksToDelay);
+
+
+
+struct taskListNode_t;
+
+struct taskHeadList_t {
+    struct taskListNode_t* ListHead;
+    struct taskListNode_t* ListTail;
+    tick_t                 TickToWakeup_Zero;
+    int8_t                 ListLength;
+};
+
+struct taskListNode_t {
+    struct taskListNode_t* ListNext;
+    struct taskListNode_t* ListPrevious;
+    tick_t                 TickToWakeup;
+    priority_t             TaskPriority;
+    struct taskHeadList_t* ListInserted;
+};
+
+
+
+struct event_t {
+    struct taskHeadList_t ListRead;
+    struct taskHeadList_t ListWrite;
+};
+
+
+
+struct Semaphore_t {
+    volatile semaphoreCount_t Count;
+    const semaphoreCount_t    Max;
+    struct event_t            Event;
+};
+
+void Semaphore_initbinary(struct Semaphore_t* o);
+void Semaphore_init(struct Semaphore_t* o, semaphoreCount_t max);
+int8_t Semaphore_lock(struct Semaphore_t* o);
+int8_t Semaphore_unlock(struct Semaphore_t* o);
+int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait);
+
+
 
 #define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
 

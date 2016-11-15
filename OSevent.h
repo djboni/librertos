@@ -14,31 +14,26 @@
  limitations under the License.
  */
 
-#ifndef LIBRERTOS_OSLIST_H_
-#define LIBRERTOS_OSLIST_H_
+#ifndef LIBRERTOS_OSEVENT_H_
+#define LIBRERTOS_OSEVENT_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include "LibreRTOS.h"
+#include "OSlist.h"
 #include <stddef.h>
 
-
-
-void OS_listHeadInit(struct taskHeadList_t* list);
-void OS_listNodeInit(struct taskListNode_t* node, priority_t priority);
-void OS_listInsert(
+void OS_eventInit(struct event_t* o);
+void OS_eventPendTask(
         struct taskHeadList_t* list,
-        struct taskListNode_t* node,
-        tick_t tickToWakeup);
-void OS_listInsertAfter(
-        struct taskHeadList_t* list,
-        struct taskListNode_t* pos,
-        struct taskListNode_t* node);
-void OS_listRemove(struct taskListNode_t* node);
+        priority_t priority,
+        tick_t ticksToWait);
+void OS_eventUnblockTasks(struct taskHeadList_t* list);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LIBRERTOS_OSLIST_H_ */
+#endif /* LIBRERTOS_OSEVENT_H_ */

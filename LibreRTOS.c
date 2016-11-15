@@ -16,6 +16,7 @@
 
 #include "LibreRTOS.h"
 #include "OSlist.h"
+#include "OSevent.h"
 #include <stddef.h>
 
 enum taskState_t {
@@ -33,20 +34,24 @@ struct task_t {
     #if (LIBRERTOS_TICK != 0)
         struct taskListNode_t TaskBlockedNode;
     #endif
+
+    struct taskListNode_t TaskEventNode;
 };
 
 static struct librertos_state_t {
-    schedulerLock_t       SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    priority_t            CurrentTaskPriority; /* Current task priority. */
+    schedulerLock_t           SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    priority_t                CurrentTaskPriority; /* Current task priority. */
 
     #if (LIBRERTOS_TICK != 0)
-        tick_t            Tick; /* OS tick. */
-        tick_t            DelayedTicks; /* OS delayed tick (scheduler was locked). */
+        tick_t                Tick; /* OS tick. */
+        tick_t                DelayedTicks; /* OS delayed tick (scheduler was locked). */
         struct taskHeadList_t BlockedTaskList1; /* List with blocked tasks. */
         struct taskHeadList_t BlockedTaskList2; /* List with blocked tasks (overflowed). */
     #endif
 
-    struct task_t         Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
+    struct taskHeadList_t     PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
+
+    struct task_t             Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
 } state;
 
 static void _OS_tickInvertBlockedTasksLists(void);
@@ -68,6 +73,8 @@ void OS_init(void)
         OS_listHeadInit(&state.BlockedTaskList2);
     #endif
 
+    OS_listHeadInit(&state.PendingReadyTaskList);
+
     for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
     {
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
@@ -77,6 +84,8 @@ void OS_init(void)
         #if (LIBRERTOS_TICK != 0)
             OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
         #endif
+
+        OS_listNodeInit(&state.Task[priority].TaskEventNode , priority);
     }
 }
 
@@ -252,6 +261,19 @@ void OS_schedulerLock(void)
 /* Unlock scheduler (recursive lock). */
 static void _OS_schedulerUnlock_withoutPreempt(void)
 {
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    while(state.PendingReadyTaskList.ListLength != 0)
+    {
+        struct taskListNode_t* node = state.PendingReadyTaskList.ListHead;
+        OS_listRemove(node);
+        CRITICAL_EXIT();
+        state.Task[node->TaskPriority].TaskState = TASKSTATE_READY;
+        CRITICAL_ENTER();
+    }
+    CRITICAL_EXIT();
+
     #if (LIBRERTOS_TICK != 0)
         if(state.SchedulerLock == 1)
         {
@@ -300,6 +322,7 @@ void OS_taskCreate(
     #if (LIBRERTOS_TICK != 0)
         OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
     #endif
+    OS_listNodeInit(&state.Task[priority].TaskEventNode , priority);
 
     state.Task[priority].TaskState = TASKSTATE_READY;
 
@@ -404,3 +427,130 @@ void OS_taskResume(priority_t priority)
     }
 
 #endif /* LIBRERTOS_TICK */
+
+
+
+/* Initialize event struct. */
+void OS_eventInit(struct event_t* o)
+{
+    OS_listHeadInit(&o->ListRead);
+    OS_listHeadInit(&o->ListWrite);
+}
+
+/* Pend task on an event. Must be called with interrupts enabled. */
+void OS_eventPendTask(
+        struct taskHeadList_t* list,
+        priority_t priority,
+        tick_t ticksToWait)
+{
+    struct taskListNode_t* node = &state.Task[priority].TaskEventNode;
+
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    OS_schedulerLock();
+
+    /* Put task on the head position in the event list. So the task may be
+     unblocked by an interrupt. */
+
+    OS_listInsertAfter(list, list->ListHead, node);
+
+    /* Find correct position for the task in the event list. This list may
+     be changed by interrupts, so we must do things carefully. */
+    {
+        struct taskListNode_t* pos;
+
+        for(;;)
+        {
+            pos = node->ListNext;
+
+            while(pos != (struct taskListNode_t*)list)
+            {
+                CRITICAL_EXIT();
+                if(pos->TaskPriority >= priority)
+                {
+                    /* Found where to insert. Break while(). */
+                    CRITICAL_ENTER();
+                    break;
+                }
+
+                CRITICAL_ENTER();
+                if(pos->ListInserted != list)
+                {
+                    /* This position was removed from the list. An interrupt
+                     resumed this task. Break while(). */
+                    break;
+                }
+
+                /* As this task is inserted in the tail of the list, if an
+                 interrupt resumed the task then pos also must have been
+                 modified.
+                 So break the while loop if current task was changed is
+                 redundant. */
+
+                pos = pos->ListNext;
+            }
+
+            if(     pos != (struct taskListNode_t*)list &&
+                    pos->ListInserted != list &&
+                    node->ListInserted == list)
+            {
+                /* This pos was removed from the list and pxEvent was not
+                 removed. Must restart to find where to insert node.
+                 Continue for(;;). */
+                continue;
+            }
+            else
+            {
+                /* Found where to insert. Insert before pos.
+                 OR
+                 Item node was removed from the list (interrupt resumed the
+                 task). Nothing to insert.
+                 Break for(;;). */
+                break;
+            }
+        }
+
+        if(node->ListInserted == list)
+        {
+            /* If an interrupt didn't resume the task. */
+
+            /* Don't need to remove and insert if the task is already in its
+             position. */
+            if(node != pos)
+            {
+                /* Now insert in the right position. */
+                OS_listRemove(node);
+                OS_listInsertAfter(list, pos, node);
+            }
+        }
+    }
+    CRITICAL_EXIT();
+
+    /* Suspend or block task. */
+    if(ticksToWait == MAX_DELAY)
+    {
+        state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+    }
+    else
+    {
+        OS_taskDelay(ticksToWait);
+    }
+
+    OS_schedulerUnlock();
+}
+
+/* Unblock task in an event list. Must be called with scheduler locked and in a
+ critical section. */
+void OS_eventUnblockTasks(struct taskHeadList_t* list)
+{
+    if(list->ListLength != 0)
+    {
+        struct taskListNode_t* node = list->ListTail;
+
+        /* Remove from event list. */
+        OS_listRemove(node);
+
+        /* Insert in the pending ready tasks . */
+        OS_listInsertAfter(&state.PendingReadyTaskList, state.PendingReadyTaskList.ListHead, node);
+    }
+}
