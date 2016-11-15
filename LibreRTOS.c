@@ -101,11 +101,27 @@ void OS_init(void)
         state.BlockedTaskList1 = state.BlockedTaskList2;
         state.BlockedTaskList2 = temp;
 
-        state.BlockedTaskList1.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList1;
-        state.BlockedTaskList1.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList1;
+        if(state.BlockedTaskList1.ListLength == 0)
+        {
+            state.BlockedTaskList1.ListHead = (struct taskListNode_t*)&state.BlockedTaskList1;
+            state.BlockedTaskList1.ListTail = (struct taskListNode_t*)&state.BlockedTaskList1;
+        }
+        else
+        {
+            state.BlockedTaskList1.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList1;
+            state.BlockedTaskList1.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList1;
+        }
 
-        state.BlockedTaskList2.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList2;
-        state.BlockedTaskList2.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList2;
+        if(state.BlockedTaskList2.ListLength == 0)
+        {
+            state.BlockedTaskList2.ListHead = (struct taskListNode_t*)&state.BlockedTaskList2;
+            state.BlockedTaskList2.ListTail = (struct taskListNode_t*)&state.BlockedTaskList2;
+        }
+        else
+        {
+            state.BlockedTaskList2.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList2;
+            state.BlockedTaskList2.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList2;
+        }
     }
 
     /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
