@@ -105,6 +105,31 @@ int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait);
 
 
 
+struct Queue_t {
+    const int8_t      ItemSize;
+    volatile int8_t   Free;
+    volatile int8_t   Used;
+    volatile int8_t   WLock;
+    volatile int8_t   RLock;
+    uint8_t *volatile Head;
+    uint8_t *volatile Tail;
+    uint8_t *const    Buff;
+    uint8_t *const    BufEnd;
+    struct event_t    Event;
+};
+
+void Queue_init(
+        struct Queue_t *o,
+        void *buff,
+        int8_t length,
+        int8_t item_size);
+int8_t Queue_read(struct Queue_t* o, void* buff);
+int8_t Queue_write(struct Queue_t* o, const void* buff);
+int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
+int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
+
+
+
 #define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
 
 #ifdef __cplusplus
