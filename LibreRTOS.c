@@ -39,19 +39,21 @@ struct task_t {
 };
 
 static struct librertos_state_t {
-    volatile schedulerLock_t  SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    priority_t                CurrentTaskPriority; /* Current task priority. */
+    volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    priority_t                 CurrentTaskPriority; /* Current task priority. */
+
+    struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
 
     #if (LIBRERTOS_TICK != 0)
-        tick_t                Tick; /* OS tick. */
-        tick_t                DelayedTicks; /* OS delayed tick (scheduler was locked). */
-        struct taskHeadList_t BlockedTaskList1; /* List with blocked tasks. */
-        struct taskHeadList_t BlockedTaskList2; /* List with blocked tasks (overflowed). */
+        tick_t                 Tick; /* OS tick. */
+        tick_t                 DelayedTicks; /* OS delayed tick (scheduler was locked). */
+        struct taskHeadList_t* BlockedTaskList_NotOverflowed; /* List with blocked tasks (not overflowed). */
+        struct taskHeadList_t* BlockedTaskList_Overflowed; /* List with blocked tasks (overflowed). */
+        struct taskHeadList_t  BlockedTaskList1; /* List with blocked tasks number 1. */
+        struct taskHeadList_t  BlockedTaskList2; /* List with blocked tasks number 2. */
     #endif
 
-    struct taskHeadList_t     PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
-
-    struct task_t             Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
+    struct task_t              Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
 } state;
 
 #if (LIBRERTOS_TICK != 0)
@@ -69,14 +71,16 @@ void OS_init(void)
     state.SchedulerLock = 0;
     state.CurrentTaskPriority = LIBRERTOS_SCHEDULER_NOT_RUNNING;
 
+    OS_listHeadInit(&state.PendingReadyTaskList);
+
     #if (LIBRERTOS_TICK != 0)
         state.Tick = 0U;
         state.DelayedTicks = 0U;
+        state.BlockedTaskList_NotOverflowed = &state.BlockedTaskList1;
+        state.BlockedTaskList_Overflowed = &state.BlockedTaskList2;
         OS_listHeadInit(&state.BlockedTaskList1);
         OS_listHeadInit(&state.BlockedTaskList2);
     #endif
-
-    OS_listHeadInit(&state.PendingReadyTaskList);
 
     for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
     {
@@ -97,31 +101,9 @@ void OS_init(void)
     /* Invert blocked tasks lists. Called by unblock timedout tasks function. */
     static void _OS_tickInvertBlockedTasksLists(void)
     {
-        struct taskHeadList_t temp = state.BlockedTaskList1;
-        state.BlockedTaskList1 = state.BlockedTaskList2;
-        state.BlockedTaskList2 = temp;
-
-        if(state.BlockedTaskList1.ListLength == 0)
-        {
-            state.BlockedTaskList1.ListHead = (struct taskListNode_t*)&state.BlockedTaskList1;
-            state.BlockedTaskList1.ListTail = (struct taskListNode_t*)&state.BlockedTaskList1;
-        }
-        else
-        {
-            state.BlockedTaskList1.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList1;
-            state.BlockedTaskList1.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList1;
-        }
-
-        if(state.BlockedTaskList2.ListLength == 0)
-        {
-            state.BlockedTaskList2.ListHead = (struct taskListNode_t*)&state.BlockedTaskList2;
-            state.BlockedTaskList2.ListTail = (struct taskListNode_t*)&state.BlockedTaskList2;
-        }
-        else
-        {
-            state.BlockedTaskList2.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList2;
-            state.BlockedTaskList2.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList2;
-        }
+        struct taskHeadList_t* temp = state.BlockedTaskList_NotOverflowed;
+        state.BlockedTaskList_NotOverflowed = state.BlockedTaskList_Overflowed;
+        state.BlockedTaskList_Overflowed = temp;
     }
 
     /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
@@ -133,10 +115,10 @@ void OS_init(void)
         if(state.Tick == 0)
             _OS_tickInvertBlockedTasksLists();
 
-        while(  state.BlockedTaskList1.ListLength != 0 &&
-                state.BlockedTaskList1.ListHead->TickToWakeup == state.Tick)
+        while(  state.BlockedTaskList_NotOverflowed->ListLength != 0 &&
+                state.BlockedTaskList_NotOverflowed->ListHead->TickToWakeup == state.Tick)
         {
-            struct taskListNode_t* node = state.BlockedTaskList1.ListHead;
+            struct taskListNode_t* node = state.BlockedTaskList_NotOverflowed->ListHead;
             OS_listRemove(node);
             state.Task[node->TaskPriority].TaskState = TASKSTATE_READY;
         }
@@ -429,12 +411,12 @@ void OS_taskResume(priority_t priority)
             if(tickToWakeup > tickNow)
             {
                 /* Not overflowed. */
-                blockedTaskList = &state.BlockedTaskList1;
+                blockedTaskList = state.BlockedTaskList_NotOverflowed;
             }
             else
             {
                 /* Overflowed. */
-                blockedTaskList = &state.BlockedTaskList2;
+                blockedTaskList = state.BlockedTaskList_Overflowed;
             }
 
             /* Insert task on list. */
