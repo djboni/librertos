@@ -62,6 +62,7 @@ priority_t OS_taskGetCurrentPriority(void);
 void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
 void OS_taskDelay(tick_t ticksToDelay);
+tick_t OS_taskGetTickCount(void);
 
 
 

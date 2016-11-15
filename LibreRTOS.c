@@ -427,6 +427,16 @@ void OS_taskResume(priority_t priority)
         OS_schedulerUnlock();
     }
 
+    /* Get current OS tick. */
+    tick_t OS_taskGetTickCount(void)
+    {
+        tick_t tickNow;
+        OS_schedulerLock();
+        tickNow = state.Tick;
+        OS_schedulerUnlock();
+        return tickNow;
+    }
+
 #endif /* LIBRERTOS_TICK */
 
 
