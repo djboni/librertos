@@ -86,8 +86,14 @@ void OS_init(void)
     static void _OS_tickInvertBlockedTasksLists(void)
     {
         struct taskHeadList_t temp = state.BlockedTaskList1;
-        state.BlockedTaskList2 = state.BlockedTaskList1;
-        state.BlockedTaskList1 = temp;
+        state.BlockedTaskList1 = state.BlockedTaskList2;
+        state.BlockedTaskList2 = temp;
+
+        state.BlockedTaskList1.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList1;
+        state.BlockedTaskList1.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList1;
+
+        state.BlockedTaskList2.ListHead->ListPrevious = (struct taskListNode_t*)&state.BlockedTaskList2;
+        state.BlockedTaskList2.ListTail->ListNext = (struct taskListNode_t*)&state.BlockedTaskList2;
     }
 
     /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
