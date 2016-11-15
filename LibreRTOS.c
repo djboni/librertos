@@ -54,8 +54,11 @@ static struct librertos_state_t {
     struct task_t             Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
 } state;
 
-static void _OS_tickInvertBlockedTasksLists(void);
-static void _OS_tickUnblockTimedoutTasks(void);
+#if (LIBRERTOS_TICK != 0)
+    static void _OS_tickInvertBlockedTasksLists(void);
+    static void _OS_tickUnblockTimedoutTasks(void);
+#endif
+
 static void _OS_schedulerUnlock_withoutPreempt(void);
 
 /** Initialize OS. Must be called before any other OS function. */
@@ -527,14 +530,22 @@ void OS_eventPendTask(
     CRITICAL_EXIT();
 
     /* Suspend or block task. */
-    if(ticksToWait == MAX_DELAY)
+    #if (LIBRERTOS_TICK == 0)
     {
-        state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+        /* Ticks disabled. Suspend if ticks to wait is not zero. */
+        if(ticksToWait != 0U)
+            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
     }
-    else
+    #else
     {
-        OS_taskDelay(ticksToWait);
+        /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
+         timeout otherwise. */
+        if(ticksToWait == MAX_DELAY)
+            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+        else
+            OS_taskDelay(ticksToWait);
     }
+    #endif
 
     OS_schedulerUnlock();
 }
