@@ -39,7 +39,7 @@ struct task_t {
 };
 
 static struct librertos_state_t {
-    schedulerLock_t           SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    volatile schedulerLock_t  SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
     priority_t                CurrentTaskPriority; /* Current task priority. */
 
     #if (LIBRERTOS_TICK != 0)
