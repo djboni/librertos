@@ -127,7 +127,11 @@ int8_t Queue_read(struct Queue_t* o, void* buff);
 int8_t Queue_write(struct Queue_t* o, const void* buff);
 int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
 int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
+int8_t Queue_used(const struct Queue_t *o);
+int8_t Queue_free(const struct Queue_t *o);
 
+#define Queue_empty(o) (Queue_used(o) == 0)
+#define Queue_full(o)  (Queue_free(o) == 0)
 
 
 #define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1

@@ -173,3 +173,13 @@ int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
 
     return val;
 }
+
+int8_t Queue_used(const struct Queue_t *o)
+{
+    return o->Used;
+}
+
+int8_t Queue_free(const struct Queue_t *o)
+{
+    return o->Free;
+}
