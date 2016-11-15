@@ -22,14 +22,14 @@
 void Semaphore_initbinary(struct Semaphore_t* o)
 {
     o->Count = 0;
-    UNCONST(semaphoreCount_t, o->Max) = 1;
+    UNCONST(int8_t, o->Max) = 1;
     OS_eventInit(&o->Event);
 }
 
-void Semaphore_init(struct Semaphore_t* o, semaphoreCount_t max)
+void Semaphore_init(struct Semaphore_t* o, int8_t max)
 {
     o->Count = 0;
-    UNCONST(semaphoreCount_t, o->Max) = max;
+    UNCONST(int8_t, o->Max) = max;
     OS_eventInit(&o->Event);
 }
 
@@ -42,7 +42,7 @@ int8_t Semaphore_lock(struct Semaphore_t* o)
         val = (o->Count > 0);
         if(val != 0)
         {
-            o->Count = (semaphoreCount_t)(o->Count - 1);
+            o->Count = (int8_t)(o->Count - 1);
         }
     }
     CRITICAL_EXIT();
@@ -60,7 +60,7 @@ int8_t Semaphore_unlock(struct Semaphore_t* o)
 
         if(val != 0)
         {
-            o->Count = (semaphoreCount_t)(o->Count + 1);
+            o->Count = (int8_t)(o->Count + 1);
 
             OS_schedulerLock();
 

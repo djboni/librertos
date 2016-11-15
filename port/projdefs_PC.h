@@ -34,8 +34,6 @@ typedef int8_t schedulerLock_t;
 typedef uint16_t tick_t;
 #define MAX_DELAY ((tick_t)0xFFFFU)
 
-typedef int8_t semaphoreCount_t;
-
 /* Assert macro. */
 #define ASSERT(x) assert(x)
 
