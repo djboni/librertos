@@ -327,7 +327,7 @@ void OS_taskCreate(
                 OS_listRemove(&state.Task[priority].TaskBlockedNode);
             }
         #endif
-        _OS_schedulerUnlock_withoutPreempt();
+        OS_schedulerUnlock();
     }
 
 #endif /* LIBRERTOS_ENABLE_TASKDELETE */
@@ -394,7 +394,7 @@ void OS_taskResume(priority_t priority)
 
             state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_BLOCKED;
         }
-        _OS_schedulerUnlock_withoutPreempt();
+        OS_schedulerUnlock();
     }
 
 #endif /* LIBRERTOS_TICK */
