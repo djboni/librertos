@@ -454,7 +454,8 @@ void OS_eventRwInit(struct eventRw_t* o)
     OS_listHeadInit(&o->ListWrite);
 }
 
-/* Pend task on an event. Must be called with interrupts enabled. */
+/* Pend task on an event. Must be called with interrupts enabled. Parameter
+ ticksToWait must not be zero. */
 void OS_eventPendTask(
         struct taskHeadList_t* list,
         priority_t priority,
@@ -546,9 +547,8 @@ void OS_eventPendTask(
     /* Suspend or block task. */
     #if (LIBRERTOS_TICK == 0)
     {
-        /* Ticks disabled. Suspend if ticks to wait is not zero. */
-        if(ticksToWait != 0U)
-            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+        /* Ticks disabled. Suspend. */
+		state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
     }
     #else
     {
