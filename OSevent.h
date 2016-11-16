@@ -33,6 +33,8 @@ void OS_eventPendTask(
         tick_t ticksToWait);
 void OS_eventUnblockTasks(struct taskHeadList_t* list);
 
+struct taskListNode_t* OS_getTaskEventNode(priority_t priority);
+
 #ifdef __cplusplus
 }
 #endif

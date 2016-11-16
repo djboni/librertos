@@ -165,9 +165,16 @@ int8_t Fifo_readPend(struct Fifo_t* o, void* buff, int8_t length, tick_t ticksTo
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could read from FIFO. Pend on it. */
+
+    	priority_t priority = OS_getCurrentPriority();
+    	struct taskListNode_t* node = OS_getTaskEventNode(priority);
+
+    	/* Length waiting for. */
+    	node->TickToWakeup = length;
+
         OS_eventPendTask(
                 &o->Event.ListRead,
-                OS_getCurrentPriority(),
+				priority,
                 ticksToWait);
     }
 
@@ -182,9 +189,16 @@ int8_t Fifo_writePend(struct Fifo_t* o, const void* buff, int8_t length, tick_t 
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could not write to FIFO. Pend on it. */
+
+    	priority_t priority = OS_getCurrentPriority();
+    	struct taskListNode_t* node = OS_getTaskEventNode(priority);
+
+    	/* Length waiting for. */
+    	node->TickToWakeup = length;
+
         OS_eventPendTask(
                 &o->Event.ListWrite,
-                OS_getCurrentPriority(),
+				priority,
                 ticksToWait);
     }
 

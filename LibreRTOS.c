@@ -579,3 +579,8 @@ void OS_eventUnblockTasks(struct taskHeadList_t* list)
         OS_listInsertAfter(&state.PendingReadyTaskList, state.PendingReadyTaskList.ListHead, node);
     }
 }
+
+struct taskListNode_t* OS_getTaskEventNode(priority_t priority)
+{
+	return &state.Task[priority].TaskEventNode;
+}
