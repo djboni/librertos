@@ -42,10 +42,10 @@ int8_t Semaphore_take(struct Semaphore_t* o)
 
 void Semaphore_give(struct Semaphore_t* o)
 {
-    CRITICAL_ENTER();
-    {
-		OS_schedulerLock();
+	OS_schedulerLock();
 
+	CRITICAL_ENTER();
+    {
 		o->Count = (int8_t)(o->Count + 1);
 
 		if(o->Event.ListRead.ListLength != 0)
