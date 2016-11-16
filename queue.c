@@ -75,10 +75,10 @@ int8_t Queue_read(struct Queue_t* o, void* buff)
 
             OS_schedulerLock();
 
-            if(o->Event.ListRead.ListLength != 0)
+            if(o->Event.ListWrite.ListLength != 0)
             {
-                /* Unblock tasks waiting to read from this event. */
-                OS_eventUnblockTasks(&(o->Event.ListRead));
+                /* Unblock tasks waiting to write to this event. */
+                OS_eventUnblockTasks(&(o->Event.ListWrite));
             }
         }
     }
@@ -125,10 +125,10 @@ int8_t Queue_write(struct Queue_t* o, const void* buff)
 
             OS_schedulerLock();
 
-            if(o->Event.ListWrite.ListLength != 0)
+            if(o->Event.ListRead.ListLength != 0)
             {
-                /* Unblock tasks waiting to write to this event. */
-                OS_eventUnblockTasks(&(o->Event.ListWrite));
+                /* Unblock tasks waiting to read from this event. */
+                OS_eventUnblockTasks(&(o->Event.ListRead));
             }
         }
     }
