@@ -83,10 +83,14 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
 
             OS_schedulerLock();
 
-            if(o->Event.ListRead.ListLength != 0)
+            if(o->Event.ListWrite.ListLength != 0)
             {
-                /* TODO Unblock tasks waiting to read from this event. */
-                OS_eventUnblockTasks(&(o->Event.ListRead));
+                /* Unblock task waiting to write to this event. */
+            	struct taskListNode_t* node = o->Event.ListWrite.ListTail;
+
+            	/* Length waiting for. */
+            	if((int8_t)node->TickToWakeup <= o->Free)
+            		OS_eventUnblockTasks(&(o->Event.ListWrite));
             }
         }
     }
@@ -142,10 +146,14 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
 
             OS_schedulerLock();
 
-            if(o->Event.ListWrite.ListLength != 0)
+            if(o->Event.ListRead.ListLength != 0)
             {
-                /* TODO Unblock tasks waiting to write to this event. */
-                OS_eventUnblockTasks(&(o->Event.ListWrite));
+                /* Unblock task waiting to read from this event. */
+            	struct taskListNode_t* node = o->Event.ListRead.ListTail;
+
+            	/* Length waiting for. */
+            	if((int8_t)node->TickToWakeup <= o->Used)
+            		OS_eventUnblockTasks(&(o->Event.ListRead));
             }
         }
     }
