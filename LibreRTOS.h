@@ -98,9 +98,9 @@ struct Semaphore_t {
 };
 
 void Semaphore_init(struct Semaphore_t* o, int8_t count);
-int8_t Semaphore_lock(struct Semaphore_t* o);
-void Semaphore_unlock(struct Semaphore_t* o);
-int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait);
+int8_t Semaphore_take(struct Semaphore_t* o);
+void Semaphore_give(struct Semaphore_t* o);
+int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
 
 
 

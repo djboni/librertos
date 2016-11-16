@@ -23,7 +23,7 @@ void Semaphore_init(struct Semaphore_t* o, int8_t count)
     OS_eventInit(&o->Event);
 }
 
-int8_t Semaphore_lock(struct Semaphore_t* o)
+int8_t Semaphore_take(struct Semaphore_t* o)
 {
     int8_t val;
 
@@ -40,7 +40,7 @@ int8_t Semaphore_lock(struct Semaphore_t* o)
     return val;
 }
 
-void Semaphore_unlock(struct Semaphore_t* o)
+void Semaphore_give(struct Semaphore_t* o)
 {
     CRITICAL_ENTER();
     {
@@ -59,11 +59,11 @@ void Semaphore_unlock(struct Semaphore_t* o)
 	OS_schedulerUnlock();
 }
 
-int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait)
+int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
     int8_t val;
 
-    val = Semaphore_lock(o);
+    val = Semaphore_take(o);
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could not lock semaphore. Pend on it. */
