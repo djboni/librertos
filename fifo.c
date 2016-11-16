@@ -73,7 +73,7 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
             {
                 memcpy(buff, pos, length);
                 if(numFromBegin != 0)
-                	memcpy(o->Buff, pos + length, numFromBegin);
+                	memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
             }
             CRITICAL_ENTER();
 
@@ -138,7 +138,7 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
             {
                 memcpy(pos, buff, length);
                 if(numFromBegin != 0)
-                	memcpy(pos + length, o->Buff, numFromBegin);
+                	memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
             }
             CRITICAL_ENTER();
 
