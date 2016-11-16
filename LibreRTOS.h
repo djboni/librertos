@@ -94,14 +94,12 @@ struct event_t {
 
 struct Semaphore_t {
     volatile int8_t Count;
-    const int8_t    Max;
     struct event_t  Event;
 };
 
-void Semaphore_initbinary(struct Semaphore_t* o);
-void Semaphore_init(struct Semaphore_t* o, int8_t max);
+void Semaphore_init(struct Semaphore_t* o, int8_t count);
 int8_t Semaphore_lock(struct Semaphore_t* o);
-int8_t Semaphore_unlock(struct Semaphore_t* o);
+void Semaphore_unlock(struct Semaphore_t* o);
 int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait);
 
 

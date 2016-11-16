@@ -17,19 +17,9 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
-#define UNCONST(type, var) *((type*)&(var))
-
-void Semaphore_initbinary(struct Semaphore_t* o)
+void Semaphore_init(struct Semaphore_t* o, int8_t count)
 {
-    o->Count = 0;
-    UNCONST(int8_t, o->Max) = 1;
-    OS_eventInit(&o->Event);
-}
-
-void Semaphore_init(struct Semaphore_t* o, int8_t max)
-{
-    o->Count = 0;
-    UNCONST(int8_t, o->Max) = max;
+    o->Count = count;
     OS_eventInit(&o->Event);
 }
 
@@ -50,33 +40,23 @@ int8_t Semaphore_lock(struct Semaphore_t* o)
     return val;
 }
 
-int8_t Semaphore_unlock(struct Semaphore_t* o)
+void Semaphore_unlock(struct Semaphore_t* o)
 {
-    int8_t val;
-
     CRITICAL_ENTER();
     {
-        val = (o->Count < o->Max);
+		OS_schedulerLock();
 
-        if(val != 0)
-        {
-            o->Count = (int8_t)(o->Count + 1);
+		o->Count = (int8_t)(o->Count + 1);
 
-            OS_schedulerLock();
-
-            if(o->Event.ListRead.ListLength != 0)
-            {
-                /* Unblock tasks waiting to read from this event. */
-                OS_eventUnblockTasks(&(o->Event.ListRead));
-            }
-        }
+		if(o->Event.ListRead.ListLength != 0)
+		{
+			/* Unblock tasks waiting to read from this event. */
+			OS_eventUnblockTasks(&(o->Event.ListRead));
+		}
     }
     CRITICAL_EXIT();
 
-    if(val != 0)
-        OS_schedulerUnlock();
-
-    return val;
+	OS_schedulerUnlock();
 }
 
 int8_t Semaphore_lockPend(struct Semaphore_t* o, tick_t ticksToWait)
