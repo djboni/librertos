@@ -67,9 +67,10 @@ int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could not lock semaphore. Pend on it. */
+    	priority_t priority = OS_getCurrentPriority();
         OS_eventPendTask(
                 &o->Event.ListRead,
-                OS_getCurrentPriority(),
+				priority,
                 ticksToWait);
     }
 

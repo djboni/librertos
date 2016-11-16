@@ -148,9 +148,10 @@ int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could read from queue. Pend on it. */
+    	priority_t priority = OS_getCurrentPriority();
         OS_eventPendTask(
                 &o->Event.ListRead,
-                OS_getCurrentPriority(),
+				priority,
                 ticksToWait);
     }
 
@@ -164,10 +165,11 @@ int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
     val = Queue_write(o, buff);
     if(val == 0 && ticksToWait != 0U)
     {
-        /* Could not wrote to queue. Pend on it. */
+        /* Could not write to queue. Pend on it. */
+    	priority_t priority = OS_getCurrentPriority();
         OS_eventPendTask(
                 &o->Event.ListWrite,
-                OS_getCurrentPriority(),
+				priority,
                 ticksToWait);
     }
 
