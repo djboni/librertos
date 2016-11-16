@@ -75,3 +75,14 @@ int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 
     return val;
 }
+
+int8_t Semaphore_getCount(struct Semaphore_t* o)
+{
+    int8_t val;
+    CRITICAL_ENTER();
+    {
+        val = o->Count;
+    }
+    CRITICAL_EXIT();
+    return val;
+}
