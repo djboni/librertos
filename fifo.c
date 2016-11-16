@@ -47,12 +47,14 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
 
     CRITICAL_ENTER();
     {
-        val = (o->Used != 0U);
+    	val = (o->Used >= length) ? length : o->Used;
         if(val != 0U)
         {
             int8_t lock;
             uint8_t *pos;
             int8_t numFromBegin;
+
+            length = val;
 
             lock = o->RLock;
             o->RLock += length;
@@ -110,12 +112,14 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
 
     CRITICAL_ENTER();
     {
-        val = (o->Free != 0U);
+        val = (o->Free >= length) ? length : o->Free;
         if(val != 0U)
         {
             int8_t lock;
             uint8_t *pos;
             int8_t numFromBegin;
+
+            length = val;
 
             lock = o->WLock;
             o->WLock += length;
