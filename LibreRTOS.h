@@ -143,6 +143,37 @@ int8_t Queue_free(const struct Queue_t *o);
 #define Queue_full(o)  (Queue_free(o) == 0)
 
 
+
+struct Fifo_t {
+    const int8_t      Length;
+    volatile int8_t   Free;
+    volatile int8_t   Used;
+    volatile int8_t   WLock;
+    volatile int8_t   RLock;
+    uint8_t *volatile Head;
+    uint8_t *volatile Tail;
+    uint8_t *const    Buff;
+    uint8_t *const    BufEnd;
+    struct eventRw_t  Event;
+};
+
+void Fifo_init(
+        struct Fifo_t *o,
+        void *buff,
+        int8_t length);
+
+int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length);
+int8_t Fifo_readPend(struct Fifo_t* o, void* buff, int8_t length, tick_t ticksToWait);
+int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length);
+int8_t Fifo_writePend(struct Fifo_t* o, const void* buff, int8_t length, tick_t ticksToWait);
+
+int8_t Fifo_used(const struct Fifo_t *o);
+int8_t Fifo_free(const struct Fifo_t *o);
+
+#define Fifo_empty(o) (Fifo_used(o) == 0)
+#define Fifo_full(o)  (Fifo_free(o) == 0)
+
+
 #define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
 
 #ifdef __cplusplus
