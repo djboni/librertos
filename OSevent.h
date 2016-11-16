@@ -25,7 +25,8 @@ extern "C" {
 #include "OSlist.h"
 #include <stddef.h>
 
-void OS_eventInit(struct event_t* o);
+void OS_eventRInit(struct eventR_t* o);
+void OS_eventRwInit(struct eventRw_t* o);
 void OS_eventPendTask(
         struct taskHeadList_t* list,
         priority_t priority,

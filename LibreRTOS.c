@@ -442,7 +442,13 @@ void OS_taskResume(priority_t priority)
 
 
 /* Initialize event struct. */
-void OS_eventInit(struct event_t* o)
+void OS_eventRInit(struct eventR_t* o)
+{
+    OS_listHeadInit(&o->ListRead);
+}
+
+/* Initialize event struct. */
+void OS_eventRwInit(struct eventRw_t* o)
 {
     OS_listHeadInit(&o->ListRead);
     OS_listHeadInit(&o->ListWrite);

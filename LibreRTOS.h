@@ -86,7 +86,11 @@ struct taskListNode_t {
 
 
 
-struct event_t {
+struct eventR_t {
+    struct taskHeadList_t ListRead;
+};
+
+struct eventRw_t {
     struct taskHeadList_t ListRead;
     struct taskHeadList_t ListWrite;
 };
@@ -95,7 +99,7 @@ struct event_t {
 
 struct Semaphore_t {
     volatile int8_t Count;
-    struct event_t  Event;
+    struct eventR_t Event;
 };
 
 void Semaphore_init(struct Semaphore_t* o, int8_t count);
@@ -118,7 +122,7 @@ struct Queue_t {
     uint8_t *volatile Tail;
     uint8_t *const    Buff;
     uint8_t *const    BufEnd;
-    struct event_t    Event;
+    struct eventRw_t  Event;
 };
 
 void Queue_init(

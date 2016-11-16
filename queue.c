@@ -37,7 +37,7 @@ void Queue_init(
     o->Tail = buff8;
     UNCONST(uint8_t*, o->Buff) = buff8;
     UNCONST(uint8_t*, o->BufEnd) = &buff8[(length - 1) * item_size];
-    OS_eventInit(&o->Event);
+    OS_eventRwInit(&o->Event);
 }
 
 int8_t Queue_read(struct Queue_t* o, void* buff)

@@ -20,7 +20,7 @@
 void Semaphore_init(struct Semaphore_t* o, int8_t count)
 {
     o->Count = count;
-    OS_eventInit(&o->Event);
+    OS_eventRInit(&o->Event);
 }
 
 int8_t Semaphore_take(struct Semaphore_t* o)
