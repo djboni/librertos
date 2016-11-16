@@ -329,7 +329,7 @@ void OS_taskCreate(
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
-        priority_t currentTaskPriority = OS_taskGetCurrentPriority();
+        priority_t currentTaskPriority = OS_getCurrentPriority();
         if(     priority > currentTaskPriority &&
                 currentTaskPriority != LIBRERTOS_SCHEDULER_NOT_RUNNING)
             OS_scheduler();
@@ -363,7 +363,7 @@ void OS_taskCreate(
 #endif /* LIBRERTOS_ENABLE_TASKDELETE */
 
 /** Return current task priority. */
-priority_t OS_taskGetCurrentPriority(void)
+priority_t OS_getCurrentPriority(void)
 {
     return state.CurrentTaskPriority;
 }
@@ -385,7 +385,7 @@ void OS_taskResume(priority_t priority)
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
-        if(priority > OS_taskGetCurrentPriority())
+        if(priority > OS_getCurrentPriority())
             OS_scheduler();
     }
     #endif
@@ -406,7 +406,7 @@ void OS_taskResume(priority_t priority)
 
             struct taskHeadList_t* blockedTaskList;
             struct taskListNode_t* taskBlockedNode =
-                    &state.Task[OS_taskGetCurrentPriority()].TaskBlockedNode;
+                    &state.Task[OS_getCurrentPriority()].TaskBlockedNode;
 
             if(tickToWakeup > tickNow)
             {
@@ -422,13 +422,13 @@ void OS_taskResume(priority_t priority)
             /* Insert task on list. */
             OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
 
-            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_BLOCKED;
+            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_BLOCKED;
         }
         OS_schedulerUnlock();
     }
 
     /* Get current OS tick. */
-    tick_t OS_taskGetTickCount(void)
+    tick_t OS_getTickCount(void)
     {
         tick_t tickNow;
         OS_schedulerLock();
@@ -542,14 +542,14 @@ void OS_eventPendTask(
     {
         /* Ticks disabled. Suspend if ticks to wait is not zero. */
         if(ticksToWait != 0U)
-            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
     }
     #else
     {
         /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
          timeout otherwise. */
         if(ticksToWait == MAX_DELAY)
-            state.Task[OS_taskGetCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
         else
             OS_taskDelay(ticksToWait);
     }

@@ -47,8 +47,8 @@ typedef void(*taskFunction_t)(taskParameter_t);
 
 void OS_init(void);
 void OS_tick(void);
-
 void OS_scheduler(void);
+
 int8_t OS_schedulerIsLocked(void);
 void OS_schedulerLock(void);
 void OS_schedulerUnlock(void);
@@ -58,11 +58,12 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter);
 void OS_taskDelete(priority_t priority);
-priority_t OS_taskGetCurrentPriority(void);
 void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
 void OS_taskDelay(tick_t ticksToDelay);
-tick_t OS_taskGetTickCount(void);
+
+priority_t OS_getCurrentPriority(void);
+tick_t OS_getTickCount(void);
 
 
 
@@ -98,9 +99,11 @@ struct Semaphore_t {
 };
 
 void Semaphore_init(struct Semaphore_t* o, int8_t count);
-int8_t Semaphore_take(struct Semaphore_t* o);
+
 void Semaphore_give(struct Semaphore_t* o);
+int8_t Semaphore_take(struct Semaphore_t* o);
 int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
+
 int8_t Semaphore_getCount(struct Semaphore_t* o);
 
 
@@ -123,10 +126,12 @@ void Queue_init(
         void *buff,
         int8_t length,
         int8_t item_size);
+
 int8_t Queue_read(struct Queue_t* o, void* buff);
-int8_t Queue_write(struct Queue_t* o, const void* buff);
 int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
+int8_t Queue_write(struct Queue_t* o, const void* buff);
 int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
+
 int8_t Queue_used(const struct Queue_t *o);
 int8_t Queue_free(const struct Queue_t *o);
 
