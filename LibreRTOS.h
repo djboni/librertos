@@ -40,6 +40,10 @@ extern "C" {
 #define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_QUEUE_1CRITICAL
+#define LIBRERTOS_QUEUE_1CRITICAL    0  /* boolean */
+#endif
+
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
@@ -113,16 +117,18 @@ int8_t Semaphore_getCount(struct Semaphore_t* o);
 
 
 struct Queue_t {
-    const int8_t      ItemSize;
-    volatile int8_t   Free;
-    volatile int8_t   Used;
-    volatile int8_t   WLock;
-    volatile int8_t   RLock;
-    uint8_t *volatile Head;
-    uint8_t *volatile Tail;
-    uint8_t *const    Buff;
-    uint8_t *const    BufEnd;
-    struct eventRw_t  Event;
+    const int8_t        ItemSize;
+    volatile int8_t     Free;
+    volatile int8_t     Used;
+    #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
+        volatile int8_t WLock;
+        volatile int8_t RLock;
+    #endif
+    uint8_t *volatile   Head;
+    uint8_t *volatile   Tail;
+    uint8_t *const      Buff;
+    uint8_t *const      BufEnd;
+    struct eventRw_t    Event;
 };
 
 void Queue_init(

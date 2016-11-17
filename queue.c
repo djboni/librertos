@@ -31,8 +31,10 @@ void Queue_init(
     UNCONST(int8_t, o->ItemSize) = item_size;
     o->Free = length;
     o->Used = 0U;
-    o->WLock = 0U;
-    o->RLock = 0U;
+    #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
+        o->WLock = 0U;
+        o->RLock = 0U;
+    #endif
     o->Head = buff8;
     o->Tail = buff8;
     UNCONST(uint8_t*, o->Buff) = buff8;
@@ -51,27 +53,38 @@ int8_t Queue_read(struct Queue_t* o, void* buff)
         val = (o->Used != 0U);
         if(val != 0U)
         {
-            int8_t lock;
             uint8_t *pos;
-
-            lock = (o->RLock)++;
-            --(o->Used);
 
             pos = o->Head;
             if((o->Head += o->ItemSize) > o->BufEnd)
                 o->Head = o->Buff;
 
-            CRITICAL_EXIT();
+            #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
             {
+                int8_t lock;
+
+                lock = (o->RLock)++;
+                --(o->Used);
+
+                CRITICAL_EXIT();
+                {
+                    memcpy(buff, pos, (uint8_t)o->ItemSize);
+                }
+                CRITICAL_ENTER();
+
+                if(lock == 0U)
+                {
+                    o->Free = (int8_t)(o->Free + o->RLock);
+                    o->RLock = 0U;
+                }
+            }
+            #else
+            {
+                --(o->Used);
+                ++(o->Free);
                 memcpy(buff, pos, (uint8_t)o->ItemSize);
             }
-            CRITICAL_ENTER();
-
-            if(lock == 0U)
-            {
-                o->Free = (int8_t)(o->Free + o->RLock);
-                o->RLock = 0U;
-            }
+            #endif
 
             OS_schedulerLock();
 
@@ -101,27 +114,38 @@ int8_t Queue_write(struct Queue_t* o, const void* buff)
         val = (o->Free != 0U);
         if(val != 0U)
         {
-            int8_t lock;
             uint8_t *pos;
-
-            lock = (o->WLock)++;
-            --(o->Free);
 
             pos = o->Tail;
             if((o->Tail += o->ItemSize) > o->BufEnd)
                 o->Tail = o->Buff;
 
-            CRITICAL_EXIT();
+            #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
             {
+                int8_t lock;
+
+                lock = (o->WLock)++;
+                --(o->Free);
+
+                CRITICAL_EXIT();
+                {
+                    memcpy(pos, buff, (uint8_t)o->ItemSize);
+                }
+                CRITICAL_ENTER();
+
+                if(lock == 0U)
+                {
+                    o->Used = (int8_t)(o->Used + o->WLock);
+                    o->WLock = 0U;
+                }
+            }
+            #else
+            {
+                --(o->Free);
+                ++(o->Used);
                 memcpy(pos, buff, (uint8_t)o->ItemSize);
             }
-            CRITICAL_ENTER();
-
-            if(lock == 0U)
-            {
-                o->Used = (int8_t)(o->Used + o->WLock);
-                o->WLock = 0U;
-            }
+            #endif
 
             OS_schedulerLock();
 
@@ -148,10 +172,10 @@ int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could read from queue. Pend on it. */
-    	priority_t priority = OS_getCurrentPriority();
+        priority_t priority = OS_getCurrentPriority();
         OS_eventPendTask(
                 &o->Event.ListRead,
-				priority,
+                priority,
                 ticksToWait);
     }
 
@@ -166,10 +190,10 @@ int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
     if(val == 0 && ticksToWait != 0U)
     {
         /* Could not write to queue. Pend on it. */
-    	priority_t priority = OS_getCurrentPriority();
+        priority_t priority = OS_getCurrentPriority();
         OS_eventPendTask(
                 &o->Event.ListWrite,
-				priority,
+                priority,
                 ticksToWait);
     }
 
