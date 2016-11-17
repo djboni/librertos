@@ -54,7 +54,8 @@ static struct librertos_state_t {
         struct taskHeadList_t  BlockedTaskList2; /* List with blocked tasks number 2. */
     #endif
 
-    struct task_t              Task[LIBRERTOS_MAX_PRIORITY]; /* Task data. */
+    struct task_t*             Task[LIBRERTOS_MAX_PRIORITY]; /* Task priorities. */
+    struct task_t              TaskControlBlocks[LIBRERTOS_NUM_TASKS]; /* Task data. */
 } state;
 
 #if (LIBRERTOS_TICK != 0)
@@ -83,18 +84,23 @@ void OS_init(void)
         OS_listHeadInit(&state.BlockedTaskList2);
     #endif
 
-    for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
+	for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
+	{
+		state.Task[priority] = NULL;
+	}
+
+    for(priority = 0; priority < LIBRERTOS_NUM_TASKS; ++priority)
     {
-        state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
-        state.Task[priority].TaskFunction = (taskFunction_t)NULL;
-        state.Task[priority].TaskParameter = (taskParameter_t)NULL;
-        state.Task[priority].TaskPriority = 0;
+    	state.TaskControlBlocks[priority].TaskState = TASKSTATE_NOTINITIALIZED;
+    	state.TaskControlBlocks[priority].TaskFunction = (taskFunction_t)NULL;
+    	state.TaskControlBlocks[priority].TaskParameter = (taskParameter_t)NULL;
+    	state.TaskControlBlocks[priority].TaskPriority = 0;
 
         #if (LIBRERTOS_TICK != 0)
-            OS_listNodeInit(&state.Task[priority].TaskBlockedNode, &state.Task[priority]);
+            OS_listNodeInit(&state.TaskControlBlocks[priority].TaskBlockedNode, &state.TaskControlBlocks[priority]);
         #endif
 
-        OS_listNodeInit(&state.Task[priority].TaskEventNode , &state.Task[priority]);
+        OS_listNodeInit(&state.TaskControlBlocks[priority].TaskEventNode , &state.TaskControlBlocks[priority]);
     }
 }
 
@@ -122,7 +128,7 @@ void OS_init(void)
         {
             struct taskListNode_t* node = state.BlockedTaskList_NotOverflowed->ListHead;
             OS_listRemove(node);
-            state.Task[node->TaskControlBlock->TaskPriority].TaskState = TASKSTATE_READY;
+            state.Task[node->TaskControlBlock->TaskPriority]->TaskState = TASKSTATE_READY;
         }
     }
 
@@ -174,7 +180,8 @@ void OS_scheduler(void)
 
                 /* Atomically test TaskState. */
                 INTERRUPTS_DISABLE();
-                if(state.Task[priority].TaskState == TASKSTATE_READY)
+                if(		state.Task[priority] != 0 &&
+                		state.Task[priority]->TaskState == TASKSTATE_READY)
                 {
                     INTERRUPTS_ENABLE();
                     break;
@@ -191,8 +198,8 @@ void OS_scheduler(void)
 
                 {
                     /* Get current task function and parameter. */
-                    taskFunction_t taskFunction = state.Task[priority].TaskFunction;
-                    taskParameter_t taskParameter = state.Task[priority].TaskParameter;
+                    taskFunction_t taskFunction = state.Task[priority]->TaskFunction;
+                    taskParameter_t taskParameter = state.Task[priority]->TaskParameter;
 
                     _OS_schedulerUnlock_withoutPreempt();
 
@@ -241,7 +248,7 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
         struct taskListNode_t* node = state.PendingReadyTaskList.ListHead;
         OS_listRemove(node);
         CRITICAL_EXIT();
-        state.Task[node->TaskControlBlock->TaskPriority].TaskState = TASKSTATE_READY;
+        state.Task[node->TaskControlBlock->TaskPriority]->TaskState = TASKSTATE_READY;
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
@@ -286,18 +293,34 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter)
 {
+	static int8_t taskCounter = 0;
+	int8_t task;
+	CRITICAL_VAL();
+
+	CRITICAL_ENTER();
+	{
+		task = taskCounter++;
+	}
+	CRITICAL_EXIT();
+
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-    ASSERT(state.Task[priority].TaskState == TASKSTATE_NOTINITIALIZED);
+    ASSERT(state.Task[priority] == NULL);
 
-    state.Task[priority].TaskFunction = function;
-    state.Task[priority].TaskParameter = parameter;
-    state.Task[priority].TaskPriority = priority;
+    ASSERT(task < LIBRERTOS_NUM_TASKS);
+    ASSERT(state.TaskControlBlocks[task].TaskState == TASKSTATE_NOTINITIALIZED);
+
+    state.TaskControlBlocks[task].TaskFunction = function;
+    state.TaskControlBlocks[task].TaskParameter = parameter;
+    state.TaskControlBlocks[task].TaskPriority = priority;
+
     #if (LIBRERTOS_TICK != 0)
-        OS_listNodeInit(&state.Task[priority].TaskBlockedNode, &state.Task[priority]);
+        OS_listNodeInit(&state.TaskControlBlocks[task].TaskBlockedNode, &state.TaskControlBlocks[task]);
     #endif
-    OS_listNodeInit(&state.Task[priority].TaskEventNode , &state.Task[priority]);
+    OS_listNodeInit(&state.TaskControlBlocks[task].TaskEventNode , &state.TaskControlBlocks[task]);
 
-    state.Task[priority].TaskState = TASKSTATE_READY;
+    state.TaskControlBlocks[task].TaskState = TASKSTATE_READY;
+
+    state.Task[priority] = &state.TaskControlBlocks[task];
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
@@ -318,17 +341,17 @@ priority_t OS_getCurrentPriority(void)
 void OS_taskSuspend(priority_t priority)
 {
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-    ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
+    ASSERT(state.Task[priority]->TaskState != TASKSTATE_NOTINITIALIZED);
 
-    state.Task[priority].TaskState = TASKSTATE_SUUSPENDED;
+    state.Task[priority]->TaskState = TASKSTATE_SUUSPENDED;
 }
 
 void OS_taskResume(priority_t priority)
 {
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-    ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
+    ASSERT(state.Task[priority]->TaskState != TASKSTATE_NOTINITIALIZED);
 
-    state.Task[priority].TaskState = TASKSTATE_READY;
+    state.Task[priority]->TaskState = TASKSTATE_READY;
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
@@ -353,7 +376,7 @@ void OS_taskResume(priority_t priority)
 
             struct taskHeadList_t* blockedTaskList;
             struct taskListNode_t* taskBlockedNode =
-                    &state.Task[OS_getCurrentPriority()].TaskBlockedNode;
+                    &state.Task[OS_getCurrentPriority()]->TaskBlockedNode;
 
             if(tickToWakeup > tickNow)
             {
@@ -369,7 +392,7 @@ void OS_taskResume(priority_t priority)
             /* Insert task on list. */
             OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
 
-            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_BLOCKED;
+            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_BLOCKED;
         }
         OS_schedulerUnlock();
     }
@@ -494,7 +517,7 @@ void OS_eventPendTask(
         priority_t priority,
         tick_t ticksToWait)
 {
-    struct taskListNode_t* node = &state.Task[priority].TaskEventNode;
+    struct taskListNode_t* node = &state.Task[priority]->TaskEventNode;
 
     CRITICAL_VAL();
     CRITICAL_ENTER();
@@ -581,14 +604,14 @@ void OS_eventPendTask(
     #if (LIBRERTOS_TICK == 0)
     {
         /* Ticks disabled. Suspend. */
-		state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+		state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUUSPENDED;
     }
     #else
     {
         /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
          timeout otherwise. */
         if(ticksToWait == MAX_DELAY)
-            state.Task[OS_getCurrentPriority()].TaskState = TASKSTATE_SUUSPENDED;
+            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUUSPENDED;
         else
             OS_taskDelay(ticksToWait);
     }
@@ -615,5 +638,5 @@ void OS_eventUnblockTasks(struct taskHeadList_t* list)
 
 struct taskListNode_t* OS_getTaskEventNode(priority_t priority)
 {
-	return &state.Task[priority].TaskEventNode;
+	return &state.Task[priority]->TaskEventNode;
 }

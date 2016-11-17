@@ -25,7 +25,11 @@ extern "C" {
 #include "projdefs.h"
 
 #ifndef LIBRERTOS_MAX_PRIORITY
-#define LIBRERTOS_MAX_PRIORITY       2  /* integer > 0 */
+#define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
+#endif
+
+#ifndef LIBRERTOS_NUM_TASKS
+#define LIBRERTOS_NUM_TASKS          2  /* integer > 0 */
 #endif
 
 #ifndef LIBRERTOS_PREEMPTION

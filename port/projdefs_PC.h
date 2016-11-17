@@ -24,7 +24,8 @@ extern "C" {
 #include <assert.h>
 
 /* LibreRTOS definitions. */
-#define LIBRERTOS_MAX_PRIORITY       2  /* integer > 0 */
+#define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
+#define LIBRERTOS_NUM_TASKS          2  /* integer > 0 */
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #define LIBRERTOS_TICK               1  /* boolean */
 #define LIBRERTOS_QUEUE_1CRITICAL    0  /* boolean */
