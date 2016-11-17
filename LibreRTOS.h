@@ -36,10 +36,6 @@ extern "C" {
 #define LIBRERTOS_TICK               0  /* boolean */
 #endif
 
-#ifndef LIBRERTOS_ENABLE_TASKDELETE
-#define LIBRERTOS_ENABLE_TASKDELETE  0  /* boolean */
-#endif
-
 #ifndef LIBRERTOS_QUEUE_1CRITICAL
 #define LIBRERTOS_QUEUE_1CRITICAL    0  /* boolean */
 #endif

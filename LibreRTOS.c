@@ -187,7 +187,6 @@ void OS_scheduler(void)
                 priority_t lastTaskPrio = state.CurrentTaskPriority;
                 state.CurrentTaskPriority = priority;
 
-                #if (LIBRERTOS_ENABLE_TASKDELETE == 0)
                 {
                     /* Get current task function and parameter. */
                     taskFunction_t taskFunction = state.Task[priority].TaskFunction;
@@ -200,36 +199,6 @@ void OS_scheduler(void)
 
                     OS_schedulerLock();
                 }
-                #else /* LIBRERTOS_ENABLE_TASKDELETE */
-                {
-                    /* Selected task may have been deleted. */
-
-                    /* Atomically test if task was deleted and read function and
-                     parameter. */
-                    INTERRUPTS_DISABLE();
-                    if(state.Task[priority].TaskState == TASKSTATE_READY)
-                    {
-                        /* Task was not deleted. */
-
-                        /* Get current task function and parameter. */
-                        taskFunction_t taskFunction = state.Task[priority].TaskFunction;
-                        taskParameter_t taskParameter = state.Task[priority].TaskParameter;
-
-                        INTERRUPTS_ENABLE();
-                        _OS_schedulerUnlock_withoutPreempt();
-
-                        /* Run task. */
-                        taskFunction(taskParameter);
-
-                        OS_schedulerLock();
-                    }
-                    else
-                    {
-                        /* Task was deleted. */
-                        INTERRUPTS_ENABLE();
-                    }
-                }
-                #endif /* LIBRERTOS_ENABLE_TASKDELETE */
 
                 /* Restore last task priority. */
                 state.CurrentTaskPriority = lastTaskPrio;
@@ -336,31 +305,6 @@ void OS_taskCreate(
     }
     #endif
 }
-
-#if (LIBRERTOS_ENABLE_TASKDELETE != 0)
-
-    /** Delete task. */
-    void OS_taskDelete(priority_t priority)
-    {
-        ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-        ASSERT(state.Task[priority].TaskState != TASKSTATE_NOTINITIALIZED);
-
-        state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
-        state.Task[priority].TaskFunction = (taskFunction_t)0;
-        state.Task[priority].TaskParameter = (taskParameter_t)0;
-
-        OS_schedulerLock();
-        #if (LIBRERTOS_TICK != 0)
-            if(state.Task[priority].TaskBlockedNode.ListInserted != NULL)
-            {
-                /* Remove task from blocked list. */
-                OS_listRemove(&state.Task[priority].TaskBlockedNode);
-            }
-        #endif
-        OS_schedulerUnlock();
-    }
-
-#endif /* LIBRERTOS_ENABLE_TASKDELETE */
 
 /** Return current task priority. */
 priority_t OS_getCurrentPriority(void)
