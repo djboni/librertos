@@ -84,8 +84,8 @@ struct taskListNode_t {
     struct taskListNode_t* ListNext;
     struct taskListNode_t* ListPrevious;
     tick_t                 TickToWakeup;
-    priority_t             TaskPriority;
     struct taskHeadList_t* ListInserted;
+    struct task_t*         TaskControlBlock;
 };
 
 

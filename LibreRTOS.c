@@ -30,12 +30,13 @@ struct task_t {
     enum taskState_t          TaskState;
     taskFunction_t            TaskFunction;
     taskParameter_t           TaskParameter;
+    priority_t                TaskPriority;
 
     #if (LIBRERTOS_TICK != 0)
         struct taskListNode_t TaskBlockedNode;
     #endif
 
-    struct taskListNode_t TaskEventNode;
+    struct taskListNode_t     TaskEventNode;
 };
 
 static struct librertos_state_t {
@@ -87,12 +88,13 @@ void OS_init(void)
         state.Task[priority].TaskState = TASKSTATE_NOTINITIALIZED;
         state.Task[priority].TaskFunction = (taskFunction_t)NULL;
         state.Task[priority].TaskParameter = (taskParameter_t)NULL;
+        state.Task[priority].TaskPriority = 0;
 
         #if (LIBRERTOS_TICK != 0)
-            OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
+            OS_listNodeInit(&state.Task[priority].TaskBlockedNode, &state.Task[priority]);
         #endif
 
-        OS_listNodeInit(&state.Task[priority].TaskEventNode , priority);
+        OS_listNodeInit(&state.Task[priority].TaskEventNode , &state.Task[priority]);
     }
 }
 
@@ -120,7 +122,7 @@ void OS_init(void)
         {
             struct taskListNode_t* node = state.BlockedTaskList_NotOverflowed->ListHead;
             OS_listRemove(node);
-            state.Task[node->TaskPriority].TaskState = TASKSTATE_READY;
+            state.Task[node->TaskControlBlock->TaskPriority].TaskState = TASKSTATE_READY;
         }
     }
 
@@ -239,7 +241,7 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
         struct taskListNode_t* node = state.PendingReadyTaskList.ListHead;
         OS_listRemove(node);
         CRITICAL_EXIT();
-        state.Task[node->TaskPriority].TaskState = TASKSTATE_READY;
+        state.Task[node->TaskControlBlock->TaskPriority].TaskState = TASKSTATE_READY;
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
@@ -289,10 +291,11 @@ void OS_taskCreate(
 
     state.Task[priority].TaskFunction = function;
     state.Task[priority].TaskParameter = parameter;
+    state.Task[priority].TaskPriority = priority;
     #if (LIBRERTOS_TICK != 0)
-        OS_listNodeInit(&state.Task[priority].TaskBlockedNode, priority);
+        OS_listNodeInit(&state.Task[priority].TaskBlockedNode, &state.Task[priority]);
     #endif
-    OS_listNodeInit(&state.Task[priority].TaskEventNode , priority);
+    OS_listNodeInit(&state.Task[priority].TaskEventNode , &state.Task[priority]);
 
     state.Task[priority].TaskState = TASKSTATE_READY;
 
@@ -396,13 +399,13 @@ void OS_listHeadInit(struct taskHeadList_t* list)
     list->ListLength = 0;
 }
 
-void OS_listNodeInit(struct taskListNode_t* node, priority_t priority)
+void OS_listNodeInit(struct taskListNode_t* node, struct task_t* taskControlBlock)
 {
     node->ListNext = NULL;
     node->ListPrevious = NULL;
     node->TickToWakeup = 0;
     node->ListInserted = NULL;
-    node->TaskPriority = priority;
+    node->TaskControlBlock = taskControlBlock;
 }
 
 void OS_listInsert(
@@ -514,7 +517,7 @@ void OS_eventPendTask(
             while(pos != LIST_HEAD(list))
             {
                 CRITICAL_EXIT();
-                if(pos->TaskPriority >= priority)
+                if(pos->TaskControlBlock->TaskPriority >= priority)
                 {
                     /* Found where to insert. Break while(). */
                     CRITICAL_ENTER();

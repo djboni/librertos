@@ -26,7 +26,9 @@ extern "C" {
 
 
 void OS_listHeadInit(struct taskHeadList_t* list);
-void OS_listNodeInit(struct taskListNode_t* node, priority_t priority);
+void OS_listNodeInit(
+		struct taskListNode_t* node,
+		struct task_t* taskControlBlock);
 void OS_listInsert(
         struct taskHeadList_t* list,
         struct taskListNode_t* node,
