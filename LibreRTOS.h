@@ -120,6 +120,20 @@ int8_t Semaphore_getCount(struct Semaphore_t* o);
 
 
 
+struct Mutex_t {
+    volatile int8_t Count;
+    priority_t MutexOwner;
+    struct eventR_t Event;
+};
+
+void Mutex_init(struct Mutex_t* o);
+
+int8_t Mutex_lock(struct Mutex_t* o);
+int8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
+void Mutex_unlock(struct Mutex_t* o);
+
+
+
 struct Queue_t {
     const int8_t        ItemSize;
     volatile int8_t     Free;
