@@ -30,8 +30,10 @@ void Fifo_init(
     UNCONST(int8_t, o->Length) = length;
     o->Free = length;
     o->Used = 0U;
-    o->WLock = 0U;
-    o->RLock = 0U;
+    #if (LIBRERTOS_FIFO_1CRITICAL == 0)
+        o->WLock = 0U;
+        o->RLock = 0U;
+    #endif
     o->Head = buff8;
     o->Tail = buff8;
     UNCONST(uint8_t*, o->Buff) = buff8;
@@ -47,52 +49,65 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
 
     CRITICAL_ENTER();
     {
-    	val = (o->Used >= length) ? length : o->Used;
+        val = (o->Used >= length) ? length : o->Used;
         if(val != 0U)
         {
-            int8_t lock;
             uint8_t *pos;
             int8_t numFromBegin;
 
             length = val;
 
-            lock = o->RLock;
-            o->RLock += length;
-            o->Used -= length;
-
             pos = o->Head;
             numFromBegin = 0;
             if((o->Head += length) > o->BufEnd)
             {
-            	numFromBegin = (pos + length) - (o->BufEnd + 1);
-            	length -= numFromBegin;
-            	o->Head -= o->Length;
+                numFromBegin = (pos + length) - (o->BufEnd + 1);
+                length -= numFromBegin;
+                o->Head -= o->Length;
             }
 
-            CRITICAL_EXIT();
+            #if (LIBRERTOS_FIFO_1CRITICAL == 0)
             {
+                int8_t lock;
+
+                lock = o->RLock;
+                o->RLock += length;
+                o->Used -= length;
+
+                CRITICAL_EXIT();
+                {
+                    memcpy(buff, pos, length);
+                    if(numFromBegin != 0)
+                    memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
+                }
+                CRITICAL_ENTER();
+
+                if(lock == 0U)
+                {
+                    o->Free = (int8_t)(o->Free + o->RLock);
+                    o->RLock = 0U;
+                }
+            }
+            #else
+            {
+                o->Used -= val;
+                o->Free += val;
                 memcpy(buff, pos, length);
                 if(numFromBegin != 0)
-                	memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
+                    memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
             }
-            CRITICAL_ENTER();
-
-            if(lock == 0U)
-            {
-                o->Free = (int8_t)(o->Free + o->RLock);
-                o->RLock = 0U;
-            }
+            #endif
 
             OS_schedulerLock();
 
             if(o->Event.ListWrite.ListLength != 0)
             {
                 /* Unblock task waiting to write to this event. */
-            	struct taskListNode_t* node = o->Event.ListWrite.ListTail;
+                struct taskListNode_t* node = o->Event.ListWrite.ListTail;
 
-            	/* Length waiting for. */
-            	if((int8_t)node->TickToWakeup <= o->Free)
-            		OS_eventUnblockTasks(&(o->Event.ListWrite));
+                /* Length waiting for. */
+                if((int8_t)node->TickToWakeup <= o->Free)
+                    OS_eventUnblockTasks(&(o->Event.ListWrite));
             }
         }
     }
@@ -115,49 +130,62 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
         val = (o->Free >= length) ? length : o->Free;
         if(val != 0U)
         {
-            int8_t lock;
             uint8_t *pos;
             int8_t numFromBegin;
 
             length = val;
 
-            lock = o->WLock;
-            o->WLock += length;
-            o->Free -= length;
-
             pos = o->Tail;
             numFromBegin = 0;
             if((o->Tail += length) > o->BufEnd)
             {
-            	numFromBegin = (pos + length) - (o->BufEnd + 1);
-            	length -= numFromBegin;
-            	o->Tail -= o->Length;
+                numFromBegin = (pos + length) - (o->BufEnd + 1);
+                length -= numFromBegin;
+                o->Tail -= o->Length;
             }
 
-            CRITICAL_EXIT();
+            #if (LIBRERTOS_FIFO_1CRITICAL == 0)
             {
+                int8_t lock;
+
+                lock = o->WLock;
+                o->WLock += length;
+                o->Free -= length;
+
+                CRITICAL_EXIT();
+                {
+                    memcpy(pos, buff, length);
+                    if(numFromBegin != 0)
+                        memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
+                }
+                CRITICAL_ENTER();
+
+                if(lock == 0U)
+                {
+                    o->Used = (int8_t)(o->Used + o->WLock);
+                    o->WLock = 0U;
+                }
+            }
+            #else
+            {
+                o->Free -= val;
+                o->Used += val;
                 memcpy(pos, buff, length);
                 if(numFromBegin != 0)
-                	memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
+                    memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
             }
-            CRITICAL_ENTER();
-
-            if(lock == 0U)
-            {
-                o->Used = (int8_t)(o->Used + o->WLock);
-                o->WLock = 0U;
-            }
+            #endif
 
             OS_schedulerLock();
 
             if(o->Event.ListRead.ListLength != 0)
             {
                 /* Unblock task waiting to read from this event. */
-            	struct taskListNode_t* node = o->Event.ListRead.ListTail;
+                struct taskListNode_t* node = o->Event.ListRead.ListTail;
 
-            	/* Length waiting for. */
-            	if((int8_t)node->TickToWakeup <= o->Used)
-            		OS_eventUnblockTasks(&(o->Event.ListRead));
+                /* Length waiting for. */
+                if((int8_t)node->TickToWakeup <= o->Used)
+                    OS_eventUnblockTasks(&(o->Event.ListRead));
             }
         }
     }
@@ -178,15 +206,15 @@ int8_t Fifo_readPend(struct Fifo_t* o, void* buff, int8_t length, tick_t ticksTo
     {
         /* Could read from FIFO. Pend on it. */
 
-    	priority_t priority = OS_getCurrentPriority();
-    	struct taskListNode_t* node = OS_getTaskEventNode(priority);
+        priority_t priority = OS_getCurrentPriority();
+        struct taskListNode_t* node = OS_getTaskEventNode(priority);
 
-    	/* Length waiting for. */
-    	node->TickToWakeup = length;
+        /* Length waiting for. */
+        node->TickToWakeup = length;
 
         OS_eventPendTask(
                 &o->Event.ListRead,
-				priority,
+                priority,
                 ticksToWait);
     }
 
@@ -202,15 +230,15 @@ int8_t Fifo_writePend(struct Fifo_t* o, const void* buff, int8_t length, tick_t 
     {
         /* Could not write to FIFO. Pend on it. */
 
-    	priority_t priority = OS_getCurrentPriority();
-    	struct taskListNode_t* node = OS_getTaskEventNode(priority);
+        priority_t priority = OS_getCurrentPriority();
+        struct taskListNode_t* node = OS_getTaskEventNode(priority);
 
-    	/* Length waiting for. */
-    	node->TickToWakeup = length;
+        /* Length waiting for. */
+        node->TickToWakeup = length;
 
         OS_eventPendTask(
                 &o->Event.ListWrite,
-				priority,
+                priority,
                 ticksToWait);
     }
 
