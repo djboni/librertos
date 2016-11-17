@@ -441,6 +441,92 @@ void OS_taskResume(priority_t priority)
 
 
 
+#define LIST_HEAD(x) ((struct taskListNode_t*)x)
+
+void OS_listHeadInit(struct taskHeadList_t* list)
+{
+    /* Use the list head as a node. */
+    list->ListHead = LIST_HEAD(list);
+    list->ListTail = LIST_HEAD(list);
+    list->TickToWakeup_Zero = 0U;
+    list->ListLength = 0;
+}
+
+void OS_listNodeInit(struct taskListNode_t* node, priority_t priority)
+{
+    node->ListNext = NULL;
+    node->ListPrevious = NULL;
+    node->TickToWakeup = 0;
+    node->ListInserted = NULL;
+    node->TaskPriority = priority;
+}
+
+void OS_listInsert(
+        struct taskHeadList_t* list,
+        struct taskListNode_t* node,
+        tick_t tickToWakeup)
+{
+    struct taskListNode_t* pos = list->ListHead;
+
+    while(pos != LIST_HEAD(list))
+    {
+        if(tickToWakeup >= pos->TickToWakeup)
+        {
+            /* Not here. */
+            pos = pos->ListNext;
+        }
+        else
+        {
+            /* Insert here. */
+            break;
+        }
+    }
+
+    node->TickToWakeup = tickToWakeup;
+    node->ListInserted = list;
+
+    node->ListNext = pos;
+    node->ListPrevious = pos->ListPrevious;
+
+    pos->ListPrevious->ListNext = node;
+    pos->ListPrevious = node;
+
+    ++list->ListLength;
+}
+
+void OS_listInsertAfter(
+        struct taskHeadList_t* list,
+        struct taskListNode_t* pos,
+        struct taskListNode_t* node)
+{
+    node->ListInserted = list;
+
+    node->ListNext = pos->ListNext;
+    node->ListPrevious = pos;
+
+    pos->ListNext->ListPrevious = node;
+    pos->ListNext = node;
+
+    ++list->ListLength;
+}
+
+void OS_listRemove(struct taskListNode_t* node)
+{
+    struct taskListNode_t* next = node->ListNext;
+    struct taskListNode_t* previous = node->ListPrevious;
+
+    next->ListPrevious = previous;
+    previous->ListNext = next;
+
+    node->ListNext = NULL;
+    node->ListPrevious = NULL;
+
+    --node->ListInserted->ListLength;
+    node->ListInserted = NULL;
+}
+
+
+
 /* Initialize event struct. */
 void OS_eventRInit(struct eventR_t* o)
 {
@@ -481,7 +567,7 @@ void OS_eventPendTask(
         {
             pos = node->ListNext;
 
-            while(pos != (struct taskListNode_t*)list)
+            while(pos != LIST_HEAD(list))
             {
                 CRITICAL_EXIT();
                 if(pos->TaskPriority >= priority)
@@ -508,7 +594,7 @@ void OS_eventPendTask(
                 pos = pos->ListNext;
             }
 
-            if(     pos != (struct taskListNode_t*)list &&
+            if(     pos != LIST_HEAD(list) &&
                     pos->ListInserted != list &&
                     node->ListInserted == list)
             {
