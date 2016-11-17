@@ -19,29 +19,9 @@
 #include "OSevent.h"
 #include <stddef.h>
 
-enum taskState_t {
-    TASKSTATE_READY = 0,
-    TASKSTATE_BLOCKED,
-    TASKSTATE_SUUSPENDED,
-    TASKSTATE_NOTINITIALIZED
-};
-
-struct task_t {
-    enum taskState_t          TaskState;
-    taskFunction_t            TaskFunction;
-    taskParameter_t           TaskParameter;
-    priority_t                TaskPriority;
-
-    #if (LIBRERTOS_TICK != 0)
-        struct taskListNode_t TaskBlockedNode;
-    #endif
-
-    struct taskListNode_t     TaskEventNode;
-};
-
 static struct librertos_state_t {
     volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    priority_t                 CurrentTaskPriority; /* Current task priority. */
+    struct task_t*             CurrentTaskControlBlock; /* Current task control block. */
 
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
 
@@ -71,7 +51,7 @@ void OS_init(void)
     priority_t priority;
 
     state.SchedulerLock = 0;
-    state.CurrentTaskPriority = LIBRERTOS_SCHEDULER_NOT_RUNNING;
+    state.CurrentTaskControlBlock = NULL;
 
     OS_listHeadInit(&state.PendingReadyTaskList);
 
@@ -168,7 +148,7 @@ void OS_scheduler(void)
             priority_t priority;
 
             for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
-                    priority > state.CurrentTaskPriority;
+                    priority > OS_getCurrentPriority();
                     --priority)
             {
                 /* CurrentTaskPriority cannot change when scheduler is locked.
@@ -188,18 +168,24 @@ void OS_scheduler(void)
                 }
                 INTERRUPTS_ENABLE();
             }
-            if(priority > state.CurrentTaskPriority)
+            if(priority > OS_getCurrentPriority())
             {
                 /* Higher priority task ready. */
 
                 /* Save last task priority and set current task priority. */
-                priority_t lastTaskPrio = state.CurrentTaskPriority;
-                state.CurrentTaskPriority = priority;
+                struct task_t* lastTask = OS_getCurrentTask();
+                struct task_t* thisTask;
+                INTERRUPTS_DISABLE();
+                {
+                	thisTask = state.Task[priority];
+					state.CurrentTaskControlBlock = thisTask;
+                }
+                INTERRUPTS_ENABLE();
 
                 {
                     /* Get current task function and parameter. */
-                    taskFunction_t taskFunction = state.Task[priority]->TaskFunction;
-                    taskParameter_t taskParameter = state.Task[priority]->TaskParameter;
+                    taskFunction_t taskFunction = thisTask->TaskFunction;
+                    taskParameter_t taskParameter = thisTask->TaskParameter;
 
                     _OS_schedulerUnlock_withoutPreempt();
 
@@ -210,7 +196,7 @@ void OS_scheduler(void)
                 }
 
                 /* Restore last task priority. */
-                state.CurrentTaskPriority = lastTaskPrio;
+                state.CurrentTaskControlBlock = lastTask;
             }
             else
             {
@@ -333,9 +319,29 @@ void OS_taskCreate(
 }
 
 /** Return current task priority. */
+struct task_t* OS_getCurrentTask(void)
+{
+	struct task_t* task;
+	CRITICAL_VAL();
+	CRITICAL_ENTER();
+    {
+		task = state.CurrentTaskControlBlock;
+    }
+    CRITICAL_EXIT();
+    return task;
+}
+
+/** Return current task priority. */
 priority_t OS_getCurrentPriority(void)
 {
-    return state.CurrentTaskPriority;
+	priority_t priority;
+	CRITICAL_VAL();
+	CRITICAL_ENTER();
+    {
+		priority = state.CurrentTaskControlBlock->TaskPriority;
+    }
+    CRITICAL_EXIT();
+    return priority;
 }
 
 void OS_taskSuspend(priority_t priority)
@@ -343,7 +349,7 @@ void OS_taskSuspend(priority_t priority)
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(state.Task[priority]->TaskState != TASKSTATE_NOTINITIALIZED);
 
-    state.Task[priority]->TaskState = TASKSTATE_SUUSPENDED;
+    state.Task[priority]->TaskState = TASKSTATE_SUSPENDED;
 }
 
 void OS_taskResume(priority_t priority)
@@ -604,14 +610,14 @@ void OS_eventPendTask(
     #if (LIBRERTOS_TICK == 0)
     {
         /* Ticks disabled. Suspend. */
-		state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUUSPENDED;
+		state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
     }
     #else
     {
         /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
          timeout otherwise. */
         if(ticksToWait == MAX_DELAY)
-            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUUSPENDED;
+            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
         else
             OS_taskDelay(ticksToWait);
     }

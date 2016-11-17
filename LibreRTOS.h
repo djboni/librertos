@@ -51,6 +51,44 @@ extern "C" {
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
+struct task_t;
+struct taskListNode_t;
+
+struct taskHeadList_t {
+    struct taskListNode_t* ListHead;
+    struct taskListNode_t* ListTail;
+    tick_t                 TickToWakeup_Zero;
+    int8_t                 ListLength;
+};
+
+struct taskListNode_t {
+    struct taskListNode_t* ListNext;
+    struct taskListNode_t* ListPrevious;
+    tick_t                 TickToWakeup;
+    struct taskHeadList_t* ListInserted;
+    struct task_t*         TaskControlBlock;
+};
+
+enum taskState_t {
+    TASKSTATE_READY = 0,
+    TASKSTATE_BLOCKED,
+    TASKSTATE_SUSPENDED,
+    TASKSTATE_NOTINITIALIZED
+};
+
+struct task_t {
+    enum taskState_t          TaskState;
+    taskFunction_t            TaskFunction;
+    taskParameter_t           TaskParameter;
+    priority_t                TaskPriority;
+
+    #if (LIBRERTOS_TICK != 0)
+        struct taskListNode_t TaskBlockedNode;
+    #endif
+
+    struct taskListNode_t     TaskEventNode;
+};
+
 
 
 void OS_init(void);
@@ -70,27 +108,9 @@ void OS_taskSuspend(priority_t priority);
 void OS_taskResume(priority_t priority);
 void OS_taskDelay(tick_t ticksToDelay);
 
+struct task_t* OS_getCurrentTask(void);
 priority_t OS_getCurrentPriority(void);
 tick_t OS_getTickCount(void);
-
-
-
-struct taskListNode_t;
-
-struct taskHeadList_t {
-    struct taskListNode_t* ListHead;
-    struct taskListNode_t* ListTail;
-    tick_t                 TickToWakeup_Zero;
-    int8_t                 ListLength;
-};
-
-struct taskListNode_t {
-    struct taskListNode_t* ListNext;
-    struct taskListNode_t* ListPrevious;
-    tick_t                 TickToWakeup;
-    struct taskHeadList_t* ListInserted;
-    struct task_t*         TaskControlBlock;
-};
 
 
 
