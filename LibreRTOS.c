@@ -305,7 +305,7 @@ void OS_taskCreate(
     {
         priority_t currentTaskPriority = OS_getCurrentPriority();
         if(     priority > currentTaskPriority &&
-                currentTaskPriority != LIBRERTOS_SCHEDULER_NOT_RUNNING)
+                currentTaskPriority != LIBRERTOS_NO_TASK_RUNNING)
             OS_scheduler();
     }
     #endif
@@ -331,7 +331,10 @@ priority_t OS_getCurrentPriority(void)
 	CRITICAL_VAL();
 	CRITICAL_ENTER();
     {
-		priority = state.CurrentTaskControlBlock->TaskPriority;
+        if(state.CurrentTaskControlBlock != NULL)
+		    priority = state.CurrentTaskControlBlock->TaskPriority;
+        else
+            priority = LIBRERTOS_NO_TASK_RUNNING;
     }
     CRITICAL_EXIT();
     return priority;

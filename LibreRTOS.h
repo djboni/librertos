@@ -220,7 +220,7 @@ uint8_t Fifo_free(const struct Fifo_t *o);
 #define Fifo_full(o)  (Fifo_free(o) == 0)
 
 
-#define LIBRERTOS_SCHEDULER_NOT_RUNNING  -1
+#define LIBRERTOS_NO_TASK_RUNNING  -1
 
 #ifdef __cplusplus
 }
