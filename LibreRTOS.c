@@ -145,6 +145,8 @@ void OS_scheduler(void)
         do {
             /* Schedule higher priority task. */
 
+            struct task_t* thisTask;
+
             priority_t priority;
 
             for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
@@ -160,9 +162,10 @@ void OS_scheduler(void)
 
                 /* Atomically test TaskState. */
                 INTERRUPTS_DISABLE();
-                if(		state.Task[priority] != 0 &&
+                if(		state.Task[priority] != NULL &&
                 		state.Task[priority]->TaskState == TASKSTATE_READY)
                 {
+                    thisTask = state.Task[priority];
                     INTERRUPTS_ENABLE();
                     break;
                 }
@@ -174,12 +177,9 @@ void OS_scheduler(void)
 
                 /* Save last task priority and set current task priority. */
                 struct task_t* lastTask = OS_getCurrentTask();
-                struct task_t* thisTask;
+
                 INTERRUPTS_DISABLE();
-                {
-                	thisTask = state.Task[priority];
-					state.CurrentTaskControlBlock = thisTask;
-                }
+                state.CurrentTaskControlBlock = thisTask;
                 INTERRUPTS_ENABLE();
 
                 {
@@ -196,7 +196,9 @@ void OS_scheduler(void)
                 }
 
                 /* Restore last task priority. */
+                INTERRUPTS_DISABLE();
                 state.CurrentTaskControlBlock = lastTask;
+                INTERRUPTS_ENABLE();
             }
             else
             {
