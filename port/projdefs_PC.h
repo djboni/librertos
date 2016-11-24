@@ -32,7 +32,7 @@ extern "C" {
 #define LIBRERTOS_FIFO_1CRITICAL     0  /* boolean */
 
 typedef int8_t priority_t;
-typedef int8_t schedulerLock_t;
+typedef uint8_t schedulerLock_t;
 typedef uint16_t tick_t;
 #define MAX_DELAY ((tick_t)0xFFFFU)
 

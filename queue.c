@@ -23,12 +23,12 @@
 void Queue_init(
         struct Queue_t *o,
         void *buff,
-        int8_t length,
-        int8_t item_size)
+        uint8_t length,
+        uint8_t item_size)
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
-    UNCONST(int8_t, o->ItemSize) = item_size;
+    UNCONST(uint8_t, o->ItemSize) = item_size;
     o->Free = length;
     o->Used = 0U;
     #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
@@ -42,10 +42,10 @@ void Queue_init(
     OS_eventRwInit(&o->Event);
 }
 
-int8_t Queue_read(struct Queue_t* o, void* buff)
+uint8_t Queue_read(struct Queue_t* o, void* buff)
 {
     /* Pop front */
-    int8_t val;
+    uint8_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -61,7 +61,7 @@ int8_t Queue_read(struct Queue_t* o, void* buff)
 
             #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
             {
-                int8_t lock;
+                uint8_t lock;
 
                 lock = (o->RLock)++;
                 --(o->Used);
@@ -74,7 +74,7 @@ int8_t Queue_read(struct Queue_t* o, void* buff)
 
                 if(lock == 0U)
                 {
-                    o->Free = (int8_t)(o->Free + o->RLock);
+                    o->Free = (uint8_t)(o->Free + o->RLock);
                     o->RLock = 0U;
                 }
             }
@@ -103,10 +103,10 @@ int8_t Queue_read(struct Queue_t* o, void* buff)
     return val;
 }
 
-int8_t Queue_write(struct Queue_t* o, const void* buff)
+uint8_t Queue_write(struct Queue_t* o, const void* buff)
 {
     /* Push back */
-    int8_t val;
+    uint8_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -122,7 +122,7 @@ int8_t Queue_write(struct Queue_t* o, const void* buff)
 
             #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
             {
-                int8_t lock;
+                uint8_t lock;
 
                 lock = (o->WLock)++;
                 --(o->Free);
@@ -135,7 +135,7 @@ int8_t Queue_write(struct Queue_t* o, const void* buff)
 
                 if(lock == 0U)
                 {
-                    o->Used = (int8_t)(o->Used + o->WLock);
+                    o->Used = (uint8_t)(o->Used + o->WLock);
                     o->WLock = 0U;
                 }
             }
@@ -164,9 +164,9 @@ int8_t Queue_write(struct Queue_t* o, const void* buff)
     return val;
 }
 
-int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
+uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
 {
-    int8_t val;
+    uint8_t val;
 
     val = Queue_read(o, buff);
     if(val == 0 && ticksToWait != 0U)
@@ -182,9 +182,9 @@ int8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
     return val;
 }
 
-int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
+uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
 {
-    int8_t val;
+    uint8_t val;
 
     val = Queue_write(o, buff);
     if(val == 0 && ticksToWait != 0U)
@@ -200,12 +200,12 @@ int8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
     return val;
 }
 
-int8_t Queue_used(const struct Queue_t *o)
+uint8_t Queue_used(const struct Queue_t *o)
 {
     return o->Used;
 }
 
-int8_t Queue_free(const struct Queue_t *o)
+uint8_t Queue_free(const struct Queue_t *o)
 {
     return o->Free;
 }

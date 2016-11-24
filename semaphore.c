@@ -17,22 +17,22 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
-void Semaphore_init(struct Semaphore_t* o, int8_t count)
+void Semaphore_init(struct Semaphore_t* o, uint8_t count)
 {
     o->Count = count;
     OS_eventRInit(&o->Event);
 }
 
-int8_t Semaphore_take(struct Semaphore_t* o)
+uint8_t Semaphore_take(struct Semaphore_t* o)
 {
-    int8_t val;
+    uint8_t val;
 
     CRITICAL_ENTER();
     {
         val = (o->Count > 0);
         if(val != 0)
         {
-            o->Count = (int8_t)(o->Count - 1);
+            o->Count = (uint8_t)(o->Count - 1);
         }
     }
     CRITICAL_EXIT();
@@ -46,7 +46,7 @@ void Semaphore_give(struct Semaphore_t* o)
 
 	CRITICAL_ENTER();
     {
-		o->Count = (int8_t)(o->Count + 1);
+		o->Count = (uint8_t)(o->Count + 1);
 
 		if(o->Event.ListRead.ListLength != 0)
 		{
@@ -59,9 +59,9 @@ void Semaphore_give(struct Semaphore_t* o)
 	OS_schedulerUnlock();
 }
 
-int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
+uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
-    int8_t val;
+    uint8_t val;
 
     val = Semaphore_take(o);
     if(val == 0 && ticksToWait != 0U)
@@ -77,9 +77,9 @@ int8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
     return val;
 }
 
-int8_t Semaphore_getCount(struct Semaphore_t* o)
+uint8_t Semaphore_getCount(struct Semaphore_t* o)
 {
-    int8_t val;
+    uint8_t val;
     CRITICAL_ENTER();
     {
         val = o->Count;

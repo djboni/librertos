@@ -204,7 +204,7 @@ void OS_scheduler(void)
 }
 
 /** Check if scheduler is locked. Return 0 if it is NOT locked, 1 otherwise. */
-int8_t OS_schedulerIsLocked(void)
+uint8_t OS_schedulerIsLocked(void)
 {
     return state.SchedulerLock != 0;
 }
@@ -272,8 +272,8 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter)
 {
-	static int8_t taskCounter = 0;
-	int8_t task;
+	static uint8_t taskCounter = 0;
+	uint8_t task;
 	CRITICAL_VAL();
 
 	CRITICAL_ENTER();

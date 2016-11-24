@@ -23,11 +23,11 @@
 void Fifo_init(
         struct Fifo_t *o,
         void *buff,
-        int8_t length)
+        uint8_t length)
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
-    UNCONST(int8_t, o->Length) = length;
+    UNCONST(uint8_t, o->Length) = length;
     o->Free = length;
     o->Used = 0U;
     #if (LIBRERTOS_FIFO_1CRITICAL == 0)
@@ -41,10 +41,10 @@ void Fifo_init(
     OS_eventRwInit(&o->Event);
 }
 
-int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
+uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
 {
     /* Pop front */
-    int8_t val;
+    uint8_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -53,7 +53,7 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
         if(val != 0U)
         {
             uint8_t *pos;
-            int8_t numFromBegin;
+            uint8_t numFromBegin;
 
             length = val;
 
@@ -68,7 +68,7 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
 
             #if (LIBRERTOS_FIFO_1CRITICAL == 0)
             {
-                int8_t lock;
+                uint8_t lock;
 
                 lock = o->RLock;
                 o->RLock += length;
@@ -84,7 +84,7 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
 
                 if(lock == 0U)
                 {
-                    o->Free = (int8_t)(o->Free + o->RLock);
+                    o->Free = (uint8_t)(o->Free + o->RLock);
                     o->RLock = 0U;
                 }
             }
@@ -106,7 +106,7 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
                 struct taskListNode_t* node = o->Event.ListWrite.ListTail;
 
                 /* Length waiting for. */
-                if((int8_t)node->TickToWakeup <= o->Free)
+                if((uint8_t)node->TickToWakeup <= o->Free)
                     OS_eventUnblockTasks(&(o->Event.ListWrite));
             }
         }
@@ -119,10 +119,10 @@ int8_t Fifo_read(struct Fifo_t* o, void* buff, int8_t length)
     return val;
 }
 
-int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
+uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
 {
     /* Push back */
-    int8_t val;
+    uint8_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -131,7 +131,7 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
         if(val != 0U)
         {
             uint8_t *pos;
-            int8_t numFromBegin;
+            uint8_t numFromBegin;
 
             length = val;
 
@@ -146,7 +146,7 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
 
             #if (LIBRERTOS_FIFO_1CRITICAL == 0)
             {
-                int8_t lock;
+                uint8_t lock;
 
                 lock = o->WLock;
                 o->WLock += length;
@@ -162,7 +162,7 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
 
                 if(lock == 0U)
                 {
-                    o->Used = (int8_t)(o->Used + o->WLock);
+                    o->Used = (uint8_t)(o->Used + o->WLock);
                     o->WLock = 0U;
                 }
             }
@@ -184,7 +184,7 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
                 struct taskListNode_t* node = o->Event.ListRead.ListTail;
 
                 /* Length waiting for. */
-                if((int8_t)node->TickToWakeup <= o->Used)
+                if((uint8_t)node->TickToWakeup <= o->Used)
                     OS_eventUnblockTasks(&(o->Event.ListRead));
             }
         }
@@ -197,9 +197,9 @@ int8_t Fifo_write(struct Fifo_t* o, const void* buff, int8_t length)
     return val;
 }
 
-int8_t Fifo_readPend(struct Fifo_t* o, void* buff, int8_t length, tick_t ticksToWait)
+uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticksToWait)
 {
-    int8_t val;
+    uint8_t val;
 
     val = Fifo_read(o, buff, length);
     if(val == 0 && ticksToWait != 0U)
@@ -221,9 +221,9 @@ int8_t Fifo_readPend(struct Fifo_t* o, void* buff, int8_t length, tick_t ticksTo
     return val;
 }
 
-int8_t Fifo_writePend(struct Fifo_t* o, const void* buff, int8_t length, tick_t ticksToWait)
+uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_t ticksToWait)
 {
-    int8_t val;
+    uint8_t val;
 
     val = Fifo_write(o, buff, length);
     if(val == 0 && ticksToWait != 0U)
@@ -245,12 +245,12 @@ int8_t Fifo_writePend(struct Fifo_t* o, const void* buff, int8_t length, tick_t 
     return val;
 }
 
-int8_t Fifo_used(const struct Fifo_t *o)
+uint8_t Fifo_used(const struct Fifo_t *o)
 {
     return o->Used;
 }
 
-int8_t Fifo_free(const struct Fifo_t *o)
+uint8_t Fifo_free(const struct Fifo_t *o)
 {
     return o->Free;
 }
