@@ -92,6 +92,7 @@ struct task_t {
 
 
 void OS_init(void);
+void OS_start(void);
 void OS_tick(void);
 void OS_scheduler(void);
 

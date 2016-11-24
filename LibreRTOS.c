@@ -50,7 +50,7 @@ void OS_init(void)
 {
     priority_t priority;
 
-    state.SchedulerLock = 0;
+    state.SchedulerLock = 1;
     state.CurrentTaskControlBlock = NULL;
 
     OS_listHeadInit(&state.PendingReadyTaskList);
@@ -82,6 +82,12 @@ void OS_init(void)
 
         OS_listNodeInit(&state.TaskControlBlocks[priority].TaskEventNode , &state.TaskControlBlocks[priority]);
     }
+}
+
+/** Start OS. Must be called once before the scheduler. */
+void OS_start(void)
+{
+    _OS_schedulerUnlock_withoutPreempt();
 }
 
 #if (LIBRERTOS_TICK != 0)
