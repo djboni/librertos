@@ -71,8 +71,8 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
                 uint8_t lock;
 
                 lock = o->RLock;
-                o->RLock += length;
-                o->Used -= length;
+                o->RLock += val;
+                o->Used -= val;
 
                 CRITICAL_EXIT();
                 {
@@ -149,8 +149,8 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
                 uint8_t lock;
 
                 lock = o->WLock;
-                o->WLock += length;
-                o->Free -= length;
+                o->WLock += val;
+                o->Free -= val;
 
                 CRITICAL_EXIT();
                 {
