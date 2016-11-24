@@ -146,54 +146,45 @@ void OS_scheduler(void)
             /* Schedule higher priority task. */
 
             struct task_t* thisTask;
-
+            uint8_t higherPriorityTaskReady = 0U;
+            priority_t currentTaskPriority = OS_getCurrentPriority();
             priority_t priority;
 
             for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
-                    priority > OS_getCurrentPriority();
+                    priority > currentTaskPriority;
                     --priority)
             {
-                /* CurrentTaskPriority cannot change when scheduler is locked.
-                 No need to disable interrupts.
-                 Task[].TaskState may change even with scheduler locked. Need to
-                 disable interrupts only if TaskState load is not atomic. To be
-                 on the safe side, interrupts are ALWAYS disabled to load
-                 TaskState. */
-
                 /* Atomically test TaskState. */
                 INTERRUPTS_DISABLE();
                 if(		state.Task[priority] != NULL &&
                 		state.Task[priority]->TaskState == TASKSTATE_READY)
                 {
+                    /* Higher priority task ready. */
                     thisTask = state.Task[priority];
                     INTERRUPTS_ENABLE();
+                    higherPriorityTaskReady = 1U;
                     break;
                 }
                 INTERRUPTS_ENABLE();
             }
-            if(priority > OS_getCurrentPriority())
+            if(higherPriorityTaskReady)
             {
                 /* Higher priority task ready. */
 
+                /* Get task function and parameter. */
+                taskFunction_t taskFunction = thisTask->TaskFunction;
+                taskParameter_t taskParameter = thisTask->TaskParameter;
+
                 /* Save last task priority and set current task priority. */
                 struct task_t* lastTask = OS_getCurrentTask();
-
                 INTERRUPTS_DISABLE();
                 state.CurrentTaskControlBlock = thisTask;
                 INTERRUPTS_ENABLE();
 
-                {
-                    /* Get current task function and parameter. */
-                    taskFunction_t taskFunction = thisTask->TaskFunction;
-                    taskParameter_t taskParameter = thisTask->TaskParameter;
-
-                    _OS_schedulerUnlock_withoutPreempt();
-
-                    /* Run task. */
-                    taskFunction(taskParameter);
-
-                    OS_schedulerLock();
-                }
+                /* Run task. */
+                _OS_schedulerUnlock_withoutPreempt();
+                taskFunction(taskParameter);
+                OS_schedulerLock();
 
                 /* Restore last task priority. */
                 INTERRUPTS_DISABLE();
