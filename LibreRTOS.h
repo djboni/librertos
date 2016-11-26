@@ -105,8 +105,6 @@ void OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter);
 void OS_taskDelete(priority_t priority);
-void OS_taskSuspend(priority_t priority);
-void OS_taskResume(priority_t priority);
 void OS_taskDelay(tick_t ticksToDelay);
 
 struct task_t* OS_getCurrentTask(void);

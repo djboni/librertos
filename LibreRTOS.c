@@ -346,29 +346,6 @@ priority_t OS_getCurrentPriority(void)
     return priority;
 }
 
-void OS_taskSuspend(priority_t priority)
-{
-    ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-    ASSERT(state.Task[priority]->TaskState != TASKSTATE_NOTINITIALIZED);
-
-    state.Task[priority]->TaskState = TASKSTATE_SUSPENDED;
-}
-
-void OS_taskResume(priority_t priority)
-{
-    ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-    ASSERT(state.Task[priority]->TaskState != TASKSTATE_NOTINITIALIZED);
-
-    state.Task[priority]->TaskState = TASKSTATE_READY;
-
-    #if (LIBRERTOS_PREEMPTION != 0)
-    {
-        if(priority > OS_getCurrentPriority())
-            OS_scheduler();
-    }
-    #endif
-}
-
 #if (LIBRERTOS_TICK != 0)
 
     /** Delay task. */
