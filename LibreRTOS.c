@@ -100,24 +100,6 @@ void OS_start(void)
         state.BlockedTaskList_Overflowed = temp;
     }
 
-    /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
-     unlock function. */
-    static void _OS_tickUnblockTimedoutTasks(void)
-    {
-        /* Unblock tasks that have timed-out. */
-
-        if(state.Tick == 0)
-            _OS_tickInvertBlockedTasksLists();
-
-        while(  state.BlockedTaskList_NotOverflowed->ListLength != 0 &&
-                state.BlockedTaskList_NotOverflowed->ListHead->TickToWakeup == state.Tick)
-        {
-            struct taskListNode_t* node = state.BlockedTaskList_NotOverflowed->ListHead;
-            OS_listRemove(node);
-            state.Task[node->TaskControlBlock->TaskPriority]->TaskState = TASKSTATE_READY;
-        }
-    }
-
     /** Increment OS tick. Called by the tick interrupt (defined by the
      user). */
     void OS_tick(void)
@@ -222,8 +204,46 @@ void OS_schedulerLock(void)
     ++state.SchedulerLock;
 }
 
-/* Unlock scheduler (recursive lock). */
-static void _OS_schedulerUnlock_withoutPreempt(void)
+#if (LIBRERTOS_TICK != 0)
+
+    /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
+     unlock function. */
+    static void _OS_tickUnblockTimedoutTasks(void)
+    {
+        /* Unblock tasks that have timed-out. */
+        CRITICAL_VAL();
+
+        if(state.Tick == 0)
+        {
+            _OS_tickInvertBlockedTasksLists();
+        }
+
+        while(  state.BlockedTaskList_NotOverflowed->ListLength != 0 &&
+                state.BlockedTaskList_NotOverflowed->ListHead->TickToWakeup == state.Tick)
+        {
+            struct task_t* task = state.BlockedTaskList_NotOverflowed->ListHead->TaskControlBlock;
+
+            /* Remove from blocked list. */
+            OS_listRemove(&task->TaskBlockedNode);
+
+            CRITICAL_ENTER();
+
+            /* Remove from event list. */
+            if(&task->TaskEventNode->ListInserted != NULL)
+            {
+                OS_listRemove(&task->TaskEventNode);
+            }
+
+            CRITICAL_EXIT();
+
+            task->TaskState = TASKSTATE_READY;
+        }
+    }
+
+#endif /* LIBRERTOS_TICK */
+
+/* Unblock pending ready tasks. Called by scheduler unlock function. */
+static void _OS_tickUnblockPendingReadyTasks(void)
 {
     CRITICAL_VAL();
 
@@ -232,35 +252,55 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
     {
         struct task_t* task = state.PendingReadyTaskList.ListHead->TaskControlBlock;
 
+        /* Remove from pending ready list. */
         OS_listRemove(&task->TaskEventNode);
-        if(task->TaskBlockedNode.ListInserted != NULL)
-            OS_listRemove(&task->TaskBlockedNode);
 
         CRITICAL_EXIT();
+
+        /* Remove from blocked list. */
+        #if (LIBRERTOS_TICK != 0)
         {
-            task->TaskState = TASKSTATE_READY;
+            if(task->TaskBlockedNode.ListInserted != NULL)
+            {
+                OS_listRemove(&task->TaskBlockedNode);
+            }
         }
+        #endif /* LIBRERTOS_TICK */
+
+        task->TaskState = TASKSTATE_READY;
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
+}
 
+/* Unlock scheduler (recursive lock). */
+static void _OS_schedulerUnlock_withoutPreempt(void)
+{
     #if (LIBRERTOS_TICK != 0)
+    {
+        CRITICAL_VAL();
+
         if(state.SchedulerLock == 1)
         {
+            CRITICAL_ENTER();
+
             while(state.DelayedTicks != 0)
             {
-                CRITICAL_VAL();
-                CRITICAL_ENTER();
-                {
-                    --state.DelayedTicks;
-                    ++state.Tick;
-                }
+                --state.DelayedTicks;
+                ++state.Tick;
                 CRITICAL_EXIT();
 
                 _OS_tickUnblockTimedoutTasks();
+
+                CRITICAL_ENTER();
             }
+
+            CRITICAL_EXIT();
         }
+    }
     #endif
+
+    _OS_tickUnblockPendingReadyTasks();
 
     --state.SchedulerLock;
 }
@@ -365,9 +405,9 @@ priority_t OS_getCurrentPriority(void)
             tick_t tickNow = (tick_t)(state.Tick + state.DelayedTicks);
             tick_t tickToWakeup = (tick_t)(tickNow + ticksToDelay);
 
+            struct task_t* task = OS_getCurrentTask();
+            struct taskListNode_t* taskBlockedNode = &task->TaskBlockedNode;
             struct taskHeadList_t* blockedTaskList;
-            struct taskListNode_t* taskBlockedNode =
-                    &state.Task[OS_getCurrentPriority()]->TaskBlockedNode;
 
             if(tickToWakeup > tickNow)
             {
