@@ -199,50 +199,66 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
 
 uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Fifo_read(o, buff, length);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could read from FIFO. Pend on it. */
-
-        priority_t priority = OS_getCurrentPriority();
-        struct taskListNode_t* node = OS_getTaskEventNode(priority);
-
-        /* Length waiting for. */
-        node->TickToWakeup = length;
-
-        OS_eventPendTask(
-                &o->Event.ListRead,
-                priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Fifo_read(o, buff, length);
+    if(val == 0)
+        Fifo_pendRead(o, length, ticksToWait);
     return val;
 }
 
 uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Fifo_write(o, buff, length);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could not write to FIFO. Pend on it. */
-
-        priority_t priority = OS_getCurrentPriority();
-        struct taskListNode_t* node = OS_getTaskEventNode(priority);
-
-        /* Length waiting for. */
-        node->TickToWakeup = length;
-
-        OS_eventPendTask(
-                &o->Event.ListWrite,
-                priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Fifo_write(o, buff, length);
+    if(val == 0)
+        Fifo_pendWrite(o, length, ticksToWait);
     return val;
+}
+
+void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Used < length)
+        {
+            task->TaskEventNode.TickToWakeup = length; /* Length waiting for. */
+            OS_eventPrePendTask(&o->Event.ListRead, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
+}
+
+void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Free < length)
+        {
+            task->TaskEventNode.TickToWakeup = length; /* Length waiting for. */
+            OS_eventPrePendTask(&o->Event.ListWrite, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
 }
 
 uint8_t Fifo_used(const struct Fifo_t *o)

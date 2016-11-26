@@ -17,7 +17,7 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
-#define MUTEX_NOT_OWNED ((priority_t)-1)
+#define MUTEX_NOT_OWNED ((struct task_t*)NULL)
 
 void Mutex_init(struct Mutex_t* o)
 {
@@ -29,10 +29,11 @@ void Mutex_init(struct Mutex_t* o)
 uint8_t Mutex_lock(struct Mutex_t* o)
 {
     uint8_t val;
+    CRITICAL_VAL();
 
     CRITICAL_ENTER();
     {
-    	priority_t currentTask = OS_getCurrentPriority();
+    	struct task_t* currentTask = OS_getCurrentTask();
         val = o->Count == 0 || o->MutexOwner == currentTask;
         if(val != 0)
         {
@@ -47,6 +48,8 @@ uint8_t Mutex_lock(struct Mutex_t* o)
 
 void Mutex_unlock(struct Mutex_t* o)
 {
+    CRITICAL_VAL();
+
 	OS_schedulerLock();
 
 	CRITICAL_ENTER();
@@ -67,18 +70,31 @@ void Mutex_unlock(struct Mutex_t* o)
 
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Mutex_lock(o);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could not lock Mutex. Pend on it. */
-    	priority_t priority = OS_getCurrentPriority();
-        OS_eventPendTask(
-                &o->Event.ListRead,
-				priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Mutex_lock(o);
+    if(val == 0)
+        Mutex_pend(o, ticksToWait);
     return val;
+}
+
+void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Count != 0 && o->MutexOwner != task)
+        {
+            OS_eventPrePendTask(&o->Event.ListRead, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
 }

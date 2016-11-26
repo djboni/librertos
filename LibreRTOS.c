@@ -518,23 +518,31 @@ void OS_eventRwInit(struct eventRw_t* o)
     OS_listHeadInit(&o->ListWrite);
 }
 
-/* Pend task on an event. Must be called with interrupts enabled. Parameter
- ticksToWait must not be zero. */
-void OS_eventPendTask(
+/* Pend task on an event (part 1). Must be called with interrupts disabled and
+ scheduler locked. */
+void OS_eventPrePendTask(
         struct taskHeadList_t* list,
-        priority_t priority,
-        tick_t ticksToWait)
+        struct task_t* task)
 {
-    struct taskListNode_t* node = &state.Task[priority]->TaskEventNode;
-
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    OS_schedulerLock();
-
     /* Put task on the head position in the event list. So the task may be
      unblocked by an interrupt. */
 
+    struct taskListNode_t* node = &task->TaskEventNode;
     OS_listInsertAfter(list, list->ListHead, node);
+}
+
+/* Pend task on an event (part 2). Must be called with interrupts enabled and
+ scheduler locked. Parameter ticksToWait must not be zero. */
+void OS_eventPendTask(
+        struct taskHeadList_t* list,
+        struct task_t* task,
+        tick_t ticksToWait)
+{
+    struct taskListNode_t* node = &task->TaskEventNode;
+    priority_t priority = task->TaskPriority;
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
 
     /* Find correct position for the task in the event list. This list may
      be changed by interrupts, so we must do things carefully. */
@@ -624,8 +632,6 @@ void OS_eventPendTask(
             OS_taskDelay(ticksToWait);
     }
     #endif
-
-    OS_schedulerUnlock();
 }
 
 /* Unblock task in an event list. Must be called with scheduler locked and in a

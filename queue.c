@@ -166,38 +166,64 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
 
 uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Queue_read(o, buff);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could read from queue. Pend on it. */
-        priority_t priority = OS_getCurrentPriority();
-        OS_eventPendTask(
-                &o->Event.ListRead,
-                priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Queue_read(o, buff);
+    if(val == 0)
+        Queue_pendRead(o, ticksToWait);
     return val;
 }
 
 uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Queue_write(o, buff);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could not write to queue. Pend on it. */
-        priority_t priority = OS_getCurrentPriority();
-        OS_eventPendTask(
-                &o->Event.ListWrite,
-                priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Queue_write(o, buff);
+    if(val == 0)
+        Queue_pendWrite(o, ticksToWait);
     return val;
+}
+
+void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Used == 0U)
+        {
+            OS_eventPrePendTask(&o->Event.ListRead, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
+}
+
+void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Free == 0U)
+        {
+            OS_eventPrePendTask(&o->Event.ListWrite, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
 }
 
 uint8_t Queue_used(const struct Queue_t *o)

@@ -136,6 +136,7 @@ void Semaphore_init(struct Semaphore_t* o, uint8_t count);
 void Semaphore_give(struct Semaphore_t* o);
 uint8_t Semaphore_take(struct Semaphore_t* o);
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
+void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait);
 
 uint8_t Semaphore_getCount(struct Semaphore_t* o);
 
@@ -143,15 +144,16 @@ uint8_t Semaphore_getCount(struct Semaphore_t* o);
 
 struct Mutex_t {
     volatile uint8_t Count;
-    priority_t       MutexOwner;
+    struct task_t*   MutexOwner;
     struct eventR_t  Event;
 };
 
 void Mutex_init(struct Mutex_t* o);
 
+void Mutex_unlock(struct Mutex_t* o);
 uint8_t Mutex_lock(struct Mutex_t* o);
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
-void Mutex_unlock(struct Mutex_t* o);
+void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
 
 
@@ -178,8 +180,11 @@ void Queue_init(
 
 uint8_t Queue_read(struct Queue_t* o, void* buff);
 uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
+void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait);
+
 uint8_t Queue_write(struct Queue_t* o, const void* buff);
 uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
+void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait);
 
 uint8_t Queue_used(const struct Queue_t *o);
 uint8_t Queue_free(const struct Queue_t *o);
@@ -211,8 +216,11 @@ void Fifo_init(
 
 uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length);
 uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticksToWait);
+void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait);
+
 uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length);
 uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_t ticksToWait);
+void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait);
 
 uint8_t Fifo_used(const struct Fifo_t *o);
 uint8_t Fifo_free(const struct Fifo_t *o);

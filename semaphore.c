@@ -26,6 +26,7 @@ void Semaphore_init(struct Semaphore_t* o, uint8_t count)
 uint8_t Semaphore_take(struct Semaphore_t* o)
 {
     uint8_t val;
+    CRITICAL_VAL();
 
     CRITICAL_ENTER();
     {
@@ -42,6 +43,8 @@ uint8_t Semaphore_take(struct Semaphore_t* o)
 
 void Semaphore_give(struct Semaphore_t* o)
 {
+    CRITICAL_VAL();
+
 	OS_schedulerLock();
 
 	CRITICAL_ENTER();
@@ -61,25 +64,39 @@ void Semaphore_give(struct Semaphore_t* o)
 
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
-    uint8_t val;
-
-    val = Semaphore_take(o);
-    if(val == 0 && ticksToWait != 0U)
-    {
-        /* Could not lock semaphore. Pend on it. */
-    	priority_t priority = OS_getCurrentPriority();
-        OS_eventPendTask(
-                &o->Event.ListRead,
-				priority,
-                ticksToWait);
-    }
-
+    uint8_t val = Semaphore_take(o);
+    if(val == 0)
+        Semaphore_pend(o, ticksToWait);
     return val;
+}
+
+void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
+{
+    if(ticksToWait != 0U)
+    {
+        struct task_t* task = OS_getCurrentTask();
+        CRITICAL_VAL();
+
+        OS_schedulerLock();
+        CRITICAL_ENTER();
+        if(o->Count == 0U)
+        {
+            OS_eventPrePendTask(&o->Event.ListRead, task);
+            CRITICAL_EXIT();
+            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+        OS_schedulerUnlock();
+    }
 }
 
 uint8_t Semaphore_getCount(struct Semaphore_t* o)
 {
     uint8_t val;
+    CRITICAL_VAL();
     CRITICAL_ENTER();
     {
         val = o->Count;
