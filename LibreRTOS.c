@@ -589,26 +589,31 @@ void OS_eventPendTask(
                 OS_listRemove(node);
                 OS_listInsertAfter(list, pos, node);
             }
+
+            CRITICAL_EXIT();
+
+            /* Suspend or block task. */
+            #if (LIBRERTOS_TICK == 0)
+            {
+                /* Ticks disabled. Suspend. */
+		        state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
+            }
+            #else
+            {
+                /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
+                    timeout otherwise. */
+                if(ticksToWait == MAX_DELAY)
+                    state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
+                else
+                    OS_taskDelay(ticksToWait);
+            }
+            #endif
+        }
+        else
+        {
+            CRITICAL_EXIT();
         }
     }
-    CRITICAL_EXIT();
-
-    /* Suspend or block task. */
-    #if (LIBRERTOS_TICK == 0)
-    {
-        /* Ticks disabled. Suspend. */
-		state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
-    }
-    #else
-    {
-        /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
-         timeout otherwise. */
-        if(ticksToWait == MAX_DELAY)
-            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
-        else
-            OS_taskDelay(ticksToWait);
-    }
-    #endif
 }
 
 /* Unblock task in an event list. Must be called with scheduler locked and in a
