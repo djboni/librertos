@@ -230,10 +230,16 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
     CRITICAL_ENTER();
     while(state.PendingReadyTaskList.ListLength != 0)
     {
-        struct taskListNode_t* node = state.PendingReadyTaskList.ListHead;
-        OS_listRemove(node);
+        struct task_t* task = state.PendingReadyTaskList.ListHead->TaskControlBlock;
+
+        OS_listRemove(&task->TaskEventNode);
+        if(task->TaskBlockedNode.ListInserted != NULL)
+            OS_listRemove(&task->TaskBlockedNode);
+
         CRITICAL_EXIT();
-        state.Task[node->TaskControlBlock->TaskPriority]->TaskState = TASKSTATE_READY;
+        {
+            task->TaskState = TASKSTATE_READY;
+        }
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
