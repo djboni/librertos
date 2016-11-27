@@ -31,7 +31,7 @@ extern "C" {
 typedef int8_t priority_t;
 typedef uint8_t schedulerLock_t;
 typedef uint16_t tick_t;
-#define MAX_DELAY ((tick_t)0xFFFFU)
+#define MAX_DELAY ((tick_t)-1)
 
 /* Assert macro. */
 #define ASSERT(x)
@@ -46,7 +46,7 @@ typedef uint16_t tick_t;
         "in    __tmp_reg__,__SREG__   \n\t"      \
         "cli                          \n\t"      \
         "push  __tmp_reg__" ::: "memory")
-#define CRITICAL_EXIT()  __asm __volatile(        \
+#define CRITICAL_EXIT()  __asm __volatile(       \
         "pop   __tmp_reg__            \n\t"      \
         "out   __SREG__,__tmp_reg__" ::: "memory")
 

@@ -73,6 +73,25 @@ struct task_t {
     struct taskListNode_t     NodeEvent;
 };
 
+struct libreRtosState_t {
+    volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    struct task_t*             CurrentTCB; /* Current task control block. */
+    struct task_t*             Task[LIBRERTOS_MAX_PRIORITY]; /* Task priorities. */
+
+    tick_t                     Tick; /* OS tick. */
+    tick_t                     DelayedTicks; /* OS delayed tick (scheduler was locked). */
+    struct taskHeadList_t*     BlockedTaskList_NotOverflowed; /* List with blocked tasks (not overflowed). */
+    struct taskHeadList_t*     BlockedTaskList_Overflowed; /* List with blocked tasks (overflowed). */
+
+    struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
+    struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
+    struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
+
+    struct task_t              TaskControlBlocks[LIBRERTOS_NUM_TASKS]; /* Task data. */
+};
+
+extern struct libreRtosState_t OSstate;
+
 
 
 void OS_init(void);
