@@ -25,62 +25,51 @@ static struct librertos_state_t {
 
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
 
-    #if (LIBRERTOS_TICK != 0)
-        tick_t                 Tick; /* OS tick. */
-        tick_t                 DelayedTicks; /* OS delayed tick (scheduler was locked). */
-        struct taskHeadList_t* BlockedTaskList_NotOverflowed; /* List with blocked tasks (not overflowed). */
-        struct taskHeadList_t* BlockedTaskList_Overflowed; /* List with blocked tasks (overflowed). */
-        struct taskHeadList_t  BlockedTaskList1; /* List with blocked tasks number 1. */
-        struct taskHeadList_t  BlockedTaskList2; /* List with blocked tasks number 2. */
-    #endif
+    tick_t                     Tick; /* OS tick. */
+    tick_t                     DelayedTicks; /* OS delayed tick (scheduler was locked). */
+    struct taskHeadList_t*     BlockedTaskList_NotOverflowed; /* List with blocked tasks (not overflowed). */
+    struct taskHeadList_t*     BlockedTaskList_Overflowed; /* List with blocked tasks (overflowed). */
+    struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
+    struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
 
     struct task_t*             Task[LIBRERTOS_MAX_PRIORITY]; /* Task priorities. */
     struct task_t              TaskControlBlocks[LIBRERTOS_NUM_TASKS]; /* Task data. */
 } state;
 
-#if (LIBRERTOS_TICK != 0)
-    static void _OS_tickInvertBlockedTasksLists(void);
-    static void _OS_tickUnblockTimedoutTasks(void);
-#endif
-
+static void _OS_tickInvertBlockedTasksLists(void);
+static void _OS_tickUnblockTimedoutTasks(void);
 static void _OS_schedulerUnlock_withoutPreempt(void);
 
 /** Initialize OS. Must be called before any other OS function. */
 void OS_init(void)
 {
-    priority_t priority;
+    uint16_t i;
 
     state.SchedulerLock = 1;
     state.CurrentTaskControlBlock = NULL;
 
     OS_listHeadInit(&state.PendingReadyTaskList);
 
-    #if (LIBRERTOS_TICK != 0)
-        state.Tick = 0U;
-        state.DelayedTicks = 0U;
-        state.BlockedTaskList_NotOverflowed = &state.BlockedTaskList1;
-        state.BlockedTaskList_Overflowed = &state.BlockedTaskList2;
-        OS_listHeadInit(&state.BlockedTaskList1);
-        OS_listHeadInit(&state.BlockedTaskList2);
-    #endif
+    state.Tick = 0U;
+    state.DelayedTicks = 0U;
+    state.BlockedTaskList_NotOverflowed = &state.BlockedTaskList1;
+    state.BlockedTaskList_Overflowed = &state.BlockedTaskList2;
+    OS_listHeadInit(&state.BlockedTaskList1);
+    OS_listHeadInit(&state.BlockedTaskList2);
 
-	for(priority = 0; priority < LIBRERTOS_MAX_PRIORITY; ++priority)
-	{
-		state.Task[priority] = NULL;
-	}
-
-    for(priority = 0; priority < LIBRERTOS_NUM_TASKS; ++priority)
+    for(i = 0; i < LIBRERTOS_MAX_PRIORITY; ++i)
     {
-    	state.TaskControlBlocks[priority].TaskState = TASKSTATE_NOTINITIALIZED;
-    	state.TaskControlBlocks[priority].TaskFunction = (taskFunction_t)NULL;
-    	state.TaskControlBlocks[priority].TaskParameter = (taskParameter_t)NULL;
-    	state.TaskControlBlocks[priority].TaskPriority = 0;
+        state.Task[i] = NULL;
+    }
 
-        #if (LIBRERTOS_TICK != 0)
-            OS_listNodeInit(&state.TaskControlBlocks[priority].TaskBlockedNode, &state.TaskControlBlocks[priority]);
-        #endif
-
-        OS_listNodeInit(&state.TaskControlBlocks[priority].TaskEventNode , &state.TaskControlBlocks[priority]);
+    for(i = 0; i < LIBRERTOS_NUM_TASKS; ++i)
+    {
+        state.TaskControlBlocks[i].State = TASKSTATE_NOTINITIALIZED;
+        state.TaskControlBlocks[i].Function = (taskFunction_t)NULL;
+        state.TaskControlBlocks[i].Parameter = (taskParameter_t)NULL;
+        state.TaskControlBlocks[i].Priority = 0;
+        OS_listNodeInit(&state.TaskControlBlocks[i].NodeDelay, &state.TaskControlBlocks[i]);
+        OS_listNodeInit(&state.TaskControlBlocks[i].NodeEvent , &state.TaskControlBlocks[i]);
     }
 }
 
@@ -90,26 +79,22 @@ void OS_start(void)
     _OS_schedulerUnlock_withoutPreempt();
 }
 
-#if (LIBRERTOS_TICK != 0)
+/* Invert blocked tasks lists. Called by unblock timedout tasks function. */
+static void _OS_tickInvertBlockedTasksLists(void)
+{
+    struct taskHeadList_t* temp = state.BlockedTaskList_NotOverflowed;
+    state.BlockedTaskList_NotOverflowed = state.BlockedTaskList_Overflowed;
+    state.BlockedTaskList_Overflowed = temp;
+}
 
-    /* Invert blocked tasks lists. Called by unblock timedout tasks function. */
-    static void _OS_tickInvertBlockedTasksLists(void)
-    {
-        struct taskHeadList_t* temp = state.BlockedTaskList_NotOverflowed;
-        state.BlockedTaskList_NotOverflowed = state.BlockedTaskList_Overflowed;
-        state.BlockedTaskList_Overflowed = temp;
-    }
-
-    /** Increment OS tick. Called by the tick interrupt (defined by the
-     user). */
-    void OS_tick(void)
-    {
-        OS_schedulerLock();
-        ++state.DelayedTicks;
-        OS_schedulerUnlock();
-    }
-
-#endif /* LIBRERTOS_TICK */
+/** Increment OS tick. Called by the tick interrupt (defined by the
+ user). */
+void OS_tick(void)
+{
+    OS_schedulerLock();
+    ++state.DelayedTicks;
+    OS_schedulerUnlock();
+}
 
 /** Schedule a task. May be called in the main loop and after interrupt
  handling. */
@@ -135,7 +120,7 @@ void OS_scheduler(void)
 
             struct task_t* thisTask;
             uint8_t higherPriorityTaskReady = 0U;
-            priority_t currentTaskPriority = OS_getCurrentPriority();
+            priority_t currentTaskPriority = OS_getCurrentTask()->Priority;
             priority_t priority;
 
             for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
@@ -144,8 +129,8 @@ void OS_scheduler(void)
             {
                 /* Atomically test TaskState. */
                 INTERRUPTS_DISABLE();
-                if(		state.Task[priority] != NULL &&
-                		state.Task[priority]->TaskState == TASKSTATE_READY)
+                if(     state.Task[priority] != NULL &&
+                        state.Task[priority]->State == TASKSTATE_READY)
                 {
                     /* Higher priority task ready. */
                     thisTask = state.Task[priority];
@@ -160,8 +145,8 @@ void OS_scheduler(void)
                 /* Higher priority task ready. */
 
                 /* Get task function and parameter. */
-                taskFunction_t taskFunction = thisTask->TaskFunction;
-                taskParameter_t taskParameter = thisTask->TaskParameter;
+                taskFunction_t taskFunction = thisTask->Function;
+                taskParameter_t taskParameter = thisTask->Parameter;
 
                 /* Save last task priority and set current task priority. */
                 struct task_t* lastTask = OS_getCurrentTask();
@@ -204,43 +189,39 @@ void OS_schedulerLock(void)
     ++state.SchedulerLock;
 }
 
-#if (LIBRERTOS_TICK != 0)
+/* Unblock tasks that have timedout (process OS ticks). Called by scheduler
+ unlock function. */
+static void _OS_tickUnblockTimedoutTasks(void)
+{
+    /* Unblock tasks that have timed-out. */
+    CRITICAL_VAL();
 
-    /* Unblock tasks that have timedout (process OS ticks). Called by scheduler
-     unlock function. */
-    static void _OS_tickUnblockTimedoutTasks(void)
+    if(state.Tick == 0)
     {
-        /* Unblock tasks that have timed-out. */
-        CRITICAL_VAL();
-
-        if(state.Tick == 0)
-        {
-            _OS_tickInvertBlockedTasksLists();
-        }
-
-        while(  state.BlockedTaskList_NotOverflowed->ListLength != 0 &&
-                state.BlockedTaskList_NotOverflowed->ListHead->TickToWakeup == state.Tick)
-        {
-            struct task_t* task = state.BlockedTaskList_NotOverflowed->ListHead->TaskControlBlock;
-
-            /* Remove from blocked list. */
-            OS_listRemove(&task->TaskBlockedNode);
-
-            CRITICAL_ENTER();
-
-            /* Remove from event list. */
-            if(&task->TaskEventNode->ListInserted != NULL)
-            {
-                OS_listRemove(&task->TaskEventNode);
-            }
-
-            CRITICAL_EXIT();
-
-            task->TaskState = TASKSTATE_READY;
-        }
+        _OS_tickInvertBlockedTasksLists();
     }
 
-#endif /* LIBRERTOS_TICK */
+    while(  state.BlockedTaskList_NotOverflowed->Length != 0 &&
+            state.BlockedTaskList_NotOverflowed->Head->Value == state.Tick)
+    {
+        struct task_t* task = state.BlockedTaskList_NotOverflowed->Head->Task;
+
+        /* Remove from blocked list. */
+        OS_listRemove(&task->NodeDelay);
+
+        CRITICAL_ENTER();
+
+        /* Remove from event list. */
+        if(&task->NodeEvent.List != NULL)
+        {
+            OS_listRemove(&task->NodeEvent);
+        }
+
+        CRITICAL_EXIT();
+
+        task->State = TASKSTATE_READY;
+    }
+}
 
 /* Unblock pending ready tasks. Called by scheduler unlock function. */
 static void _OS_tickUnblockPendingReadyTasks(void)
@@ -248,26 +229,22 @@ static void _OS_tickUnblockPendingReadyTasks(void)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    while(state.PendingReadyTaskList.ListLength != 0)
+    while(state.PendingReadyTaskList.Length != 0)
     {
-        struct task_t* task = state.PendingReadyTaskList.ListHead->TaskControlBlock;
+        struct task_t* task = state.PendingReadyTaskList.Head->Task;
 
         /* Remove from pending ready list. */
-        OS_listRemove(&task->TaskEventNode);
+        OS_listRemove(&task->NodeEvent);
 
         CRITICAL_EXIT();
 
         /* Remove from blocked list. */
-        #if (LIBRERTOS_TICK != 0)
+        if(task->NodeDelay.List != NULL)
         {
-            if(task->TaskBlockedNode.ListInserted != NULL)
-            {
-                OS_listRemove(&task->TaskBlockedNode);
-            }
+            OS_listRemove(&task->NodeDelay);
         }
-        #endif /* LIBRERTOS_TICK */
 
-        task->TaskState = TASKSTATE_READY;
+        task->State = TASKSTATE_READY;
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
@@ -276,29 +253,23 @@ static void _OS_tickUnblockPendingReadyTasks(void)
 /* Unlock scheduler (recursive lock). */
 static void _OS_schedulerUnlock_withoutPreempt(void)
 {
-    #if (LIBRERTOS_TICK != 0)
+    CRITICAL_VAL();
+
+    if(state.SchedulerLock == 1)
     {
-        CRITICAL_VAL();
+        CRITICAL_ENTER();
 
-        if(state.SchedulerLock == 1)
+        while(state.DelayedTicks != 0)
         {
-            CRITICAL_ENTER();
-
-            while(state.DelayedTicks != 0)
-            {
-                --state.DelayedTicks;
-                ++state.Tick;
-                CRITICAL_EXIT();
-
-                _OS_tickUnblockTimedoutTasks();
-
-                CRITICAL_ENTER();
-            }
-
+            --state.DelayedTicks;
+            ++state.Tick;
             CRITICAL_EXIT();
+            _OS_tickUnblockTimedoutTasks();
+            CRITICAL_ENTER();
         }
+
+        CRITICAL_EXIT();
     }
-    #endif
 
     _OS_tickUnblockPendingReadyTasks();
 
@@ -319,126 +290,97 @@ void OS_schedulerUnlock(void)
 }
 
 /** Create task. */
-void OS_taskCreate(
+struct task_t* OS_taskCreate(
         priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter)
 {
-	static uint8_t taskCounter = 0;
-	uint8_t task;
-	CRITICAL_VAL();
+    static uint8_t taskCounter = 0;
+    uint8_t task;
+    CRITICAL_VAL();
 
-	CRITICAL_ENTER();
-	{
-		task = taskCounter++;
-	}
-	CRITICAL_EXIT();
+    CRITICAL_ENTER();
+    {
+        task = taskCounter++;
+    }
+    CRITICAL_EXIT();
 
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(state.Task[priority] == NULL);
 
     ASSERT(task < LIBRERTOS_NUM_TASKS);
-    ASSERT(state.TaskControlBlocks[task].TaskState == TASKSTATE_NOTINITIALIZED);
+    ASSERT(state.TaskControlBlocks[task].State == TASKSTATE_NOTINITIALIZED);
 
-    state.TaskControlBlocks[task].TaskFunction = function;
-    state.TaskControlBlocks[task].TaskParameter = parameter;
-    state.TaskControlBlocks[task].TaskPriority = priority;
+    state.TaskControlBlocks[task].Function = function;
+    state.TaskControlBlocks[task].Parameter = parameter;
+    state.TaskControlBlocks[task].Priority = priority;
 
-    #if (LIBRERTOS_TICK != 0)
-        OS_listNodeInit(&state.TaskControlBlocks[task].TaskBlockedNode, &state.TaskControlBlocks[task]);
-    #endif
-    OS_listNodeInit(&state.TaskControlBlocks[task].TaskEventNode , &state.TaskControlBlocks[task]);
+    OS_listNodeInit(&state.TaskControlBlocks[task].NodeDelay, &state.TaskControlBlocks[task]);
+    OS_listNodeInit(&state.TaskControlBlocks[task].NodeEvent , &state.TaskControlBlocks[task]);
 
-    state.TaskControlBlocks[task].TaskState = TASKSTATE_READY;
+    state.TaskControlBlocks[task].State = TASKSTATE_READY;
 
     state.Task[priority] = &state.TaskControlBlocks[task];
 
-    #if (LIBRERTOS_PREEMPTION != 0)
-    {
-        priority_t currentTaskPriority = OS_getCurrentPriority();
-        if(     priority > currentTaskPriority &&
-                currentTaskPriority != LIBRERTOS_NO_TASK_RUNNING)
-            OS_scheduler();
-    }
-    #endif
+    return &state.TaskControlBlocks[task];
 }
 
 /** Return current task priority. */
 struct task_t* OS_getCurrentTask(void)
 {
-	struct task_t* task;
-	CRITICAL_VAL();
-	CRITICAL_ENTER();
+    struct task_t* task;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
     {
-		task = state.CurrentTaskControlBlock;
+        task = state.CurrentTaskControlBlock;
     }
     CRITICAL_EXIT();
     return task;
 }
 
-/** Return current task priority. */
-priority_t OS_getCurrentPriority(void)
+/** Delay task. */
+void OS_taskDelay(tick_t ticksToDelay)
 {
-	priority_t priority;
-	CRITICAL_VAL();
-	CRITICAL_ENTER();
+    /* Insert task in the blocked tasks list. */
+
+    OS_schedulerLock();
+    if(ticksToDelay != 0)
     {
-        if(state.CurrentTaskControlBlock != NULL)
-		    priority = state.CurrentTaskControlBlock->TaskPriority;
+        tick_t tickNow = (tick_t)(state.Tick + state.DelayedTicks);
+        tick_t tickToWakeup = (tick_t)(tickNow + ticksToDelay);
+
+        struct task_t* task = OS_getCurrentTask();
+        struct taskListNode_t* taskBlockedNode = &task->NodeDelay;
+        struct taskHeadList_t* blockedTaskList;
+
+        if(tickToWakeup > tickNow)
+        {
+            /* Not overflowed. */
+            blockedTaskList = state.BlockedTaskList_NotOverflowed;
+        }
         else
-            priority = LIBRERTOS_NO_TASK_RUNNING;
+        {
+            /* Overflowed. */
+            blockedTaskList = state.BlockedTaskList_Overflowed;
+        }
+
+        /* Insert task on list. */
+        OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
+
+        task->State = TASKSTATE_BLOCKED;
     }
-    CRITICAL_EXIT();
-    return priority;
+    OS_schedulerUnlock();
 }
 
-#if (LIBRERTOS_TICK != 0)
-
-    /** Delay task. */
-    void OS_taskDelay(tick_t ticksToDelay)
-    {
-        /* Insert task in the blocked tasks list. */
-
-        OS_schedulerLock();
-        if(ticksToDelay != 0)
-        {
-            tick_t tickNow = (tick_t)(state.Tick + state.DelayedTicks);
-            tick_t tickToWakeup = (tick_t)(tickNow + ticksToDelay);
-
-            struct task_t* task = OS_getCurrentTask();
-            struct taskListNode_t* taskBlockedNode = &task->TaskBlockedNode;
-            struct taskHeadList_t* blockedTaskList;
-
-            if(tickToWakeup > tickNow)
-            {
-                /* Not overflowed. */
-                blockedTaskList = state.BlockedTaskList_NotOverflowed;
-            }
-            else
-            {
-                /* Overflowed. */
-                blockedTaskList = state.BlockedTaskList_Overflowed;
-            }
-
-            /* Insert task on list. */
-            OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
-
-            state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_BLOCKED;
-        }
-        OS_schedulerUnlock();
-    }
-
-    /* Get current OS tick. */
-    tick_t OS_getTickCount(void)
-    {
-        tick_t tickNow;
-        OS_schedulerLock();
-        tickNow = state.Tick;
-        OS_schedulerUnlock();
-        return tickNow;
-    }
-
-#endif /* LIBRERTOS_TICK */
+/* Get current OS tick. */
+tick_t OS_getTickCount(void)
+{
+    tick_t tickNow;
+    OS_schedulerLock();
+    tickNow = state.Tick;
+    OS_schedulerUnlock();
+    return tickNow;
+}
 
 
 
@@ -447,34 +389,35 @@ priority_t OS_getCurrentPriority(void)
 void OS_listHeadInit(struct taskHeadList_t* list)
 {
     /* Use the list head as a node. */
-    list->ListHead = LIST_HEAD(list);
-    list->ListTail = LIST_HEAD(list);
-    list->TickToWakeup_Zero = 0U;
-    list->ListLength = 0;
+    list->Head = LIST_HEAD(list);
+    list->Tail = LIST_HEAD(list);
+    list->Length = 0;
 }
 
-void OS_listNodeInit(struct taskListNode_t* node, struct task_t* taskControlBlock)
+void OS_listNodeInit(
+        struct taskListNode_t* node,
+        struct task_t* task)
 {
-    node->ListNext = NULL;
-    node->ListPrevious = NULL;
-    node->TickToWakeup = 0;
-    node->ListInserted = NULL;
-    node->TaskControlBlock = taskControlBlock;
+    node->Next = NULL;
+    node->Previous = NULL;
+    node->Value = 0;
+    node->List = NULL;
+    node->Task = task;
 }
 
 void OS_listInsert(
         struct taskHeadList_t* list,
         struct taskListNode_t* node,
-        tick_t tickToWakeup)
+        tick_t value)
 {
-    struct taskListNode_t* pos = list->ListHead;
+    struct taskListNode_t* pos = list->Head;
 
     while(pos != LIST_HEAD(list))
     {
-        if(tickToWakeup >= pos->TickToWakeup)
+        if(value >= pos->Value)
         {
             /* Not here. */
-            pos = pos->ListNext;
+            pos = pos->Next;
         }
         else
         {
@@ -483,16 +426,16 @@ void OS_listInsert(
         }
     }
 
-    node->TickToWakeup = tickToWakeup;
-    node->ListInserted = list;
+    node->Value = value;
+    node->List = list;
 
-    node->ListNext = pos;
-    node->ListPrevious = pos->ListPrevious;
+    node->Next = pos;
+    node->Previous = pos->Previous;
 
-    pos->ListPrevious->ListNext = node;
-    pos->ListPrevious = node;
+    pos->Previous->Next = node;
+    pos->Previous = node;
 
-    ++list->ListLength;
+    ++list->Length;
 }
 
 void OS_listInsertAfter(
@@ -500,30 +443,30 @@ void OS_listInsertAfter(
         struct taskListNode_t* pos,
         struct taskListNode_t* node)
 {
-    node->ListInserted = list;
+    node->List = list;
 
-    node->ListNext = pos->ListNext;
-    node->ListPrevious = pos;
+    node->Next = pos->Next;
+    node->Previous = pos;
 
-    pos->ListNext->ListPrevious = node;
-    pos->ListNext = node;
+    pos->Next->Previous = node;
+    pos->Next = node;
 
-    ++list->ListLength;
+    ++list->Length;
 }
 
 void OS_listRemove(struct taskListNode_t* node)
 {
-    struct taskListNode_t* next = node->ListNext;
-    struct taskListNode_t* previous = node->ListPrevious;
+    struct taskListNode_t* next = node->Next;
+    struct taskListNode_t* previous = node->Previous;
 
-    next->ListPrevious = previous;
-    previous->ListNext = next;
+    --node->List->Length;
 
-    node->ListNext = NULL;
-    node->ListPrevious = NULL;
+    next->Previous = previous;
+    previous->Next = next;
 
-    --node->ListInserted->ListLength;
-    node->ListInserted = NULL;
+    node->Next = NULL;
+    node->Previous = NULL;
+    node->List = NULL;
 }
 
 
@@ -550,8 +493,8 @@ void OS_eventPrePendTask(
     /* Put task on the head position in the event list. So the task may be
      unblocked by an interrupt. */
 
-    struct taskListNode_t* node = &task->TaskEventNode;
-    OS_listInsertAfter(list, list->ListHead, node);
+    struct taskListNode_t* node = &task->NodeEvent;
+    OS_listInsertAfter(list, list->Head, node);
 }
 
 /* Pend task on an event (part 2). Must be called with interrupts enabled and
@@ -561,8 +504,8 @@ void OS_eventPendTask(
         struct task_t* task,
         tick_t ticksToWait)
 {
-    struct taskListNode_t* node = &task->TaskEventNode;
-    priority_t priority = task->TaskPriority;
+    struct taskListNode_t* node = &task->NodeEvent;
+    priority_t priority = task->Priority;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -574,12 +517,12 @@ void OS_eventPendTask(
 
         for(;;)
         {
-            pos = node->ListNext;
+            pos = node->Next;
 
             while(pos != LIST_HEAD(list))
             {
                 CRITICAL_EXIT();
-                if(pos->TaskControlBlock->TaskPriority >= priority)
+                if(pos->Task->Priority >= priority)
                 {
                     /* Found where to insert. Break while(). */
                     CRITICAL_ENTER();
@@ -587,7 +530,7 @@ void OS_eventPendTask(
                 }
 
                 CRITICAL_ENTER();
-                if(pos->ListInserted != list)
+                if(pos->List != list)
                 {
                     /* This position was removed from the list. An interrupt
                      resumed this task. Break while(). */
@@ -600,12 +543,12 @@ void OS_eventPendTask(
                  So break the while loop if current task was changed is
                  redundant. */
 
-                pos = pos->ListNext;
+                pos = pos->Next;
             }
 
             if(     pos != LIST_HEAD(list) &&
-                    pos->ListInserted != list &&
-                    node->ListInserted == list)
+                    pos->List != list &&
+                    node->List == list)
             {
                 /* This pos was removed from the list and pxEvent was not
                  removed. Must restart to find where to insert node.
@@ -623,7 +566,7 @@ void OS_eventPendTask(
             }
         }
 
-        if(node->ListInserted == list)
+        if(node->List == list)
         {
             /* If an interrupt didn't resume the task. */
 
@@ -639,21 +582,12 @@ void OS_eventPendTask(
             CRITICAL_EXIT();
 
             /* Suspend or block task. */
-            #if (LIBRERTOS_TICK == 0)
-            {
-                /* Ticks disabled. Suspend. */
-		        state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
-            }
-            #else
-            {
-                /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
-                    timeout otherwise. */
-                if(ticksToWait == MAX_DELAY)
-                    state.Task[OS_getCurrentPriority()]->TaskState = TASKSTATE_SUSPENDED;
-                else
-                    OS_taskDelay(ticksToWait);
-            }
-            #endif
+            /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
+                timeout otherwise. */
+            if(ticksToWait == MAX_DELAY)
+                task->State = TASKSTATE_SUSPENDED;
+            else
+                OS_taskDelay(ticksToWait);
         }
         else
         {
@@ -666,19 +600,19 @@ void OS_eventPendTask(
  critical section. */
 void OS_eventUnblockTasks(struct taskHeadList_t* list)
 {
-    if(list->ListLength != 0)
+    if(list->Length != 0)
     {
-        struct taskListNode_t* node = list->ListTail;
+        struct taskListNode_t* node = list->Tail;
 
         /* Remove from event list. */
         OS_listRemove(node);
 
         /* Insert in the pending ready tasks . */
-        OS_listInsertAfter(&state.PendingReadyTaskList, state.PendingReadyTaskList.ListHead, node);
+        OS_listInsertAfter(&state.PendingReadyTaskList, state.PendingReadyTaskList.Head, node);
     }
 }
 
 struct taskListNode_t* OS_getTaskEventNode(priority_t priority)
 {
-	return &state.Task[priority]->TaskEventNode;
+    return &state.Task[priority]->NodeEvent;
 }
