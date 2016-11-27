@@ -99,7 +99,6 @@ void OS_start(void);
 void OS_tick(void);
 void OS_scheduler(void);
 
-uint8_t OS_schedulerIsLocked(void);
 void OS_schedulerLock(void);
 void OS_schedulerUnlock(void);
 
@@ -107,6 +106,7 @@ struct task_t* OS_taskCreate(
         priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter);
+
 void OS_taskDelay(tick_t ticksToDelay);
 
 struct task_t* OS_getCurrentTask(void);
