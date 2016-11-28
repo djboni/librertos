@@ -200,7 +200,7 @@ static void _OS_tickUnblockTimedoutTasks(void)
         CRITICAL_ENTER();
 
         /* Remove from event list. */
-        if(&task->NodeEvent.List != NULL)
+        if(task->NodeEvent.List != NULL)
         {
             OS_listRemove(&task->NodeEvent);
         }
