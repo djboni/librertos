@@ -561,6 +561,12 @@ void OS_eventPendTask(
 
             /* Don't need to remove and insert if the task is already in its
              position. */
+
+            if(pos == LIST_HEAD(list))
+                pos = list->Tail;
+            else
+                pos = pos->Previous;
+
             if(node != pos)
             {
                 /* Now insert in the right position. */
