@@ -87,6 +87,7 @@ struct libreRtosState_t {
     struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
 
+    uint8_t                    TaskCounter; /* Counts number of tasks created. */
     struct task_t              TaskControlBlocks[LIBRERTOS_NUM_TASKS]; /* Task data. */
 };
 

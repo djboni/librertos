@@ -47,6 +47,8 @@ void OS_init(void)
         OSstate.Task[i] = NULL;
     }
 
+    OSstate.TaskCounter = 0U;
+
     for(i = 0; i < LIBRERTOS_NUM_TASKS; ++i)
     {
         OSstate.TaskControlBlocks[i].State = TASKSTATE_NOTINITIALIZED;
@@ -283,13 +285,12 @@ struct task_t* OS_taskCreate(
         taskFunction_t function,
         taskParameter_t parameter)
 {
-    static uint8_t taskCounter = 0;
     uint8_t task;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
     {
-        task = taskCounter++;
+        task = OSstate.TaskCounter++;
     }
     CRITICAL_EXIT();
 
