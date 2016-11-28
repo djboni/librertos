@@ -26,17 +26,19 @@ extern "C" {
 #include <stddef.h>
 
 void OS_eventRInit(struct eventR_t* o);
+
 void OS_eventRwInit(struct eventRw_t* o);
+
 void OS_eventPrePendTask(
         struct taskHeadList_t* list,
         struct task_t* task);
+
 void OS_eventPendTask(
         struct taskHeadList_t* list,
         struct task_t* task,
         tick_t ticksToWait);
-void OS_eventUnblockTasks(struct taskHeadList_t* list);
 
-struct taskListNode_t* OS_getTaskEventNode(priority_t priority);
+void OS_eventUnblockTasks(struct taskHeadList_t* list);
 
 #ifdef __cplusplus
 }

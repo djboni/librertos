@@ -483,7 +483,7 @@ void OS_eventPrePendTask(
      unblocked by an interrupt. */
 
     struct taskListNode_t* node = &task->NodeEvent;
-    OS_listInsertAfter(list, list->Head, node);
+    OS_listInsertAfter(list, (struct taskListNode_t*)list, node);
 }
 
 /* Pend task on an event (part 2). Must be called with interrupts enabled and
@@ -599,9 +599,4 @@ void OS_eventUnblockTasks(struct taskHeadList_t* list)
         /* Insert in the pending ready tasks . */
         OS_listInsertAfter(&OSstate.PendingReadyTaskList, OSstate.PendingReadyTaskList.Head, node);
     }
-}
-
-struct taskListNode_t* OS_getTaskEventNode(priority_t priority)
-{
-    return &OSstate.Task[priority]->NodeEvent;
 }
