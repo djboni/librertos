@@ -25,8 +25,6 @@ extern "C" {
 #define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
 #define LIBRERTOS_NUM_TASKS          2  /* integer > 0 */
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
-#define LIBRERTOS_QUEUE_1CRITICAL    0  /* boolean */
-#define LIBRERTOS_FIFO_1CRITICAL     0  /* boolean */
 
 typedef int8_t priority_t;
 typedef uint8_t schedulerLock_t;

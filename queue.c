@@ -31,10 +31,8 @@ void Queue_init(
     UNCONST(uint8_t, o->ItemSize) = item_size;
     o->Free = length;
     o->Used = 0U;
-    #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
-        o->WLock = 0U;
-        o->RLock = 0U;
-    #endif
+    o->WLock = 0U;
+    o->RLock = 0U;
     o->Head = buff8;
     o->Tail = buff8;
     UNCONST(uint8_t*, o->Buff) = buff8;

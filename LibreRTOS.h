@@ -161,10 +161,8 @@ struct Queue_t {
     const uint8_t        ItemSize;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
-    #if (LIBRERTOS_QUEUE_1CRITICAL == 0)
-        volatile uint8_t WLock;
-        volatile uint8_t RLock;
-    #endif
+    volatile uint8_t WLock;
+    volatile uint8_t RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
     uint8_t *const       Buff;
@@ -198,10 +196,8 @@ struct Fifo_t {
     const uint8_t        Length;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
-    #if (LIBRERTOS_FIFO_1CRITICAL == 0)
-        volatile uint8_t WLock;
-        volatile uint8_t RLock;
-    #endif
+    volatile uint8_t WLock;
+    volatile uint8_t RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
     uint8_t *const       Buff;
