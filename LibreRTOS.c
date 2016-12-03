@@ -201,6 +201,8 @@ static void _OS_tickUnblockTimedoutTasks(void)
 
         CRITICAL_ENTER();
 
+        task->State = TASKSTATE_READY;
+
         /* Remove from event list. */
         if(task->NodeEvent.List != NULL)
         {
@@ -208,8 +210,6 @@ static void _OS_tickUnblockTimedoutTasks(void)
         }
 
         CRITICAL_EXIT();
-
-        task->State = TASKSTATE_READY;
     }
 }
 
@@ -235,6 +235,7 @@ static void _OS_tickUnblockPendingReadyTasks(void)
         }
 
         task->State = TASKSTATE_READY;
+
         CRITICAL_ENTER();
     }
     CRITICAL_EXIT();
@@ -331,6 +332,7 @@ struct task_t* OS_getCurrentTask(void)
 void OS_taskDelay(tick_t ticksToDelay)
 {
     /* Insert task in the blocked tasks list. */
+    CRITICAL_VAL();
 
     OS_schedulerLock();
     if(ticksToDelay != 0)
@@ -353,10 +355,12 @@ void OS_taskDelay(tick_t ticksToDelay)
             blockedTaskList = OSstate.BlockedTaskList_Overflowed;
         }
 
+        CRITICAL_ENTER();
+        task->State = TASKSTATE_BLOCKED;
+        CRITICAL_EXIT();
+
         /* Insert task on list. */
         OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
-
-        task->State = TASKSTATE_BLOCKED;
     }
     OS_schedulerUnlock();
 }
@@ -574,8 +578,6 @@ void OS_eventPendTask(
                 OS_listInsertAfter(list, pos, node);
             }
 
-            CRITICAL_EXIT();
-
             /* Suspend or block task. */
             /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
                 timeout otherwise. */
@@ -583,6 +585,8 @@ void OS_eventPendTask(
                 task->State = TASKSTATE_SUSPENDED;
             else
                 OS_taskDelay(ticksToWait);
+
+            CRITICAL_EXIT();
         }
         else
         {
