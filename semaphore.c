@@ -17,9 +17,12 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
-void Semaphore_init(struct Semaphore_t* o, uint8_t count)
+#define UNCONST(type, var) *((type*)&(var))
+
+void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max)
 {
     o->Count = count;
+    UNCONST(uint8_t, o->Max) = max;
     OS_eventRInit(&o->Event);
 }
 
@@ -41,25 +44,34 @@ uint8_t Semaphore_take(struct Semaphore_t* o)
     return val;
 }
 
-void Semaphore_give(struct Semaphore_t* o)
+uint8_t Semaphore_give(struct Semaphore_t* o)
 {
-    CRITICAL_VAL();
+    uint8_t val;
 
-    OS_schedulerLock();
+    CRITICAL_VAL();
 
     CRITICAL_ENTER();
     {
-        o->Count = (uint8_t)(o->Count + 1);
-
-        if(o->Event.ListRead.Length != 0)
+        val = (o->Count < o->Max);
+        if(val != 0)
         {
-            /* Unblock tasks waiting to read from this event. */
-            OS_eventUnblockTasks(&(o->Event.ListRead));
+            o->Count = (uint8_t)(o->Count + 1);
+
+            OS_schedulerLock();
+
+            if(o->Event.ListRead.Length != 0)
+            {
+                /* Unblock tasks waiting to read from this event. */
+                OS_eventUnblockTasks(&(o->Event.ListRead));
+            }
         }
     }
     CRITICAL_EXIT();
 
-    OS_schedulerUnlock();
+    if(val != 0)
+        OS_schedulerUnlock();
+
+    return val;
 }
 
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
@@ -100,6 +112,18 @@ uint8_t Semaphore_getCount(struct Semaphore_t* o)
     CRITICAL_ENTER();
     {
         val = o->Count;
+    }
+    CRITICAL_EXIT();
+    return val;
+}
+
+uint8_t Semaphore_getMax(struct Semaphore_t* o)
+{
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Max;
     }
     CRITICAL_EXIT();
     return val;

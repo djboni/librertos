@@ -128,17 +128,19 @@ struct eventRw_t {
 
 struct Semaphore_t {
     volatile uint8_t Count;
+    const uint8_t    Max;
     struct eventR_t  Event;
 };
 
-void Semaphore_init(struct Semaphore_t* o, uint8_t count);
+void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max);
 
-void Semaphore_give(struct Semaphore_t* o);
+uint8_t Semaphore_give(struct Semaphore_t* o);
 uint8_t Semaphore_take(struct Semaphore_t* o);
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
 void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait);
 
 uint8_t Semaphore_getCount(struct Semaphore_t* o);
+uint8_t Semaphore_getMax(struct Semaphore_t* o);
 
 
 
