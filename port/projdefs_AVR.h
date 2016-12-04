@@ -23,7 +23,6 @@ extern "C" {
 
 /* LibreRTOS definitions. */
 #define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
-#define LIBRERTOS_NUM_TASKS          2  /* integer > 0 */
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 
 typedef int8_t priority_t;

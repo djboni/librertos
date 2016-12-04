@@ -28,10 +28,6 @@ extern "C" {
 #define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
 #endif
 
-#ifndef LIBRERTOS_NUM_TASKS
-#define LIBRERTOS_NUM_TASKS          2  /* integer > 0 */
-#endif
-
 #ifndef LIBRERTOS_PREEMPTION
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #endif
@@ -86,9 +82,6 @@ struct libreRtosState_t {
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
     struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
-
-    uint8_t                    TaskCounter; /* Counts number of tasks created. */
-    struct task_t              TaskControlBlocks[LIBRERTOS_NUM_TASKS]; /* Task data. */
 };
 
 extern struct libreRtosState_t OSstate;
@@ -103,7 +96,8 @@ void OS_scheduler(void);
 void OS_schedulerLock(void);
 void OS_schedulerUnlock(void);
 
-struct task_t* OS_taskCreate(
+void OS_taskCreate(
+        struct task_t* task,
         priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter);
@@ -163,8 +157,8 @@ struct Queue_t {
     const uint8_t        ItemSize;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
-    volatile uint8_t WLock;
-    volatile uint8_t RLock;
+    volatile uint8_t     WLock;
+    volatile uint8_t     RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
     uint8_t *const       Buff;
@@ -198,8 +192,8 @@ struct Fifo_t {
     const uint8_t        Length;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
-    volatile uint8_t WLock;
-    volatile uint8_t RLock;
+    volatile uint8_t     WLock;
+    volatile uint8_t     RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
     uint8_t *const       Buff;

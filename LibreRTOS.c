@@ -46,18 +46,6 @@ void OS_init(void)
     {
         OSstate.Task[i] = NULL;
     }
-
-    OSstate.TaskCounter = 0U;
-
-    for(i = 0; i < LIBRERTOS_NUM_TASKS; ++i)
-    {
-        OSstate.TaskControlBlocks[i].State = TASKSTATE_NOTINITIALIZED;
-        OSstate.TaskControlBlocks[i].Function = (taskFunction_t)NULL;
-        OSstate.TaskControlBlocks[i].Parameter = (taskParameter_t)NULL;
-        OSstate.TaskControlBlocks[i].Priority = 0;
-        OS_listNodeInit(&OSstate.TaskControlBlocks[i].NodeDelay, &OSstate.TaskControlBlocks[i]);
-        OS_listNodeInit(&OSstate.TaskControlBlocks[i].NodeEvent , &OSstate.TaskControlBlocks[i]);
-    }
 }
 
 /** Start OS. Must be called once before the scheduler. */
@@ -281,38 +269,24 @@ void OS_schedulerUnlock(void)
 }
 
 /** Create task. */
-struct task_t* OS_taskCreate(
+void OS_taskCreate(
+        struct task_t* task,
         priority_t priority,
         taskFunction_t function,
         taskParameter_t parameter)
 {
-    uint8_t task;
-    CRITICAL_VAL();
-
-    CRITICAL_ENTER();
-    {
-        task = OSstate.TaskCounter++;
-    }
-    CRITICAL_EXIT();
-
     ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
     ASSERT(OSstate.Task[priority] == NULL);
 
-    ASSERT(task < LIBRERTOS_NUM_TASKS);
-    ASSERT(OSstate.TaskControlBlocks[task].State == TASKSTATE_NOTINITIALIZED);
+    task->State = TASKSTATE_READY;
+    task->Function = function;
+    task->Parameter = parameter;
+    task->Priority = priority;
 
-    OSstate.TaskControlBlocks[task].Function = function;
-    OSstate.TaskControlBlocks[task].Parameter = parameter;
-    OSstate.TaskControlBlocks[task].Priority = priority;
+    OS_listNodeInit(&task->NodeDelay, task);
+    OS_listNodeInit(&task->NodeEvent , task);
 
-    OS_listNodeInit(&OSstate.TaskControlBlocks[task].NodeDelay, &OSstate.TaskControlBlocks[task]);
-    OS_listNodeInit(&OSstate.TaskControlBlocks[task].NodeEvent , &OSstate.TaskControlBlocks[task]);
-
-    OSstate.TaskControlBlocks[task].State = TASKSTATE_READY;
-
-    OSstate.Task[priority] = &OSstate.TaskControlBlocks[task];
-
-    return &OSstate.TaskControlBlocks[task];
+    OSstate.Task[priority] = task;
 }
 
 /** Return current task priority. */
