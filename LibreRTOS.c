@@ -484,12 +484,12 @@ void OS_eventPendTask(
 
         for(;;)
         {
-            pos = node->Next;
+            pos = list->Tail;
 
             while(pos != LIST_HEAD(list))
             {
                 CRITICAL_EXIT();
-                if(pos->Task->Priority >= priority)
+                if(pos->Task->Priority <= priority)
                 {
                     /* Found where to insert. Break while(). */
                     CRITICAL_ENTER();
@@ -504,27 +504,27 @@ void OS_eventPendTask(
                     break;
                 }
 
-                /* As this task is inserted in the tail of the list, if an
+                /* As this task is inserted in the head of the list, if an
                  interrupt resumed the task then pos also must have been
                  modified.
                  So break the while loop if current task was changed is
                  redundant. */
 
-                pos = pos->Next;
+                pos = pos->Previous;
             }
 
             if(     pos != LIST_HEAD(list) &&
                     pos->List != list &&
                     node->List == list)
             {
-                /* This pos was removed from the list and pxEvent was not
+                /* This pos was removed from the list and node was not
                  removed. Must restart to find where to insert node.
                  Continue for(;;). */
                 continue;
             }
             else
             {
-                /* Found where to insert. Insert before pos.
+                /* Found where to insert. Insert after pos.
                  OR
                  Item node was removed from the list (interrupt resumed the
                  task). Nothing to insert.
@@ -539,11 +539,6 @@ void OS_eventPendTask(
 
             /* Don't need to remove and insert if the task is already in its
              position. */
-
-            if(pos == LIST_HEAD(list))
-                pos = list->Tail;
-            else
-                pos = pos->Previous;
 
             if(node != pos)
             {
