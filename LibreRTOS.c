@@ -556,11 +556,15 @@ void OS_eventPendTask(
             /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
                 timeout otherwise. */
             if(ticksToWait == MAX_DELAY)
+            {
                 task->State = TASKSTATE_SUSPENDED;
+                CRITICAL_EXIT();
+            }
             else
+            {
+                CRITICAL_EXIT();
                 OS_taskDelay(ticksToWait);
-
-            CRITICAL_EXIT();
+            }
         }
         else
         {
