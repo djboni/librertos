@@ -19,6 +19,10 @@
 #include "OSevent.h"
 #include <stddef.h>
 
+#ifndef LIBRERTOS_GUARD_U32
+#define LIBRERTOS_GUARD_U32 0xFA57C0DEUL
+#endif
+
 struct libreRtosState_t OSstate;
 
 static void _OS_tickInvertBlockedTasksLists(void);
@@ -46,6 +50,13 @@ void OS_init(void)
     {
         OSstate.Task[i] = NULL;
     }
+
+    #if (LIBRERTOS_STATE_GUARDS != 0)
+    {
+        OSstate.Guard0 = LIBRERTOS_GUARD_U32;
+        OSstate.GuardEnd = LIBRERTOS_GUARD_U32;
+    }
+    #endif
 }
 
 /** Start OS. Must be called once before the scheduler. */
@@ -348,6 +359,18 @@ tick_t OS_getTickCount(void)
     OS_schedulerUnlock();
     return tickNow;
 }
+
+#if (LIBRERTOS_STATE_GUARDS != 0)
+
+/* Return 1 if OSstate guards are fine. 0 otherwise. */
+uint8_t OS_stateCheck(void)
+{
+    return (OSstate.Guard0 == LIBRERTOS_GUARD_U32 &&
+            OSstate.GuardEnd == LIBRERTOS_GUARD_U32);
+}
+
+#endif /* LIBRERTOS_STATE_GUARDS */
+
 
 
 

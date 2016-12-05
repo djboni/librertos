@@ -32,6 +32,10 @@ extern "C" {
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_STATE_GUARDS
+#define LIBRERTOS_STATE_GUARDS       0  /* boolean */
+#endif
+
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
@@ -70,6 +74,10 @@ struct task_t {
 };
 
 struct libreRtosState_t {
+    #if (LIBRERTOS_STATE_GUARDS != 0)
+        uint32_t               Guard0;
+    #endif
+
     volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
     struct task_t*             CurrentTCB; /* Current task control block. */
     struct task_t*             Task[LIBRERTOS_MAX_PRIORITY]; /* Task priorities. */
@@ -82,6 +90,10 @@ struct libreRtosState_t {
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
     struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
+
+    #if (LIBRERTOS_STATE_GUARDS != 0)
+        uint32_t               GuardEnd;
+    #endif
 };
 
 extern struct libreRtosState_t OSstate;
@@ -106,6 +118,13 @@ void OS_taskDelay(tick_t ticksToDelay);
 
 struct task_t* OS_getCurrentTask(void);
 tick_t OS_getTickCount(void);
+
+
+#if (LIBRERTOS_STATE_GUARDS != 0)
+
+    uint8_t OS_stateCheck(void);
+
+#endif
 
 
 
