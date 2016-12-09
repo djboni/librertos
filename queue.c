@@ -109,6 +109,8 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
             lock = (o->WLock)++;
             --(o->Free);
 
+            OS_schedulerLock();
+
             CRITICAL_EXIT();
             {
                 memcpy(pos, buff, (uint8_t)o->ItemSize);
@@ -120,8 +122,6 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
                 o->Used = (uint8_t)(o->Used + o->WLock);
                 o->WLock = 0U;
             }
-
-            OS_schedulerLock();
 
             if(o->Event.ListRead.Length != 0)
             {

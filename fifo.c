@@ -132,6 +132,8 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
             o->WLock = (uint8_t)(o->WLock + val);
             o->Free = (uint8_t)(o->Free - val);
 
+            OS_schedulerLock();
+
             CRITICAL_EXIT();
             {
                 memcpy(pos, buff, length);
@@ -145,8 +147,6 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
                 o->Used = (uint8_t)(o->Used + o->WLock);
                 o->WLock = 0U;
             }
-
-            OS_schedulerLock();
 
             if(o->Event.ListRead.Length != 0)
             {
