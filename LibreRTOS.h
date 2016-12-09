@@ -115,6 +115,7 @@ void OS_taskCreate(
         taskParameter_t parameter);
 
 void OS_taskDelay(tick_t ticksToDelay);
+void OS_taskResume(struct task_t* task);
 
 struct task_t* OS_getCurrentTask(void);
 tick_t OS_getTickCount(void);

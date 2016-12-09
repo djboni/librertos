@@ -350,6 +350,30 @@ void OS_taskDelay(tick_t ticksToDelay)
     OS_schedulerUnlock();
 }
 
+/* Resume task. */
+void OS_taskResume(struct task_t* task)
+{
+    struct taskListNode_t* node = &task->NodeEvent;
+    CRITICAL_VAL();
+
+    OS_schedulerLock();
+    {
+        CRITICAL_ENTER();
+        {
+            /* Remove from event list. */
+            if(node->List != NULL)
+            {
+                OS_listRemove(&task->NodeEvent);
+            }
+
+            /* Add to pending ready tasks list. */
+            OS_listInsertAfter(&OSstate.PendingReadyTaskList, OSstate.PendingReadyTaskList.Head, node);
+        }
+        CRITICAL_EXIT();
+    }
+    OS_schedulerUnlock();
+}
+
 /* Get current OS tick. */
 tick_t OS_getTickCount(void)
 {
