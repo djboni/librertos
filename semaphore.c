@@ -17,12 +17,10 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
-#define UNCONST(type, var) *((type*)&(var))
-
 void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max)
 {
     o->Count = count;
-    UNCONST(uint8_t, o->Max) = max;
+    o->Max = max;
     OS_eventRInit(&o->Event);
 }
 

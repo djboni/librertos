@@ -141,7 +141,7 @@ struct eventRw_t {
 
 struct Semaphore_t {
     volatile uint8_t Count;
-    const uint8_t    Max;
+    uint8_t          Max;
     struct eventR_t  Event;
 };
 
@@ -173,15 +173,15 @@ void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
 
 struct Queue_t {
-    const uint8_t        ItemSize;
+    uint8_t              ItemSize;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
     volatile uint8_t     WLock;
     volatile uint8_t     RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
-    uint8_t *const       Buff;
-    uint8_t *const       BufEnd;
+    uint8_t*             Buff;
+    uint8_t*             BufEnd;
     struct eventRw_t     Event;
 };
 
@@ -208,15 +208,15 @@ uint8_t Queue_free(const struct Queue_t *o);
 
 
 struct Fifo_t {
-    const uint8_t        Length;
+    uint8_t              Length;
     volatile uint8_t     Free;
     volatile uint8_t     Used;
     volatile uint8_t     WLock;
     volatile uint8_t     RLock;
     uint8_t *volatile    Head;
     uint8_t *volatile    Tail;
-    uint8_t *const       Buff;
-    uint8_t *const       BufEnd;
+    uint8_t*             Buff;
+    uint8_t*             BufEnd;
     struct eventRw_t     Event;
 };
 

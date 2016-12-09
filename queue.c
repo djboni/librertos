@@ -18,8 +18,6 @@
 #include "OSevent.h"
 #include <string.h>
 
-#define UNCONST(type, var) *((type*)&(var))
-
 void Queue_init(
         struct Queue_t *o,
         void *buff,
@@ -28,15 +26,15 @@ void Queue_init(
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
-    UNCONST(uint8_t, o->ItemSize) = item_size;
+    o->ItemSize = item_size;
     o->Free = length;
     o->Used = 0U;
     o->WLock = 0U;
     o->RLock = 0U;
     o->Head = buff8;
     o->Tail = buff8;
-    UNCONST(uint8_t*, o->Buff) = buff8;
-    UNCONST(uint8_t*, o->BufEnd) = &buff8[(length - 1) * item_size];
+    o->Buff = buff8;
+    o->BufEnd = &buff8[(length - 1) * item_size];
     OS_eventRwInit(&o->Event);
 }
 

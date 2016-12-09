@@ -18,8 +18,6 @@
 #include "OSevent.h"
 #include <string.h>
 
-#define UNCONST(type, var) *((type*)&(var))
-
 void Fifo_init(
         struct Fifo_t *o,
         void *buff,
@@ -27,15 +25,15 @@ void Fifo_init(
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
-    UNCONST(uint8_t, o->Length) = length;
+    o->Length = length;
     o->Free = length;
     o->Used = 0U;
     o->WLock = 0U;
     o->RLock = 0U;
     o->Head = buff8;
     o->Tail = buff8;
-    UNCONST(uint8_t*, o->Buff) = buff8;
-    UNCONST(uint8_t*, o->BufEnd) = &buff8[length - 1];
+    o->Buff = buff8;
+    o->BufEnd = &buff8[length - 1];
     OS_eventRwInit(&o->Event);
 }
 
