@@ -536,6 +536,11 @@ void OS_eventPendTask(
             while(pos != LIST_HEAD(list))
             {
                 CRITICAL_EXIT();
+
+                /* For test coverage only. This macro is used as a deterministic
+                 way to create a concurrent access. */
+                LIBRERTOS_TEST_CONCURRENT_ACCESS();
+
                 if(pos->Task->Priority <= priority)
                 {
                     /* Found where to insert. Break while(). */

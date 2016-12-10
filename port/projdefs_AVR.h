@@ -48,6 +48,9 @@ typedef uint16_t tick_t;
         "pop   __tmp_reg__            \n\t"      \
         "out   __SREG__,__tmp_reg__" ::: "memory")
 
+/* Simulate concurrent access. For test coverage only. */
+#define LIBRERTOS_TEST_CONCURRENT_ACCESS()
+
 #ifdef __cplusplus
 }
 #endif

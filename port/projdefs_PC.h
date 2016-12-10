@@ -45,6 +45,9 @@ typedef uint16_t tick_t;
 #define CRITICAL_ENTER()
 #define CRITICAL_EXIT()
 
+/* Simulate concurrent access. For test coverage only. */
+#define LIBRERTOS_TEST_CONCURRENT_ACCESS()
+
 #ifdef __cplusplus
 }
 #endif

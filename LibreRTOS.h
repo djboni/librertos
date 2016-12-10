@@ -36,6 +36,10 @@ extern "C" {
 #define LIBRERTOS_STATE_GUARDS       0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_TEST_CONCURRENT_ACCESS
+#define LIBRERTOS_TEST_CONCURRENT_ACCESS()
+#endif
+
 typedef void* taskParameter_t;
 typedef void(*taskFunction_t)(taskParameter_t);
 
