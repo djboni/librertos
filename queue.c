@@ -62,6 +62,10 @@ uint8_t Queue_read(struct Queue_t* o, void* buff)
             CRITICAL_EXIT();
             {
                 memcpy(buff, pos, (uint8_t)o->ItemSize);
+
+                /* For test coverage only. This macro is used as a deterministic
+                 way to create a concurrent access. */
+                LIBRERTOS_TEST_CONCURRENT_ACCESS();
             }
             CRITICAL_ENTER();
 
@@ -114,6 +118,10 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
             CRITICAL_EXIT();
             {
                 memcpy(pos, buff, (uint8_t)o->ItemSize);
+
+                /* For test coverage only. This macro is used as a deterministic
+                 way to create a concurrent access. */
+                LIBRERTOS_TEST_CONCURRENT_ACCESS();
             }
             CRITICAL_ENTER();
 
