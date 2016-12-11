@@ -71,7 +71,11 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
             {
                 memcpy(buff, pos, length);
                 if(numFromBegin != 0)
-                memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
+                    memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
+
+                /* For test coverage only. This macro is used as a deterministic
+                 way to create a concurrent access. */
+                LIBRERTOS_TEST_CONCURRENT_ACCESS();
             }
             CRITICAL_ENTER();
 
@@ -139,6 +143,10 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
                 memcpy(pos, buff, length);
                 if(numFromBegin != 0)
                     memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
+
+                /* For test coverage only. This macro is used as a deterministic
+                 way to create a concurrent access. */
+                LIBRERTOS_TEST_CONCURRENT_ACCESS();
             }
             CRITICAL_ENTER();
 
