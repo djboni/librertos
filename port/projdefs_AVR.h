@@ -30,6 +30,7 @@ typedef int8_t priority_t;
 typedef uint8_t schedulerLock_t;
 typedef uint16_t tick_t;
 #define MAX_DELAY ((tick_t)-1)
+typedef int16_t difftick_t;
 
 /* Assert macro. */
 #define ASSERT(x)
