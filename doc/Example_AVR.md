@@ -90,6 +90,9 @@ int main(void)
     /* Create TaskA. Priority=0, Function=taskA, Parameter=0. */
     OS_taskCreate(0, &taskA, 0);
 
+    /* Start scheduler. */
+    OS_start();
+
     /* Run scheduler. */
     for(;;)
     {
