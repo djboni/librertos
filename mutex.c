@@ -111,3 +111,41 @@ void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
         OS_schedulerUnlock();
     }
 }
+
+/** Get mutex count value.
+
+ @return Number of times the owner of the mutex recursively locked it.
+
+ Get mutex count value:
+ Mutex_getCount(&mtx)
+ */
+uint8_t Mutex_getCount(struct Mutex_t* o)
+{
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Count;
+    }
+    CRITICAL_EXIT();
+    return val;
+}
+
+/** Get mutex owner.
+
+ @return Pointer to the task that locked the mutex.
+
+ Get mutex owner:
+ Mutex_getOwner(&mtx)
+ */
+struct task_t* Mutex_getOwner(struct Mutex_t* o)
+{
+    struct task_t* val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->MutexOwner;
+    }
+    CRITICAL_EXIT();
+    return val;
+}

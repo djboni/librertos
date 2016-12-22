@@ -175,6 +175,9 @@ uint8_t Mutex_lock(struct Mutex_t* o);
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
+uint8_t Mutex_getCount(struct Mutex_t* o);
+struct task_t* Mutex_getOwner(struct Mutex_t* o);
+
 
 
 struct Queue_t {
