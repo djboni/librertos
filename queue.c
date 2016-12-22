@@ -231,3 +231,40 @@ uint8_t Queue_free(const struct Queue_t *o)
     CRITICAL_EXIT();
     return val;
 }
+
+/** Get queue length.
+
+ The queue length is the total number of items it can hold.
+
+ @return Queue length.
+
+ Get length of a queue:
+ Queue_length(&que)
+ */
+uint8_t Queue_length(const struct Queue_t *o)
+{
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = (uint8_t)(o->Free + o->Used + o->WLock + o->RLock);
+    }
+    CRITICAL_EXIT();
+    return val;
+}
+
+/** Get queue item size.
+
+ The queue item size is the size of the items that are inserted into and removed
+ from the queue.
+
+ @return Queue item size.
+
+ Get queue item size:
+ Queue_itemSize(&que)
+ */
+uint8_t Queue_itemSize(const struct Queue_t *o)
+{
+    /* This value is constant after initialization. No need for locks. */
+    return o->ItemSize;
+}

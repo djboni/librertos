@@ -209,6 +209,8 @@ void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait);
 
 uint8_t Queue_used(const struct Queue_t *o);
 uint8_t Queue_free(const struct Queue_t *o);
+uint8_t Queue_length(const struct Queue_t *o);
+uint8_t Queue_itemSize(const struct Queue_t *o);
 
 #define Queue_empty(o) (Queue_used(o) == 0)
 #define Queue_full(o)  (Queue_free(o) == 0)
