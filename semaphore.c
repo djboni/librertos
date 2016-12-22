@@ -103,7 +103,7 @@ void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
     }
 }
 
-uint8_t Semaphore_getCount(struct Semaphore_t* o)
+uint8_t Semaphore_getCount(const struct Semaphore_t* o)
 {
     uint8_t val;
     CRITICAL_VAL();
@@ -115,14 +115,8 @@ uint8_t Semaphore_getCount(struct Semaphore_t* o)
     return val;
 }
 
-uint8_t Semaphore_getMax(struct Semaphore_t* o)
+uint8_t Semaphore_getMax(const struct Semaphore_t* o)
 {
-    uint8_t val;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    {
-        val = o->Max;
-    }
-    CRITICAL_EXIT();
-    return val;
+    /* This value is constant after initialization. No need for locks. */
+    return o->Max;
 }

@@ -119,7 +119,7 @@ void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
  Get mutex count value:
  Mutex_getCount(&mtx)
  */
-uint8_t Mutex_getCount(struct Mutex_t* o)
+uint8_t Mutex_getCount(const struct Mutex_t* o)
 {
     uint8_t val;
     CRITICAL_VAL();
@@ -138,7 +138,7 @@ uint8_t Mutex_getCount(struct Mutex_t* o)
  Get mutex owner:
  Mutex_getOwner(&mtx)
  */
-struct task_t* Mutex_getOwner(struct Mutex_t* o)
+struct task_t* Mutex_getOwner(const struct Mutex_t* o)
 {
     struct task_t* val;
     CRITICAL_VAL();

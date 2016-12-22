@@ -157,8 +157,8 @@ uint8_t Semaphore_take(struct Semaphore_t* o);
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
 void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait);
 
-uint8_t Semaphore_getCount(struct Semaphore_t* o);
-uint8_t Semaphore_getMax(struct Semaphore_t* o);
+uint8_t Semaphore_getCount(const struct Semaphore_t* o);
+uint8_t Semaphore_getMax(const struct Semaphore_t* o);
 
 
 
@@ -175,8 +175,8 @@ uint8_t Mutex_lock(struct Mutex_t* o);
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
-uint8_t Mutex_getCount(struct Mutex_t* o);
-struct task_t* Mutex_getOwner(struct Mutex_t* o);
+uint8_t Mutex_getCount(const struct Mutex_t* o);
+struct task_t* Mutex_getOwner(const struct Mutex_t* o);
 
 
 
