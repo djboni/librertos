@@ -107,15 +107,12 @@ static void _OS_scheduleTask(struct task_t*const task)
     OSstate.CurrentTCB = task;
     INTERRUPTS_ENABLE();
 
-    task->State = TASKSTATE_RUNNING;
     OS_schedulerUnlock();
 
     /* Run task. */
     taskFunction(taskParameter);
 
     OS_schedulerLock();
-    if(task->State == TASKSTATE_RUNNING)
-        task->State = TASKSTATE_READY;
 
     /* Restore last TCB. */
     INTERRUPTS_DISABLE();

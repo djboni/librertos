@@ -64,7 +64,6 @@ struct taskListNode_t {
 
 enum taskState_t {
     TASKSTATE_READY = 0,
-    TASKSTATE_RUNNING,
     TASKSTATE_BLOCKED,
     TASKSTATE_SUSPENDED,
     TASKSTATE_NOTINITIALIZED
