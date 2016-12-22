@@ -33,6 +33,7 @@ struct libreRtosState_t OSstate;
 
 static void _OS_tickInvertBlockedTasksLists(void);
 static void _OS_tickUnblockTimedoutTasks(void);
+static void _OS_tickUnblockPendingReadyTasks(void);
 static void _OS_scheduleTask(struct task_t*const task);
 
 /** Initialize OS. Must be called before any other OS function. */
@@ -200,7 +201,6 @@ void OS_schedulerLock(void)
 static void _OS_tickUnblockTimedoutTasks(void)
 {
     /* Unblock tasks that have timed-out. */
-    CRITICAL_VAL();
 
     if(OSstate.Tick == 0)
     {
@@ -215,7 +215,7 @@ static void _OS_tickUnblockTimedoutTasks(void)
         /* Remove from blocked list. */
         OS_listRemove(&task->NodeDelay);
 
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
 
         task->State = TASKSTATE_READY;
 
@@ -232,16 +232,14 @@ static void _OS_tickUnblockTimedoutTasks(void)
             OSstate.HigherReadyTask = 1;
         }
 
-        CRITICAL_EXIT();
+        INTERRUPTS_ENABLE();
     }
 }
 
 /* Unblock pending ready tasks. Called by scheduler unlock function. */
 static void _OS_tickUnblockPendingReadyTasks(void)
 {
-    CRITICAL_VAL();
-
-    CRITICAL_ENTER();
+    INTERRUPTS_DISABLE();
     while(OSstate.PendingReadyTaskList.Length != 0)
     {
         struct task_t* task = OSstate.PendingReadyTaskList.Head->Task;
@@ -256,7 +254,7 @@ static void _OS_tickUnblockPendingReadyTasks(void)
             OSstate.HigherReadyTask = 1;
         }
 
-        CRITICAL_EXIT();
+        INTERRUPTS_ENABLE();
 
         /* Remove from blocked list. */
         if(task->NodeDelay.List != NULL)
@@ -266,9 +264,9 @@ static void _OS_tickUnblockPendingReadyTasks(void)
 
         task->State = TASKSTATE_READY;
 
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
     }
-    CRITICAL_EXIT();
+    INTERRUPTS_ENABLE();
 }
 
 /** Unlock scheduler (recursive lock). Current task may be preempted if
