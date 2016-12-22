@@ -33,7 +33,6 @@ struct libreRtosState_t OSstate;
 
 static void _OS_tickInvertBlockedTasksLists(void);
 static void _OS_tickUnblockTimedoutTasks(void);
-static void _OS_schedulerUnlock_withoutPreempt(void);
 
 /** Initialize OS. Must be called before any other OS function. */
 void OS_init(void)
@@ -68,7 +67,7 @@ void OS_init(void)
 /** Start OS. Must be called once before the scheduler. */
 void OS_start(void)
 {
-    _OS_schedulerUnlock_withoutPreempt();
+    OS_schedulerUnlock();
 }
 
 /* Invert blocked tasks lists. Called by unblock timedout tasks function. */
@@ -151,7 +150,7 @@ void OS_scheduler(void)
                 INTERRUPTS_ENABLE();
 
                 task->State = TASKSTATE_RUNNING;
-                _OS_schedulerUnlock_withoutPreempt();
+                OS_schedulerUnlock();
 
                 /* Run task. */
                 taskFunction(taskParameter);
@@ -168,7 +167,7 @@ void OS_scheduler(void)
             else
             {
                 /* No higher priority task ready. */
-                _OS_schedulerUnlock_withoutPreempt();
+                OS_schedulerUnlock();
                 break;
             }
 
@@ -246,8 +245,9 @@ static void _OS_tickUnblockPendingReadyTasks(void)
     CRITICAL_EXIT();
 }
 
-/* Unlock scheduler (recursive lock). */
-static void _OS_schedulerUnlock_withoutPreempt(void)
+/** Unlock scheduler (recursive lock). Current task may be preempted if
+ scheduler is unlocked. */
+void OS_schedulerUnlock(void)
 {
     CRITICAL_VAL();
 
@@ -270,13 +270,6 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
     }
 
     --OSstate.SchedulerLock;
-}
-
-/** Unlock scheduler (recursive lock). Current task may be preempted if
- scheduler is unlocked. */
-void OS_schedulerUnlock(void)
-{
-    _OS_schedulerUnlock_withoutPreempt();
 
     #if (LIBRERTOS_PREEMPTION != 0)
     {
