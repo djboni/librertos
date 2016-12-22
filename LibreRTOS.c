@@ -265,9 +265,9 @@ static void _OS_schedulerUnlock_withoutPreempt(void)
         }
 
         CRITICAL_EXIT();
-    }
 
-    _OS_tickUnblockPendingReadyTasks();
+        _OS_tickUnblockPendingReadyTasks();
+    }
 
     --OSstate.SchedulerLock;
 }
