@@ -1,4 +1,10 @@
 /*
+ LibreRTOS - Portable single-stack Real Time Operating System.
+
+ Scheduler.
+ Linked list.
+ Pend on events.
+
  Copyright 2016 Djones A. Boni
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -350,7 +356,7 @@ void OS_taskDelay(tick_t ticksToDelay)
     OS_schedulerUnlock();
 }
 
-/* Resume task. */
+/** Resume task. */
 void OS_taskResume(struct task_t* task)
 {
     struct taskListNode_t* node = &task->NodeEvent;
@@ -374,7 +380,7 @@ void OS_taskResume(struct task_t* task)
     OS_schedulerUnlock();
 }
 
-/* Get current OS tick. */
+/** Get current OS tick. */
 tick_t OS_getTickCount(void)
 {
     tick_t tickNow;
@@ -386,7 +392,7 @@ tick_t OS_getTickCount(void)
 
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
-/* Return 1 if OSstate guards are fine. 0 otherwise. */
+/** Return 1 if OSstate guards are fine. 0 otherwise. */
 uint8_t OS_stateCheck(void)
 {
     return (OSstate.Guard0 == LIBRERTOS_GUARD_U32 &&
@@ -400,6 +406,7 @@ uint8_t OS_stateCheck(void)
 
 #define LIST_HEAD(x) ((struct taskListNode_t*)x)
 
+/* Initialize list head. */
 void OS_listHeadInit(struct taskHeadList_t* list)
 {
     /* Use the list head as a node. */
@@ -408,6 +415,7 @@ void OS_listHeadInit(struct taskHeadList_t* list)
     list->Length = 0;
 }
 
+/* Initialize list node. */
 void OS_listNodeInit(
         struct taskListNode_t* node,
         struct task_t* task)
@@ -419,6 +427,7 @@ void OS_listNodeInit(
     node->Task = task;
 }
 
+/* Insert node into list. Position according to value. */
 void OS_listInsert(
         struct taskHeadList_t* list,
         struct taskListNode_t* node,
@@ -452,6 +461,7 @@ void OS_listInsert(
     ++list->Length;
 }
 
+/* Insert node into list after pos. */
 void OS_listInsertAfter(
         struct taskHeadList_t* list,
         struct taskListNode_t* pos,
@@ -468,6 +478,7 @@ void OS_listInsertAfter(
     ++list->Length;
 }
 
+/* Remove node from list. */
 void OS_listRemove(struct taskListNode_t* node)
 {
     struct taskListNode_t* next = node->Next;

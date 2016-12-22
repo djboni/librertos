@@ -1,4 +1,8 @@
 /*
+ LibreRTOS - Portable single-stack Real Time Operating System.
+
+ Semaphore. Binary and counter semaphores.
+
  Copyright 2016 Djones A. Boni
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +21,17 @@
 #include "LibreRTOS.h"
 #include "OSevent.h"
 
+/** Initialize semaphore.
+
+ @param count Initial count value.
+ @param max Max count value.
+
+ Taken binary semaphore:
+ Semaphore_init(&sem, 0, 1)
+
+ Counting semaphore with maximum count 3:
+ Semaphore_init(&sem, 3, 3)
+ */
 void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max)
 {
     o->Count = count;
@@ -24,6 +39,16 @@ void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max)
     OS_eventRInit(&o->Event);
 }
 
+/** Take semaphore.
+
+ Decrement the semaphore count. Succeed only if the semaphore has been given
+ (count is greater than zero).
+
+ @return 1 if success, 0 otherwise.
+
+ Take a semaphore:
+ Semaphore_take(&sem)
+ */
 uint8_t Semaphore_take(struct Semaphore_t* o)
 {
     uint8_t val;
@@ -42,6 +67,16 @@ uint8_t Semaphore_take(struct Semaphore_t* o)
     return val;
 }
 
+/** Give semaphore.
+
+ Increment the semaphore count. Succeed only if the semaphore has not reached
+ its maximum count value.
+
+ @return 1 if success, 0 otherwise.
+
+ Give a semaphore:
+ Semaphore_give(&sem)
+ */
 uint8_t Semaphore_give(struct Semaphore_t* o)
 {
     uint8_t val;
@@ -72,6 +107,24 @@ uint8_t Semaphore_give(struct Semaphore_t* o)
     return val;
 }
 
+/** Take or pend on semaphore.
+
+ Try take semaphore; pend on it not successful.
+
+ Can be called only by tasks.
+
+ The task will not run until the semaphore is given or the timeout expires.
+
+ @param ticksToWait Number of ticks the task will wait for the semaphore
+ (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
+ @return 1 if success, 0 otherwise.
+
+ Take or pend on semaphore without timeout:
+ Semaphore_takePend(&sem, MAX_DELAY)
+
+ Take or pend on semaphore with timeout of 10 ticks:
+ Semaphore_takePend(&sem, 10)
+ */
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
     uint8_t val = Semaphore_take(o);
@@ -80,6 +133,21 @@ uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
     return val;
 }
 
+/** Pend on semaphore.
+
+ Can be called only by tasks.
+
+ The task will not run until the semaphore is given or the timeout expires.
+
+ @param ticksToWait Number of ticks the task will wait for the semaphore
+ (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
+
+ Pend on semaphore without timeout:
+ Semaphore_pend(&sem, MAX_DELAY)
+
+ Pend on semaphore with timeout of 10 ticks:
+ Semaphore_pend(&sem, 10)
+ */
 void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
 {
     if(ticksToWait != 0U)
@@ -103,6 +171,13 @@ void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
     }
 }
 
+/** Get semaphore count value.
+
+ @return Semaphore count value.
+
+ Get semaphore count value:
+ Semaphore_getCount(&sem)
+ */
 uint8_t Semaphore_getCount(const struct Semaphore_t* o)
 {
     uint8_t val;
@@ -115,6 +190,13 @@ uint8_t Semaphore_getCount(const struct Semaphore_t* o)
     return val;
 }
 
+/** Get semaphore maximum count value.
+
+ @return Semaphore maximum count value.
+
+ Get semaphore maximum count value:
+ Semaphore_getMax(&sem)
+ */
 uint8_t Semaphore_getMax(const struct Semaphore_t* o)
 {
     /* This value is constant after initialization. No need for locks. */

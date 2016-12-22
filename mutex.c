@@ -1,4 +1,8 @@
 /*
+ LibreRTOS - Portable single-stack Real Time Operating System.
+
+ Mutex. Recursive mutex. No priority inheritance mechanism.
+
  Copyright 2016 Djones A. Boni
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +23,11 @@
 
 #define MUTEX_NOT_OWNED ((struct task_t*)NULL)
 
+/** Initialize mutex.
+
+ Initialize mutex:
+ Mutex_init(&mtx)
+ */
 void Mutex_init(struct Mutex_t* o)
 {
     o->Count = 0;
@@ -26,6 +35,19 @@ void Mutex_init(struct Mutex_t* o)
     OS_eventRInit(&o->Event);
 }
 
+/** Lock mutex.
+
+ Can be called only by tasks.
+
+ The task that owns the mutex can lock it multiple times; to completely
+ unlock the mutex the task must unlock it the same number of times it was
+ locked.
+
+ @return 1 if success, 0 otherwise.
+
+ Lock a mutex:
+ Mutex_lock(&mtx)
+ */
 uint8_t Mutex_lock(struct Mutex_t* o)
 {
     uint8_t val;
@@ -46,6 +68,17 @@ uint8_t Mutex_lock(struct Mutex_t* o)
     return val;
 }
 
+/** Unlock mutex.
+
+ The task that owns the mutex can lock it multiple times; to completely
+ unlock the mutex the task must unlock it the same number of times it was
+ locked.
+
+ @return 1 if success, 0 otherwise.
+
+ Unlock a mutex:
+ Mutex_unlock(&mtx)
+ */
 uint8_t Mutex_unlock(struct Mutex_t* o)
 {
     uint8_t val;
@@ -81,6 +114,24 @@ uint8_t Mutex_unlock(struct Mutex_t* o)
     return val;
 }
 
+/** Lock or pend on mutex.
+
+ Try lock mutex; pend on it not successful.
+
+ Can be called only by tasks.
+
+ The task will not run until the mutex is unlocked or the timeout expires.
+
+ @param ticksToWait Number of ticks the task will wait for the mutex
+ (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
+ @return 1 if success, 0 otherwise.
+
+ Lock or pend on mutex without timeout:
+ Mutex_lockPend(&mtx, MAX_DELAY)
+
+ Lock or pend on mutex with timeout of 10 ticks:
+ Mutex_lockPend(&mtx, 10)
+ */
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
 {
     uint8_t val = Mutex_lock(o);
@@ -89,6 +140,21 @@ uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
     return val;
 }
 
+/** Pend on mutex.
+
+ Can be called only by tasks.
+
+ The task will not run until the mutex is unlocked or the timeout expires.
+
+ @param ticksToWait Number of ticks the task will wait for the mutex
+ (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
+
+ Lock or pend on mutex without timeout:
+ Mutex_pend(&mtx, MAX_DELAY)
+
+ Lock or pend on mutex with timeout of 10 ticks:
+ Mutex_pend(&mtx, 10)
+ */
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
 {
     if(ticksToWait != 0U)
