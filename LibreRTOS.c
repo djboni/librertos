@@ -33,6 +33,7 @@ struct libreRtosState_t OSstate;
 
 static void _OS_tickInvertBlockedTasksLists(void);
 static void _OS_tickUnblockTimedoutTasks(void);
+static void _OS_scheduleTask(struct task_t*const task);
 
 /** Initialize OS. Must be called before any other OS function. */
 void OS_init(void)
@@ -41,6 +42,7 @@ void OS_init(void)
 
     OSstate.SchedulerLock = 1;
     OSstate.CurrentTCB = NULL;
+    OSstate.HigherReadyTask = 0;
 
     OS_listHeadInit(&OSstate.PendingReadyTaskList);
 
@@ -87,6 +89,39 @@ void OS_tick(void)
     OS_schedulerUnlock();
 }
 
+/** Schedule a task. Called by scheduler. */
+static void _OS_scheduleTask(struct task_t*const task)
+{
+    struct task_t* currentTask;
+
+    /* Get task function and parameter. */
+    taskFunction_t taskFunction = task->Function;
+    taskParameter_t taskParameter = task->Parameter;
+
+    /* Save and set current TCB. */
+    INTERRUPTS_DISABLE();
+    /* Inside critical section. We can read CurrentTCB directly. */
+    currentTask = OSstate.CurrentTCB;
+
+    OSstate.CurrentTCB = task;
+    INTERRUPTS_ENABLE();
+
+    task->State = TASKSTATE_RUNNING;
+    OS_schedulerUnlock();
+
+    /* Run task. */
+    taskFunction(taskParameter);
+
+    OS_schedulerLock();
+    if(task->State == TASKSTATE_RUNNING)
+        task->State = TASKSTATE_READY;
+
+    /* Restore last TCB. */
+    INTERRUPTS_DISABLE();
+    OSstate.CurrentTCB = currentTask;
+    INTERRUPTS_ENABLE();
+}
+
 /** Schedule a task. May be called in the main loop and after interrupt
  handling. */
 void OS_scheduler(void)
@@ -110,12 +145,12 @@ void OS_scheduler(void)
             /* Schedule higher priority task. */
 
             /* Save current TCB. */
-            struct task_t* currentTask = OS_getCurrentTask();
             struct task_t* task = NULL;
 
             {
-                priority_t currentTaskPriority = (currentTask == NULL ?
-                        LIBRERTOS_NO_TASK_RUNNING : currentTask->Priority);
+                /* Scheduler locked. We can read CurrentTCB directly. */
+                priority_t currentTaskPriority = (OSstate.CurrentTCB == NULL ?
+                        LIBRERTOS_NO_TASK_RUNNING : OSstate.CurrentTCB->Priority);
                 priority_t priority;
 
                 for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
@@ -139,30 +174,7 @@ void OS_scheduler(void)
             if(task != NULL)
             {
                 /* Higher priority task ready. */
-
-                /* Get task function and parameter. */
-                taskFunction_t taskFunction = task->Function;
-                taskParameter_t taskParameter = task->Parameter;
-
-                /* Set current TCB. */
-                INTERRUPTS_DISABLE();
-                OSstate.CurrentTCB = task;
-                INTERRUPTS_ENABLE();
-
-                task->State = TASKSTATE_RUNNING;
-                OS_schedulerUnlock();
-
-                /* Run task. */
-                taskFunction(taskParameter);
-
-                OS_schedulerLock();
-                if(task->State == TASKSTATE_RUNNING)
-                    task->State = TASKSTATE_READY;
-
-                /* Restore last TCB. */
-                INTERRUPTS_DISABLE();
-                OSstate.CurrentTCB = currentTask;
-                INTERRUPTS_ENABLE();
+                _OS_scheduleTask(task);
             }
             else
             {
@@ -213,6 +225,13 @@ static void _OS_tickUnblockTimedoutTasks(void)
             OS_listRemove(&task->NodeEvent);
         }
 
+        /* Inside critical section. We can read CurrentTCB directly. */
+        if(     OSstate.CurrentTCB == NULL ||
+                task->Priority > OSstate.CurrentTCB->Priority)
+        {
+            OSstate.HigherReadyTask = 1;
+        }
+
         CRITICAL_EXIT();
     }
 }
@@ -229,6 +248,13 @@ static void _OS_tickUnblockPendingReadyTasks(void)
 
         /* Remove from pending ready list. */
         OS_listRemove(&task->NodeEvent);
+
+        /* Inside critical section. We can read CurrentTCB directly. */
+        if(     OSstate.CurrentTCB == NULL ||
+                task->Priority > OSstate.CurrentTCB->Priority)
+        {
+            OSstate.HigherReadyTask = 1;
+        }
 
         CRITICAL_EXIT();
 
@@ -249,33 +275,44 @@ static void _OS_tickUnblockPendingReadyTasks(void)
  scheduler is unlocked. */
 void OS_schedulerUnlock(void)
 {
-    CRITICAL_VAL();
-
     if(OSstate.SchedulerLock == 1)
     {
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
 
         while(OSstate.DelayedTicks != 0)
         {
             --OSstate.DelayedTicks;
             ++OSstate.Tick;
-            CRITICAL_EXIT();
+
+            INTERRUPTS_ENABLE();
             _OS_tickUnblockTimedoutTasks();
-            CRITICAL_ENTER();
+            INTERRUPTS_DISABLE();
         }
 
-        CRITICAL_EXIT();
+        INTERRUPTS_ENABLE();
 
         _OS_tickUnblockPendingReadyTasks();
+
+        --OSstate.SchedulerLock;
+
+        #if (LIBRERTOS_PREEMPTION != 0)
+        {
+            INTERRUPTS_DISABLE();
+
+            if(OSstate.HigherReadyTask != 0)
+            {
+                OSstate.HigherReadyTask = 0;
+                OS_scheduler();
+            }
+
+            INTERRUPTS_ENABLE();
+        }
+        #endif
     }
-
-    --OSstate.SchedulerLock;
-
-    #if (LIBRERTOS_PREEMPTION != 0)
+    else
     {
-        OS_scheduler();
+        --OSstate.SchedulerLock;
     }
-    #endif
 }
 
 /** Create task. */
