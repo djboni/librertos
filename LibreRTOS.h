@@ -245,6 +245,7 @@ void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait);
 
 uint8_t Fifo_used(const struct Fifo_t *o);
 uint8_t Fifo_free(const struct Fifo_t *o);
+uint8_t Fifo_length(const struct Fifo_t *o);
 
 #define Fifo_empty(o) (Fifo_used(o) == 0)
 #define Fifo_full(o)  (Fifo_free(o) == 0)

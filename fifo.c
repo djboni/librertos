@@ -262,3 +262,18 @@ uint8_t Fifo_free(const struct Fifo_t *o)
     CRITICAL_EXIT();
     return val;
 }
+
+/** Get character FIFO length.
+
+ The character FIFO length is the total number of characters it can hold.
+
+ @return Character FIFO length.
+
+ Get length of a character FIFO:
+ Fifo_length(&fifo)
+ */
+uint8_t Fifo_length(const struct Fifo_t *o)
+{
+    /* This value is constant after initialization. No need for locks. */
+    return o->Length;
+}
