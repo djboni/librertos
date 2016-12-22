@@ -36,11 +36,7 @@
  struct Queue_t que;
  Queue_init(&que, queBuffer, QUELEN, QUEISZ);
  */
-void Queue_init(
-        struct Queue_t *o,
-        void *buff,
-        uint8_t length,
-        uint8_t item_size)
+void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size)
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
@@ -80,7 +76,7 @@ uint8_t Queue_read(struct Queue_t* o, void* buff)
         if(val != 0U)
         {
             uint8_t *pos;
-            uint8_t lock;
+            len_t lock;
 
             pos = o->Head;
             if((o->Head += o->ItemSize) > o->BufEnd)
@@ -91,7 +87,7 @@ uint8_t Queue_read(struct Queue_t* o, void* buff)
 
             CRITICAL_EXIT();
             {
-                memcpy(buff, pos, (uint8_t)o->ItemSize);
+                memcpy(buff, pos, (size_t)o->ItemSize);
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -101,7 +97,7 @@ uint8_t Queue_read(struct Queue_t* o, void* buff)
 
             if(lock == 0U)
             {
-                o->Free = (uint8_t)(o->Free + o->RLock);
+                o->Free = (len_t)(o->Free + o->RLock);
                 o->RLock = 0U;
             }
 
@@ -147,7 +143,7 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
         if(val != 0U)
         {
             uint8_t *pos;
-            uint8_t lock;
+            len_t lock;
 
             pos = o->Tail;
             if((o->Tail += o->ItemSize) > o->BufEnd)
@@ -160,7 +156,7 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
 
             CRITICAL_EXIT();
             {
-                memcpy(pos, buff, (uint8_t)o->ItemSize);
+                memcpy(pos, buff, (size_t)o->ItemSize);
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -170,7 +166,7 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
 
             if(lock == 0U)
             {
-                o->Used = (uint8_t)(o->Used + o->WLock);
+                o->Used = (len_t)(o->Used + o->WLock);
                 o->WLock = 0U;
             }
 
@@ -340,9 +336,9 @@ void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
  Get number of used items on a queue:
  Queue_used(&que)
  */
-uint8_t Queue_used(const struct Queue_t *o)
+len_t Queue_used(const struct Queue_t *o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
@@ -361,9 +357,9 @@ uint8_t Queue_used(const struct Queue_t *o)
  Get number of free items on a queue:
  Queue_free(&que)
  */
-uint8_t Queue_free(const struct Queue_t *o)
+len_t Queue_free(const struct Queue_t *o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
@@ -382,13 +378,13 @@ uint8_t Queue_free(const struct Queue_t *o)
  Get length of a queue:
  Queue_length(&que)
  */
-uint8_t Queue_length(const struct Queue_t *o)
+len_t Queue_length(const struct Queue_t *o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
-        val = (uint8_t)(o->Free + o->Used + o->WLock + o->RLock);
+        val = (len_t)(o->Free + o->Used + o->WLock + o->RLock);
     }
     CRITICAL_EXIT();
     return val;
@@ -404,7 +400,7 @@ uint8_t Queue_length(const struct Queue_t *o)
  Get queue item size:
  Queue_itemSize(&que)
  */
-uint8_t Queue_itemSize(const struct Queue_t *o)
+len_t Queue_itemSize(const struct Queue_t *o)
 {
     /* This value is constant after initialization. No need for locks. */
     return o->ItemSize;

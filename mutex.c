@@ -59,7 +59,7 @@ uint8_t Mutex_lock(struct Mutex_t* o)
         val = o->Count == 0 || o->MutexOwner == currentTask;
         if(val != 0)
         {
-            o->Count = (uint8_t)(o->Count + 1);
+            ++o->Count;
             o->MutexOwner = currentTask;
         }
     }
@@ -90,7 +90,7 @@ uint8_t Mutex_unlock(struct Mutex_t* o)
 
         if(val != 0)
         {
-            o->Count = (uint8_t)(o->Count - 1);
+            --o->Count;
 
             OS_schedulerLock();
 
@@ -185,9 +185,9 @@ void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
  Get mutex count value:
  Mutex_getCount(&mtx)
  */
-uint8_t Mutex_getCount(const struct Mutex_t* o)
+len_t Mutex_getCount(const struct Mutex_t* o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {

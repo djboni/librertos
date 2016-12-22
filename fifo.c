@@ -36,10 +36,7 @@
  struct Fifo_t fifo;
  Fifo_init(&fifo, fifoBuffer, FIFOLEN);
  */
-void Fifo_init(
-        struct Fifo_t *o,
-        void *buff,
-        uint8_t length)
+void Fifo_init(struct Fifo_t *o, void *buff, len_t length)
 {
     uint8_t *buff8 = (uint8_t*)buff;
 
@@ -70,10 +67,10 @@ void Fifo_init(
  uint8_t buff[NUM];
  Fifo_read(&fifo, buff, NUM);
  */
-uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
+len_t Fifo_read(struct Fifo_t* o, void* buff, len_t length)
 {
     /* Pop front */
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -82,8 +79,8 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
         if(val != 0U)
         {
             uint8_t *pos;
-            uint8_t numFromBegin;
-            uint8_t lock;
+            len_t numFromBegin;
+            len_t lock;
 
             length = val;
 
@@ -91,20 +88,20 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
             numFromBegin = 0;
             if((o->Head += length) > o->BufEnd)
             {
-                numFromBegin = (uint8_t)((pos + length) - (o->BufEnd + 1));
-                length = (uint8_t)(length - numFromBegin);
+                numFromBegin = (len_t)((pos + length) - (o->BufEnd + 1));
+                length = (len_t)(length - numFromBegin);
                 o->Head -= o->Length;
             }
 
             lock = o->RLock;
-            o->RLock = (uint8_t)(o->RLock + val);
-            o->Used = (uint8_t)(o->Used - val);
+            o->RLock = (len_t)(o->RLock + val);
+            o->Used = (len_t)(o->Used - val);
 
             CRITICAL_EXIT();
             {
-                memcpy(buff, pos, length);
+                memcpy(buff, pos, (size_t)length);
                 if(numFromBegin != 0)
-                    memcpy((uint8_t*)buff + length, o->Buff, numFromBegin);
+                    memcpy((uint8_t*)buff + length, o->Buff, (size_t)numFromBegin);
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -114,7 +111,7 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
 
             if(lock == 0U)
             {
-                o->Free = (uint8_t)(o->Free + o->RLock);
+                o->Free = (len_t)(o->Free + o->RLock);
                 o->RLock = 0U;
             }
 
@@ -126,7 +123,7 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
                 struct taskListNode_t* node = o->Event.ListWrite.Tail;
 
                 /* Length waiting for. */
-                if((uint8_t)node->Value <= o->Free)
+                if((len_t)node->Value <= o->Free)
                     OS_eventUnblockTasks(&(o->Event.ListWrite));
             }
         }
@@ -155,10 +152,10 @@ uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length)
  init_buff(buff);
  Fifo_write(&fifo, buff, NUM);
  */
-uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
+len_t Fifo_write(struct Fifo_t* o, const void* buff, len_t length)
 {
     /* Push back */
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -167,8 +164,8 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
         if(val != 0U)
         {
             uint8_t *pos;
-            uint8_t numFromBegin;
-            uint8_t lock;
+            len_t numFromBegin;
+            len_t lock;
 
             length = val;
 
@@ -176,22 +173,22 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
             numFromBegin = 0;
             if((o->Tail += length) > o->BufEnd)
             {
-                numFromBegin = (uint8_t)((pos + length) - (o->BufEnd + 1));
-                length = (uint8_t)(length - numFromBegin);
+                numFromBegin = (len_t)((pos + length) - (o->BufEnd + 1));
+                length = (len_t)(length - numFromBegin);
                 o->Tail -= o->Length;
             }
 
             lock = o->WLock;
-            o->WLock = (uint8_t)(o->WLock + val);
-            o->Free = (uint8_t)(o->Free - val);
+            o->WLock = (len_t)(o->WLock + val);
+            o->Free = (len_t)(o->Free - val);
 
             OS_schedulerLock();
 
             CRITICAL_EXIT();
             {
-                memcpy(pos, buff, length);
+                memcpy(pos, buff, (size_t)length);
                 if(numFromBegin != 0)
-                    memcpy(o->Buff, (uint8_t*)buff + length, numFromBegin);
+                    memcpy(o->Buff, (uint8_t*)buff + length, (size_t)numFromBegin);
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -201,7 +198,7 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
 
             if(lock == 0U)
             {
-                o->Used = (uint8_t)(o->Used + o->WLock);
+                o->Used = (len_t)(o->Used + o->WLock);
                 o->WLock = 0U;
             }
 
@@ -211,7 +208,7 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
                 struct taskListNode_t* node = o->Event.ListRead.Tail;
 
                 /* Length waiting for. */
-                if((uint8_t)node->Value <= o->Used)
+                if((len_t)node->Value <= o->Used)
                     OS_eventUnblockTasks(&(o->Event.ListRead));
             }
         }
@@ -248,9 +245,9 @@ uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length)
  uint8_t buff[LEN];
  Fifo_readPend(&fifo, buff, LEN, 10);
  */
-uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticksToWait)
+len_t Fifo_readPend(struct Fifo_t* o, void* buff, len_t length, tick_t ticksToWait)
 {
-    uint8_t val = Fifo_read(o, buff, length);
+    len_t val = Fifo_read(o, buff, length);
     if(val == 0)
         Fifo_pendRead(o, length, ticksToWait);
     return val;
@@ -282,9 +279,9 @@ uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticks
  init_buff(buff);
  Fifo_writePend(&fifo, buff, LEN, 10);
  */
-uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_t ticksToWait)
+len_t Fifo_writePend(struct Fifo_t* o, const void* buff, len_t length, tick_t ticksToWait)
 {
-    uint8_t val = Fifo_write(o, buff, length);
+    len_t val = Fifo_write(o, buff, length);
     if(val == 0)
         Fifo_pendWrite(o, length, ticksToWait);
     return val;
@@ -307,7 +304,7 @@ uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_
  Pend on character FIFO waiting to read with timeout of 10 ticks:
  Fifo_pendRead(&fifo, LEN, 10);
  */
-void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
+void Fifo_pendRead(struct Fifo_t* o, len_t length, tick_t ticksToWait)
 {
     if(ticksToWait != 0U)
     {
@@ -318,7 +315,7 @@ void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
         CRITICAL_ENTER();
         if(o->Used < length)
         {
-            task->NodeEvent.Value = length; /* Length waiting for. */
+            task->NodeEvent.Value = (tick_t)length; /* Length waiting for. */
             OS_eventPrePendTask(&o->Event.ListRead, task);
             CRITICAL_EXIT();
             OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
@@ -348,7 +345,7 @@ void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
  Pend on character FIFO waiting to write:
  Fifo_pendWrite(&fifo,, LEN, 10);
  */
-void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
+void Fifo_pendWrite(struct Fifo_t* o, len_t length, tick_t ticksToWait)
 {
     if(ticksToWait != 0U)
     {
@@ -359,7 +356,7 @@ void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
         CRITICAL_ENTER();
         if(o->Free < length)
         {
-            task->NodeEvent.Value = length; /* Length waiting for. */
+            task->NodeEvent.Value = (tick_t)length; /* Length waiting for. */
             OS_eventPrePendTask(&o->Event.ListWrite, task);
             CRITICAL_EXIT();
             OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
@@ -381,9 +378,9 @@ void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
  Get number of used items on a character FIFO:
  Fifo_used(&fifo)
  */
-uint8_t Fifo_used(const struct Fifo_t *o)
+len_t Fifo_used(const struct Fifo_t *o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
@@ -402,9 +399,9 @@ uint8_t Fifo_used(const struct Fifo_t *o)
  Get number of free items on a character FIFO:
  Fifo_free(&fifo)
  */
-uint8_t Fifo_free(const struct Fifo_t *o)
+len_t Fifo_free(const struct Fifo_t *o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
@@ -423,7 +420,7 @@ uint8_t Fifo_free(const struct Fifo_t *o)
  Get length of a character FIFO:
  Fifo_length(&fifo)
  */
-uint8_t Fifo_length(const struct Fifo_t *o)
+len_t Fifo_length(const struct Fifo_t *o)
 {
     /* This value is constant after initialization. No need for locks. */
     return o->Length;

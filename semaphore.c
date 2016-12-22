@@ -32,7 +32,7 @@
  Counting semaphore with maximum count 3:
  Semaphore_init(&sem, 3, 3)
  */
-void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max)
+void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max)
 {
     o->Count = count;
     o->Max = max;
@@ -59,7 +59,7 @@ uint8_t Semaphore_take(struct Semaphore_t* o)
         val = (o->Count > 0);
         if(val != 0)
         {
-            o->Count = (uint8_t)(o->Count - 1);
+            --o->Count;
         }
     }
     CRITICAL_EXIT();
@@ -88,7 +88,7 @@ uint8_t Semaphore_give(struct Semaphore_t* o)
         val = (o->Count < o->Max);
         if(val != 0)
         {
-            o->Count = (uint8_t)(o->Count + 1);
+            ++o->Count;
 
             OS_schedulerLock();
 
@@ -178,9 +178,9 @@ void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
  Get semaphore count value:
  Semaphore_getCount(&sem)
  */
-uint8_t Semaphore_getCount(const struct Semaphore_t* o)
+len_t Semaphore_getCount(const struct Semaphore_t* o)
 {
-    uint8_t val;
+    len_t val;
     CRITICAL_VAL();
     CRITICAL_ENTER();
     {
@@ -197,7 +197,7 @@ uint8_t Semaphore_getCount(const struct Semaphore_t* o)
  Get semaphore maximum count value:
  Semaphore_getMax(&sem)
  */
-uint8_t Semaphore_getMax(const struct Semaphore_t* o)
+len_t Semaphore_getMax(const struct Semaphore_t* o)
 {
     /* This value is constant after initialization. No need for locks. */
     return o->Max;

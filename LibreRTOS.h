@@ -147,27 +147,27 @@ struct eventRw_t {
 
 
 struct Semaphore_t {
-    volatile uint8_t Count;
-    uint8_t          Max;
-    struct eventR_t  Event;
+    volatile len_t  Count;
+    len_t           Max;
+    struct eventR_t Event;
 };
 
-void Semaphore_init(struct Semaphore_t* o, uint8_t count, uint8_t max);
+void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max);
 
 uint8_t Semaphore_give(struct Semaphore_t* o);
 uint8_t Semaphore_take(struct Semaphore_t* o);
 uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
 void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait);
 
-uint8_t Semaphore_getCount(const struct Semaphore_t* o);
-uint8_t Semaphore_getMax(const struct Semaphore_t* o);
+len_t Semaphore_getCount(const struct Semaphore_t* o);
+len_t Semaphore_getMax(const struct Semaphore_t* o);
 
 
 
 struct Mutex_t {
-    volatile uint8_t Count;
-    struct task_t*   MutexOwner;
-    struct eventR_t  Event;
+    volatile len_t  Count;
+    struct task_t*  MutexOwner;
+    struct eventR_t Event;
 };
 
 void Mutex_init(struct Mutex_t* o);
@@ -177,29 +177,25 @@ uint8_t Mutex_lock(struct Mutex_t* o);
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
-uint8_t Mutex_getCount(const struct Mutex_t* o);
+len_t Mutex_getCount(const struct Mutex_t* o);
 struct task_t* Mutex_getOwner(const struct Mutex_t* o);
 
 
 
 struct Queue_t {
-    uint8_t              ItemSize;
-    volatile uint8_t     Free;
-    volatile uint8_t     Used;
-    volatile uint8_t     WLock;
-    volatile uint8_t     RLock;
-    uint8_t *volatile    Head;
-    uint8_t *volatile    Tail;
-    uint8_t*             Buff;
-    uint8_t*             BufEnd;
-    struct eventRw_t     Event;
+    len_t             ItemSize;
+    volatile len_t    Free;
+    volatile len_t    Used;
+    volatile len_t    WLock;
+    volatile len_t    RLock;
+    uint8_t *volatile Head;
+    uint8_t *volatile Tail;
+    uint8_t*          Buff;
+    uint8_t*          BufEnd;
+    struct eventRw_t  Event;
 };
 
-void Queue_init(
-        struct Queue_t *o,
-        void *buff,
-        uint8_t length,
-        uint8_t item_size);
+void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size);
 
 uint8_t Queue_read(struct Queue_t* o, void* buff);
 uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
@@ -209,10 +205,10 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff);
 uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
 void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait);
 
-uint8_t Queue_used(const struct Queue_t *o);
-uint8_t Queue_free(const struct Queue_t *o);
-uint8_t Queue_length(const struct Queue_t *o);
-uint8_t Queue_itemSize(const struct Queue_t *o);
+len_t Queue_used(const struct Queue_t *o);
+len_t Queue_free(const struct Queue_t *o);
+len_t Queue_length(const struct Queue_t *o);
+len_t Queue_itemSize(const struct Queue_t *o);
 
 #define Queue_empty(o) (Queue_used(o) == 0)
 #define Queue_full(o)  (Queue_free(o) == 0)
@@ -220,34 +216,31 @@ uint8_t Queue_itemSize(const struct Queue_t *o);
 
 
 struct Fifo_t {
-    uint8_t              Length;
-    volatile uint8_t     Free;
-    volatile uint8_t     Used;
-    volatile uint8_t     WLock;
-    volatile uint8_t     RLock;
-    uint8_t *volatile    Head;
-    uint8_t *volatile    Tail;
-    uint8_t*             Buff;
-    uint8_t*             BufEnd;
-    struct eventRw_t     Event;
+    len_t             Length;
+    volatile len_t    Free;
+    volatile len_t    Used;
+    volatile len_t    WLock;
+    volatile len_t    RLock;
+    uint8_t *volatile Head;
+    uint8_t *volatile Tail;
+    uint8_t*          Buff;
+    uint8_t*          BufEnd;
+    struct eventRw_t  Event;
 };
 
-void Fifo_init(
-        struct Fifo_t *o,
-        void *buff,
-        uint8_t length);
+void Fifo_init(struct Fifo_t *o, void *buff, len_t length);
 
-uint8_t Fifo_read(struct Fifo_t* o, void* buff, uint8_t length);
-uint8_t Fifo_readPend(struct Fifo_t* o, void* buff, uint8_t length, tick_t ticksToWait);
-void Fifo_pendRead(struct Fifo_t* o, uint8_t length, tick_t ticksToWait);
+len_t Fifo_read(struct Fifo_t* o, void* buff, len_t length);
+len_t Fifo_readPend(struct Fifo_t* o, void* buff, len_t length, tick_t ticksToWait);
+void Fifo_pendRead(struct Fifo_t* o, len_t length, tick_t ticksToWait);
 
-uint8_t Fifo_write(struct Fifo_t* o, const void* buff, uint8_t length);
-uint8_t Fifo_writePend(struct Fifo_t* o, const void* buff, uint8_t length, tick_t ticksToWait);
-void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait);
+len_t Fifo_write(struct Fifo_t* o, const void* buff, len_t length);
+len_t Fifo_writePend(struct Fifo_t* o, const void* buff, len_t length, tick_t ticksToWait);
+void Fifo_pendWrite(struct Fifo_t* o, len_t length, tick_t ticksToWait);
 
-uint8_t Fifo_used(const struct Fifo_t *o);
-uint8_t Fifo_free(const struct Fifo_t *o);
-uint8_t Fifo_length(const struct Fifo_t *o);
+len_t Fifo_used(const struct Fifo_t *o);
+len_t Fifo_free(const struct Fifo_t *o);
+len_t Fifo_length(const struct Fifo_t *o);
 
 #define Fifo_empty(o) (Fifo_used(o) == 0)
 #define Fifo_full(o)  (Fifo_free(o) == 0)
