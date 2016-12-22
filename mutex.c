@@ -46,26 +46,39 @@ uint8_t Mutex_lock(struct Mutex_t* o)
     return val;
 }
 
-void Mutex_unlock(struct Mutex_t* o)
+uint8_t Mutex_unlock(struct Mutex_t* o)
 {
+    uint8_t val;
     CRITICAL_VAL();
-
-    OS_schedulerLock();
 
     CRITICAL_ENTER();
     {
-        o->Count = (uint8_t)(o->Count - 1);
+        val = o->Count > 0;
 
-        if(     o->Count == 0 &&
-                o->Event.ListRead.Length != 0)
+        if(val != 0)
         {
-            /* Unblock tasks waiting to read from this event. */
-            OS_eventUnblockTasks(&(o->Event.ListRead));
+            o->Count = (uint8_t)(o->Count - 1);
+
+            OS_schedulerLock();
+
+            if(o->Count == 0)
+            {
+                o->MutexOwner = NULL;
+
+                if(o->Event.ListRead.Length != 0)
+                {
+                    /* Unblock tasks waiting to read from this event. */
+                    OS_eventUnblockTasks(&(o->Event.ListRead));
+                }
+            }
         }
     }
     CRITICAL_EXIT();
 
-    OS_schedulerUnlock();
+    if(val != 0)
+        OS_schedulerUnlock();
+
+    return val;
 }
 
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)

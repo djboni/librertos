@@ -170,7 +170,7 @@ struct Mutex_t {
 
 void Mutex_init(struct Mutex_t* o);
 
-void Mutex_unlock(struct Mutex_t* o);
+uint8_t Mutex_unlock(struct Mutex_t* o);
 uint8_t Mutex_lock(struct Mutex_t* o);
 uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
