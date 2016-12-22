@@ -241,10 +241,24 @@ void Fifo_pendWrite(struct Fifo_t* o, uint8_t length, tick_t ticksToWait)
 
 uint8_t Fifo_used(const struct Fifo_t *o)
 {
-    return o->Used;
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Used;
+    }
+    CRITICAL_EXIT();
+    return val;
 }
 
 uint8_t Fifo_free(const struct Fifo_t *o)
 {
-    return o->Free;
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Free;
+    }
+    CRITICAL_EXIT();
+    return val;
 }
