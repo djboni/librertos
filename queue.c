@@ -210,10 +210,24 @@ void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
 
 uint8_t Queue_used(const struct Queue_t *o)
 {
-    return o->Used;
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Used;
+    }
+    CRITICAL_EXIT();
+    return val;
 }
 
 uint8_t Queue_free(const struct Queue_t *o)
 {
-    return o->Free;
+    uint8_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    {
+        val = o->Free;
+    }
+    CRITICAL_EXIT();
+    return val;
 }
