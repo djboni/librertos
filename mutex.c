@@ -48,9 +48,9 @@ void Mutex_init(struct Mutex_t* o)
  Lock a mutex:
  Mutex_lock(&mtx)
  */
-uint8_t Mutex_lock(struct Mutex_t* o)
+bool_t Mutex_lock(struct Mutex_t* o)
 {
-    uint8_t val;
+    bool_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -79,9 +79,9 @@ uint8_t Mutex_lock(struct Mutex_t* o)
  Unlock a mutex:
  Mutex_unlock(&mtx)
  */
-uint8_t Mutex_unlock(struct Mutex_t* o)
+bool_t Mutex_unlock(struct Mutex_t* o)
 {
-    uint8_t val;
+    bool_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -132,9 +132,9 @@ uint8_t Mutex_unlock(struct Mutex_t* o)
  Lock or pend on mutex with timeout of 10 ticks:
  Mutex_lockPend(&mtx, 10)
  */
-uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
+bool_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
 {
-    uint8_t val = Mutex_lock(o);
+    bool_t val = Mutex_lock(o);
     if(val == 0)
         Mutex_pend(o, ticksToWait);
     return val;

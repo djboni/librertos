@@ -49,9 +49,9 @@ void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max)
  Take a semaphore:
  Semaphore_take(&sem)
  */
-uint8_t Semaphore_take(struct Semaphore_t* o)
+bool_t Semaphore_take(struct Semaphore_t* o)
 {
-    uint8_t val;
+    bool_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -77,9 +77,9 @@ uint8_t Semaphore_take(struct Semaphore_t* o)
  Give a semaphore:
  Semaphore_give(&sem)
  */
-uint8_t Semaphore_give(struct Semaphore_t* o)
+bool_t Semaphore_give(struct Semaphore_t* o)
 {
-    uint8_t val;
+    bool_t val;
 
     CRITICAL_VAL();
 
@@ -125,9 +125,9 @@ uint8_t Semaphore_give(struct Semaphore_t* o)
  Take or pend on semaphore with timeout of 10 ticks:
  Semaphore_takePend(&sem, 10)
  */
-uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
+bool_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
-    uint8_t val = Semaphore_take(o);
+    bool_t val = Semaphore_take(o);
     if(val == 0)
         Semaphore_pend(o, ticksToWait);
     return val;

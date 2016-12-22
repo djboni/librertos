@@ -28,12 +28,14 @@ extern "C" {
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #define LIBRERTOS_STATE_GUARDS       0  /* boolean */
 
-typedef int8_t priority_t;
-typedef uint8_t schedulerLock_t;
+typedef int8_t   priority_t;
+typedef uint8_t  schedulerLock_t;
 typedef uint16_t tick_t;
-#define MAX_DELAY ((tick_t)-1)
-typedef int16_t difftick_t;
+typedef int16_t  difftick_t;
 typedef uint16_t len_t;
+typedef uint8_t  bool_t;
+
+#define MAX_DELAY ((tick_t)-1)
 
 /* Assert macro. */
 #define ASSERT(x) assert(x)

@@ -64,10 +64,10 @@ void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size)
  uint8_t buff[QUEISZ];
  Queue_read(&que, buff);
  */
-uint8_t Queue_read(struct Queue_t* o, void* buff)
+bool_t Queue_read(struct Queue_t* o, void* buff)
 {
     /* Pop front */
-    uint8_t val;
+    bool_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -131,10 +131,10 @@ uint8_t Queue_read(struct Queue_t* o, void* buff)
  init_buff(buff);
  Queue_write(&que, buff);
  */
-uint8_t Queue_write(struct Queue_t* o, const void* buff)
+bool_t Queue_write(struct Queue_t* o, const void* buff)
 {
     /* Push back */
-    uint8_t val;
+    bool_t val;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -208,9 +208,9 @@ uint8_t Queue_write(struct Queue_t* o, const void* buff)
  uint8_t buff[QUEISZ];
  Queue_readPend(&que, buff, 10);
  */
-uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
+bool_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
 {
-    uint8_t val = Queue_read(o, buff);
+    bool_t val = Queue_read(o, buff);
     if(val == 0)
         Queue_pendRead(o, ticksToWait);
     return val;
@@ -241,9 +241,9 @@ uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
  init_buff(buff);
  Queue_writePend(&que, buff, 10);
  */
-uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
+bool_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
 {
-    uint8_t val = Queue_write(o, buff);
+    bool_t val = Queue_write(o, buff);
     if(val == 0)
         Queue_pendWrite(o, ticksToWait);
     return val;

@@ -393,7 +393,7 @@ tick_t OS_getTickCount(void)
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
 /** Return 1 if OSstate guards are fine. 0 otherwise. */
-uint8_t OS_stateCheck(void)
+bool_t OS_stateCheck(void)
 {
     return (OSstate.Guard0 == LIBRERTOS_GUARD_U32 &&
             OSstate.GuardEnd == LIBRERTOS_GUARD_U32);

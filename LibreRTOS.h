@@ -129,7 +129,7 @@ tick_t OS_getTickCount(void);
 
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
-    uint8_t OS_stateCheck(void);
+bool_t OS_stateCheck(void);
 
 #endif
 
@@ -154,9 +154,9 @@ struct Semaphore_t {
 
 void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max);
 
-uint8_t Semaphore_give(struct Semaphore_t* o);
-uint8_t Semaphore_take(struct Semaphore_t* o);
-uint8_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
+bool_t Semaphore_give(struct Semaphore_t* o);
+bool_t Semaphore_take(struct Semaphore_t* o);
+bool_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait);
 void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait);
 
 len_t Semaphore_getCount(const struct Semaphore_t* o);
@@ -172,9 +172,9 @@ struct Mutex_t {
 
 void Mutex_init(struct Mutex_t* o);
 
-uint8_t Mutex_unlock(struct Mutex_t* o);
-uint8_t Mutex_lock(struct Mutex_t* o);
-uint8_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
+bool_t Mutex_unlock(struct Mutex_t* o);
+bool_t Mutex_lock(struct Mutex_t* o);
+bool_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait);
 void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait);
 
 len_t Mutex_getCount(const struct Mutex_t* o);
@@ -197,12 +197,12 @@ struct Queue_t {
 
 void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size);
 
-uint8_t Queue_read(struct Queue_t* o, void* buff);
-uint8_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
+bool_t Queue_read(struct Queue_t* o, void* buff);
+bool_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait);
 void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait);
 
-uint8_t Queue_write(struct Queue_t* o, const void* buff);
-uint8_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
+bool_t Queue_write(struct Queue_t* o, const void* buff);
+bool_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait);
 void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait);
 
 len_t Queue_used(const struct Queue_t *o);
