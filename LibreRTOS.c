@@ -478,6 +478,16 @@ stattime_t OS_totalRunTime(void)
     return val;
 }
 
+stattime_t OS_noTaskRunTime(void)
+{
+    stattime_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    val = OSstate.NoTaskRunTime;
+    CRITICAL_EXIT();
+    return val;
+}
+
 stattime_t OS_taskRunTime(struct task_t* task)
 {
     stattime_t val;
