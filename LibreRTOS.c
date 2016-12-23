@@ -59,6 +59,13 @@ void OS_init(void)
         OSstate.Task[i] = NULL;
     }
 
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        OSstate.TotalRunTime = 0;
+        OSstate.NoTaskRunTime = 0;
+    }
+    #endif
+
     #if (LIBRERTOS_STATE_GUARDS != 0)
     {
         OSstate.Guard0 = LIBRERTOS_GUARD_U32;
@@ -101,10 +108,27 @@ static void _OS_scheduleTask(struct task_t*const task)
 
     /* Save and set current TCB. */
     INTERRUPTS_DISABLE();
+
     /* Inside critical section. We can read CurrentTCB directly. */
     currentTask = OSstate.CurrentTCB;
 
     OSstate.CurrentTCB = task;
+
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        stattime_t now = US_systemRunTime();
+        if(currentTask != NULL)
+        {
+            currentTask->TaskRunTime += now - OSstate.TotalRunTime;
+        }
+        else
+        {
+            OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
+        }
+        OSstate.TotalRunTime = now;
+    }
+    #endif
+
     INTERRUPTS_ENABLE();
 
     OS_schedulerUnlock();
@@ -116,7 +140,17 @@ static void _OS_scheduleTask(struct task_t*const task)
 
     /* Restore last TCB. */
     INTERRUPTS_DISABLE();
+
     OSstate.CurrentTCB = currentTask;
+
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        stattime_t now = US_systemRunTime();
+        task->TaskRunTime += now - OSstate.TotalRunTime;
+        OSstate.TotalRunTime = now;
+    }
+    #endif
+
     INTERRUPTS_ENABLE();
 }
 
@@ -328,6 +362,12 @@ void OS_taskCreate(
     OS_listNodeInit(&task->NodeDelay, task);
     OS_listNodeInit(&task->NodeEvent , task);
 
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        task->TaskRunTime = 0;
+    }
+    #endif
+
     OSstate.Task[priority] = task;
 }
 
@@ -426,6 +466,29 @@ bool_t OS_stateCheck(void)
 
 #endif /* LIBRERTOS_STATE_GUARDS */
 
+#if (LIBRERTOS_STATISTICS != 0)
+
+stattime_t OS_totalRunTime(void)
+{
+    stattime_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    val = OSstate.TotalRunTime;
+    CRITICAL_EXIT();
+    return val;
+}
+
+stattime_t OS_taskRunTime(struct task_t* task)
+{
+    stattime_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    val = task->TaskRunTime;
+    CRITICAL_EXIT();
+    return val;
+}
+
+#endif /* LIBRERTOS_STATISTICS */
 
 
 

@@ -38,6 +38,10 @@ extern "C" {
 #define LIBRERTOS_STATE_GUARDS       0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_STATISTICS
+#define LIBRERTOS_STATISTICS         0  /* boolean */
+#endif
+
 #ifndef LIBRERTOS_TEST_CONCURRENT_ACCESS
 #define LIBRERTOS_TEST_CONCURRENT_ACCESS()
 #endif
@@ -70,12 +74,16 @@ enum taskState_t {
 };
 
 struct task_t {
-    enum taskState_t          State;
-    taskFunction_t            Function;
-    taskParameter_t           Parameter;
-    priority_t                Priority;
-    struct taskListNode_t     NodeDelay;
-    struct taskListNode_t     NodeEvent;
+    enum taskState_t      State;
+    taskFunction_t        Function;
+    taskParameter_t       Parameter;
+    priority_t            Priority;
+    struct taskListNode_t NodeDelay;
+    struct taskListNode_t NodeEvent;
+
+    #if (LIBRERTOS_STATISTICS != 0)
+        stattime_t        TaskRunTime;
+    #endif
 };
 
 struct libreRtosState_t {
@@ -97,6 +105,11 @@ struct libreRtosState_t {
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
     struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
+
+    #if (LIBRERTOS_STATISTICS != 0)
+        stattime_t        TotalRunTime;
+        stattime_t        NoTaskRunTime;
+    #endif
 
     #if (LIBRERTOS_STATE_GUARDS != 0)
         uint32_t               GuardEnd;
@@ -127,10 +140,18 @@ void OS_taskResume(struct task_t* task);
 struct task_t* OS_getCurrentTask(void);
 tick_t OS_getTickCount(void);
 
-
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
 bool_t OS_stateCheck(void);
+
+#endif
+
+#if (LIBRERTOS_STATISTICS != 0)
+
+extern stattime_t US_systemRunTime(void);
+
+stattime_t OS_totalRunTime(void);
+stattime_t OS_taskRunTime(struct task_t* task);
 
 #endif
 
