@@ -241,7 +241,7 @@ static void _OS_tickUnblockTimedoutTasks(void)
     while(  OSstate.BlockedTaskList_NotOverflowed->Length != 0 &&
             OSstate.BlockedTaskList_NotOverflowed->Head->Value == OSstate.Tick)
     {
-        struct task_t* task = OSstate.BlockedTaskList_NotOverflowed->Head->Task;
+        struct task_t* task = (struct task_t*)OSstate.BlockedTaskList_NotOverflowed->Head->Owner;
 
         /* Remove from blocked list. */
         OS_listRemove(&task->NodeDelay);
@@ -273,7 +273,7 @@ static void _OS_tickUnblockPendingReadyTasks(void)
     INTERRUPTS_DISABLE();
     while(OSstate.PendingReadyTaskList.Length != 0)
     {
-        struct task_t* task = OSstate.PendingReadyTaskList.Head->Task;
+        struct task_t* task = (struct task_t*)OSstate.PendingReadyTaskList.Head->Owner;
 
         /* Remove from pending ready list. */
         OS_listRemove(&task->NodeEvent);
@@ -516,13 +516,13 @@ void OS_listHeadInit(struct taskHeadList_t* list)
 /* Initialize list node. */
 void OS_listNodeInit(
         struct taskListNode_t* node,
-        struct task_t* task)
+        void* owner)
 {
     node->Next = NULL;
     node->Previous = NULL;
     node->Value = 0;
     node->List = NULL;
-    node->Task = task;
+    node->Owner = owner;
 }
 
 /* Insert node into list. Position according to value. */
@@ -650,7 +650,7 @@ void OS_eventPendTask(
                  way to create a concurrent access. */
                 LIBRERTOS_TEST_CONCURRENT_ACCESS();
 
-                if(pos->Task->Priority <= priority)
+                if(((struct task_t*)pos->Owner)->Priority <= priority)
                 {
                     /* Found where to insert. Break while(). */
                     CRITICAL_ENTER();

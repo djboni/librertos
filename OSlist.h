@@ -31,7 +31,7 @@ void OS_listHeadInit(struct taskHeadList_t* list);
 
 void OS_listNodeInit(
         struct taskListNode_t* node,
-        struct task_t* task);
+        void* owner);
 
 void OS_listInsert(
         struct taskHeadList_t* list,

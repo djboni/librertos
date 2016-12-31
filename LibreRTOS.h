@@ -63,7 +63,7 @@ struct taskListNode_t {
     struct taskListNode_t* Previous;
     tick_t                 Value;
     struct taskHeadList_t* List;
-    struct task_t*         Task;
+    void*                  Owner;
 };
 
 enum taskState_t {
