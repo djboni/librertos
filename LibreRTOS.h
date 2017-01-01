@@ -136,6 +136,7 @@ struct libreRtosState_t {
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
 
     #if (LIBRERTOS_SOFTWARETIMERS != 0)
+        tick_t                 TaskTimerLastRun;
         struct task_t          TaskTimerTCB; /* Task control block of timer task. */
         struct taskListNode_t* TimerIndex; /* Points to next timer to be run in TimerList. */
         struct taskHeadList_t  TimerList; /* List of running timers ordered by wakeup time. */

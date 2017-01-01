@@ -61,6 +61,7 @@ void OS_init(void)
 
     #if (LIBRERTOS_SOFTWARETIMERS != 0)
     {
+        OSstate.TaskTimerLastRun = 0;
         /* OSstate.TaskTimerTCB is initialized when calling OS_timerTaskCreate(). */
         OSstate.TimerIndex = (struct taskListNode_t*)&OSstate.TimerList;
         OS_listHeadInit(&OSstate.TimerList);
@@ -481,21 +482,21 @@ static void _OS_timerExecute(struct Timer_t* timer)
 
 static void _OS_timerFunction(taskParameter_t param)
 {
-    uint8_t changeIndex = 0;
-    static tick_t lastRun = 0;
+    uint8_t changeIndex;
     tick_t now;
     (void)param;
 
     now = OS_getTickCount();
-    if(now < lastRun)
+    if(now >= OSstate.TaskTimerLastRun)
     {
-        lastRun = 0;
-        now = MAX_DELAY;
-        changeIndex = 1;
+        OSstate.TaskTimerLastRun = now;
+        changeIndex = 0;
     }
     else
     {
-        lastRun = now;
+        OSstate.TaskTimerLastRun = 0;
+        now = MAX_DELAY;
+        changeIndex = 1;
     }
 
     INTERRUPTS_DISABLE();
@@ -551,7 +552,6 @@ static void _OS_timerFunction(taskParameter_t param)
     {
         /* Change index. Run timer task again. */
         INTERRUPTS_ENABLE();
-        changeIndex = 0;
         OSstate.TimerIndex = OSstate.TimerList.Head;
     }
     else if(OSstate.TimerUnorderedList.Length == 0 &&
