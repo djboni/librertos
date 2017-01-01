@@ -466,9 +466,136 @@ tick_t OS_getTickCount(void)
 
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
 
+static void _OS_timerExecute(struct Timer_t* timer)
+{
+    timerFunction_t function;
+    timerParameter_t parameter;
+
+    INTERRUPTS_DISABLE();
+    function = timer->Function;
+    parameter = timer->Parameter;
+    INTERRUPTS_ENABLE();
+
+    function(timer, parameter);
+}
+
 static void _OS_timerFunction(taskParameter_t param)
 {
+    uint8_t changeIndex = 0;
+    static tick_t lastRun = 0;
+    tick_t now;
     (void)param;
+
+    now = OS_getTickCount();
+    if(now < lastRun)
+    {
+        lastRun = 0;
+        now = MAX_DELAY;
+        changeIndex = 1;
+    }
+    else
+    {
+        lastRun = now;
+    }
+
+    INTERRUPTS_DISABLE();
+
+    /* Insert timers into ordered list; execute one-shot timers. */
+    while(OSstate.TimerUnorderedList.Length != 0)
+    {
+        struct taskListNode_t* node = OSstate.TimerUnorderedList.Head;
+        struct Timer_t* timer = (struct Timer_t*)node->Owner;
+        OS_listRemove(node);
+        INTERRUPTS_ENABLE();
+
+        if(timer->Type == TIMERTYPE_ONESHOT)
+        {
+            /* Execute one-shot timer. */
+            _OS_timerExecute(timer);
+        }
+        else
+        {
+            /* TODO Insert timer into ordered list. */
+        }
+        INTERRUPTS_DISABLE();
+    }
+
+    INTERRUPTS_ENABLE();
+
+    /* Execute ready timer. */
+    while(  OSstate.TimerIndex != (struct taskListNode_t*)&OSstate.TimerList &&
+            OSstate.TimerIndex->Value <= now)
+    {
+        struct taskListNode_t* node = OSstate.TimerIndex;
+        struct Timer_t* timer = (struct Timer_t*)node->Owner;
+        OSstate.TimerIndex = node->Next;
+
+        if(timer->Type == TIMERTYPE_AUTO)
+        {
+            Timer_reset(timer);
+        }
+        else
+        {
+            INTERRUPTS_DISABLE();
+            OS_listRemove(node);
+            INTERRUPTS_ENABLE();
+        }
+
+        /* Execute timer. */
+        _OS_timerExecute(timer);
+    }
+
+    INTERRUPTS_DISABLE();
+
+    if(changeIndex != 0)
+    {
+        /* Change index. Run timer task again. */
+        INTERRUPTS_ENABLE();
+        changeIndex = 0;
+        OSstate.TimerIndex = OSstate.TimerList.Head;
+    }
+    else if(OSstate.TimerUnorderedList.Length == 0 &&
+            (OSstate.TimerIndex == (struct taskListNode_t*)&OSstate.TimerList ||
+            OSstate.TimerIndex->Value > OSstate.Tick))
+    {
+        /* No timer is ready. Block timer task. */
+        tick_t ticksToSleep;
+        struct Timer_t* nextTimer;
+
+        OS_schedulerLock();
+
+        if(OSstate.TimerIndex != (struct taskListNode_t*)&OSstate.TimerList)
+        {
+            nextTimer = OSstate.TimerIndex->Owner;
+            ticksToSleep = (tick_t)(nextTimer->NodeTimer.Value - OSstate.Tick);
+            INTERRUPTS_ENABLE();
+        }
+        else if(OSstate.TimerList.Head != (struct taskListNode_t*)&OSstate.TimerList)
+        {
+            nextTimer = OSstate.TimerList.Head->Owner;
+            ticksToSleep = (tick_t)(nextTimer->NodeTimer.Value - OSstate.Tick);
+            INTERRUPTS_ENABLE();
+        }
+        else
+        {
+            ticksToSleep = MAX_DELAY;
+            OS_taskDelay(MAX_DELAY);
+        }
+
+        if((difftick_t)ticksToSleep > 0)
+        {
+            /* Delay task only if timer wakeup time is not in the past.
+             If there is not timer the timer task is already delayed. */
+            OS_taskDelay(ticksToSleep);
+        }
+
+        OS_schedulerUnlock();
+    }
+    else
+    {
+        /* A timer is ready. Run timer task again. */
+        INTERRUPTS_ENABLE();
+    }
 }
 
 void OS_timerTaskCreate(priority_t priority)
