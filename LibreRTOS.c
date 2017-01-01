@@ -482,9 +482,84 @@ static void _OS_timerExecute(struct Timer_t* timer)
 
 static void _OS_timerInsertInOrderedList(struct Timer_t* timer, tick_t tickToWakeup)
 {
-    (void)timer;
-    (void)tickToWakeup;
-    OS_listRemove(&timer->NodeTimer);
+    struct taskListNode_t* pos;
+    struct taskListNode_t*const node = &timer->NodeTimer;
+    struct taskHeadList_t*const list = &OSstate.TimerList;
+
+    INTERRUPTS_DISABLE();
+
+    for(;;)
+    {
+        if(tickToWakeup > OSstate.TaskTimerLastRun)
+        {
+            pos = OSstate.TimerIndex;
+        }
+        else
+        {
+            pos = list->Head;
+        }
+
+        while(pos != (struct taskListNode_t*)list)
+        {
+            INTERRUPTS_ENABLE();
+
+            /* For test coverage only. This macro is used as a deterministic
+             way to create a concurrent access. */
+            LIBRERTOS_TEST_CONCURRENT_ACCESS();
+
+            if(pos->Value >= tickToWakeup)
+            {
+                /* Found where to insert. Break while(). */
+                INTERRUPTS_DISABLE();
+                break;
+            }
+
+            INTERRUPTS_DISABLE();
+            if(pos->List != list)
+            {
+                /* This position was removed from the list. Break while(). */
+                break;
+            }
+
+            pos = pos->Next;
+        }
+
+        if(     pos != (struct taskListNode_t*)list &&
+                pos->List != list &&
+                node->List == &OSstate.TimerUnorderedList)
+        {
+            /* This pos was removed from the list and node was not
+             removed. Must restart to find where to insert node.
+             Continue for(;;). */
+            continue;
+        }
+        else
+        {
+            /* Found where to insert. Insert before pos.
+             OR
+             Item node was removed from the list. Nothing to insert.
+             Break for(;;). */
+            break;
+        }
+    }
+
+    if(node->List == &OSstate.TimerUnorderedList)
+    {
+        /* Timer was not removed from list. */
+
+        /* Now insert in the right position. */
+        OS_listRemove(node);
+        OS_listInsertAfter(list, pos->Previous, node);
+        node->Value = tickToWakeup;
+
+        if(     tickToWakeup > OSstate.TaskTimerLastRun &&
+                OSstate.TimerIndex->Previous == &timer->NodeTimer)
+        {
+            OSstate.TimerIndex = &timer->NodeTimer;
+        }
+    }
+
+    INTERRUPTS_ENABLE();
 }
 
 static void _OS_timerFunction(taskParameter_t param)
