@@ -464,6 +464,69 @@ tick_t OS_getTickCount(void)
     return tickNow;
 }
 
+#if (LIBRERTOS_SOFTWARETIMERS != 0)
+
+static void _OS_timerFunction(taskParameter_t param)
+{
+    (void)param;
+}
+
+void OS_timerTaskCreate(priority_t priority)
+{
+    OS_taskCreate(&OSstate.TaskTimerTCB, priority, &_OS_timerFunction, NULL);
+}
+
+void Timer_init(
+        struct Timer_t* timer,
+        enum timerType_t type,
+        tick_t period,
+        timerFunction_t function,
+        timerParameter_t parameter)
+{
+    timer->Type = type;
+    timer->Period = period;
+    timer->Function = function;
+    timer->Parameter = parameter;
+    OS_listNodeInit(&timer->NodeTimer, timer);
+}
+
+void Timer_reset(struct Timer_t* timer)
+{
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+
+    if(timer->NodeTimer.List != NULL)
+    {
+        /* If timer is running. */
+        OS_listRemove(&timer->NodeTimer);
+    }
+
+    OS_listInsertAfter(
+            &OSstate.TimerUnorderedList,
+            (struct taskListNode_t*)&OSstate.TimerUnorderedList,
+            &timer->NodeTimer);
+
+    CRITICAL_EXIT();
+
+    OS_taskResume(&OSstate.TaskTimerTCB);
+}
+
+void Timer_stop(struct Timer_t* timer)
+{
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+
+    if(timer->NodeTimer.List != NULL)
+    {
+        /* Only if timer is running. */
+        OS_listRemove(&timer->NodeTimer);
+    }
+
+    CRITICAL_EXIT();
+}
+
+#endif
+
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
 /** Return 1 if OSstate guards are fine. 0 otherwise. */
