@@ -484,6 +484,7 @@ static void _OS_timerInsertInOrderedList(struct Timer_t* timer, tick_t tickToWak
 {
     (void)timer;
     (void)tickToWakeup;
+    OS_listRemove(&timer->NodeTimer);
 }
 
 static void _OS_timerFunction(taskParameter_t param)
@@ -512,18 +513,20 @@ static void _OS_timerFunction(taskParameter_t param)
     {
         struct taskListNode_t* node = OSstate.TimerUnorderedList.Head;
         struct Timer_t* timer = (struct Timer_t*)node->Owner;
-        OS_listRemove(node);
-        INTERRUPTS_ENABLE();
 
         if(timer->Type == TIMERTYPE_ONESHOT)
         {
             /* Execute one-shot timer. */
+            OS_listRemove(node);
+            INTERRUPTS_ENABLE();
             _OS_timerExecute(timer);
         }
         else
         {
             /* Insert timer into ordered list. */
-            tick_t tickToWakeup = (tick_t)(OSstate.TaskTimerLastRun + timer->Period);
+            tick_t tickToWakeup;
+            INTERRUPTS_ENABLE();
+            tickToWakeup = (tick_t)(OSstate.TaskTimerLastRun + timer->Period);
             _OS_timerInsertInOrderedList(timer, tickToWakeup);
         }
         INTERRUPTS_DISABLE();
