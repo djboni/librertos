@@ -633,6 +633,12 @@ void Timer_reset(struct Timer_t* timer)
     if(timer->NodeTimer.List != NULL)
     {
         /* If timer is running. */
+
+        if(OSstate.TimerIndex == &timer->NodeTimer)
+        {
+            OSstate.TimerIndex = OSstate.TimerIndex->Next;
+        }
+
         OS_listRemove(&timer->NodeTimer);
     }
 
@@ -653,7 +659,13 @@ void Timer_stop(struct Timer_t* timer)
 
     if(timer->NodeTimer.List != NULL)
     {
-        /* Only if timer is running. */
+        /* If timer is running. */
+
+        if(OSstate.TimerIndex == &timer->NodeTimer)
+        {
+            OSstate.TimerIndex = OSstate.TimerIndex->Next;
+        }
+
         OS_listRemove(&timer->NodeTimer);
     }
 
