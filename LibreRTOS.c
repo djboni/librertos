@@ -652,6 +652,18 @@ void Timer_stop(struct Timer_t* timer)
     CRITICAL_EXIT();
 }
 
+bool_t Timer_isRunning(const struct Timer_t* timer)
+{
+    bool_t x;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+
+    x = timer->NodeTimer.List != NULL;
+
+    CRITICAL_EXIT();
+    return x;
+}
+
 #endif
 
 #if (LIBRERTOS_STATE_GUARDS != 0)

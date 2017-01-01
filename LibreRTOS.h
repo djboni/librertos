@@ -191,6 +191,8 @@ void Timer_init(
 void Timer_reset(struct Timer_t* timer);
 void Timer_stop(struct Timer_t* timer);
 
+bool_t Timer_isRunning(const struct Timer_t* timer);
+
 #endif
 
 #if (LIBRERTOS_STATE_GUARDS != 0)
