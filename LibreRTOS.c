@@ -59,6 +59,15 @@ void OS_init(void)
         OSstate.Task[i] = NULL;
     }
 
+    #if (LIBRERTOS_SOFTWARETIMERS != 0)
+    {
+        /* OSstate.TaskTimerTCB is initialized when calling OS_timerTaskCreate(). */
+        OSstate.TimerIndex = (struct taskListNode_t*)&OSstate.TimerList;
+        OS_listHeadInit(&OSstate.TimerList);
+        OS_listHeadInit(&OSstate.TimerUnorderedList);
+    }
+    #endif
+
     #if (LIBRERTOS_STATISTICS != 0)
     {
         OSstate.TotalRunTime = 0;
