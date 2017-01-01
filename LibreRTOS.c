@@ -480,23 +480,29 @@ static void _OS_timerExecute(struct Timer_t* timer)
     function(timer, parameter);
 }
 
+static void _OS_timerInsertInOrderedList(struct Timer_t* timer, tick_t tickToWakeup)
+{
+    (void)timer;
+    (void)tickToWakeup;
+}
+
 static void _OS_timerFunction(taskParameter_t param)
 {
     uint8_t changeIndex;
-    tick_t now;
     (void)param;
 
-    now = OS_getTickCount();
-    if(now >= OSstate.TaskTimerLastRun)
     {
-        OSstate.TaskTimerLastRun = now;
-        changeIndex = 0;
-    }
-    else
-    {
-        OSstate.TaskTimerLastRun = 0;
-        now = MAX_DELAY;
-        changeIndex = 1;
+        tick_t now = OS_getTickCount();
+        if(now >= OSstate.TaskTimerLastRun)
+        {
+            OSstate.TaskTimerLastRun = now;
+            changeIndex = 0;
+        }
+        else
+        {
+            OSstate.TaskTimerLastRun = MAX_DELAY;
+            changeIndex = 1;
+        }
     }
 
     INTERRUPTS_DISABLE();
@@ -516,7 +522,9 @@ static void _OS_timerFunction(taskParameter_t param)
         }
         else
         {
-            /* TODO Insert timer into ordered list. */
+            /* Insert timer into ordered list. */
+            tick_t tickToWakeup = (tick_t)(OSstate.TaskTimerLastRun + timer->Period);
+            _OS_timerInsertInOrderedList(timer, tickToWakeup);
         }
         INTERRUPTS_DISABLE();
     }
@@ -525,7 +533,7 @@ static void _OS_timerFunction(taskParameter_t param)
 
     /* Execute ready timer. */
     while(  OSstate.TimerIndex != (struct taskListNode_t*)&OSstate.TimerList &&
-            OSstate.TimerIndex->Value <= now)
+            OSstate.TimerIndex->Value <= OSstate.TaskTimerLastRun)
     {
         struct taskListNode_t* node = OSstate.TimerIndex;
         struct Timer_t* timer = (struct Timer_t*)node->Owner;
@@ -553,6 +561,7 @@ static void _OS_timerFunction(taskParameter_t param)
         /* Change index. Run timer task again. */
         INTERRUPTS_ENABLE();
         OSstate.TimerIndex = OSstate.TimerList.Head;
+        OSstate.TaskTimerLastRun = 0;
     }
     else if(OSstate.TimerUnorderedList.Length == 0 &&
             (OSstate.TimerIndex == (struct taskListNode_t*)&OSstate.TimerList ||
