@@ -617,6 +617,14 @@ void Timer_init(
     OS_listNodeInit(&timer->NodeTimer, timer);
 }
 
+void Timer_start(struct Timer_t* timer)
+{
+    if(!Timer_isRunning(timer))
+    {
+        Timer_reset(timer);
+    }
+}
+
 void Timer_reset(struct Timer_t* timer)
 {
     CRITICAL_VAL();

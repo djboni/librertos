@@ -188,6 +188,7 @@ void Timer_init(
         timerFunction_t function,
         timerParameter_t parameter);
 
+void Timer_start(struct Timer_t* timer);
 void Timer_reset(struct Timer_t* timer);
 void Timer_stop(struct Timer_t* timer);
 
