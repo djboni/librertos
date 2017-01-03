@@ -129,7 +129,9 @@ bool_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
 {
     bool_t val = Semaphore_take(o);
     if(val == 0)
+    {
         Semaphore_pend(o, ticksToWait);
+    }
     return val;
 }
 

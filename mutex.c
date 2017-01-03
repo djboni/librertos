@@ -135,7 +135,9 @@ bool_t Mutex_lockPend(struct Mutex_t* o, tick_t ticksToWait)
 {
     bool_t val = Mutex_lock(o);
     if(val == 0)
+    {
         Mutex_pend(o, ticksToWait);
+    }
     return val;
 }
 

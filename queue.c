@@ -80,7 +80,9 @@ bool_t Queue_read(struct Queue_t* o, void* buff)
 
             pos = o->Head;
             if((o->Head += o->ItemSize) > o->BufEnd)
+            {
                 o->Head = o->Buff;
+            }
 
             lock = (o->RLock)++;
             --(o->Used);
@@ -113,7 +115,9 @@ bool_t Queue_read(struct Queue_t* o, void* buff)
     CRITICAL_EXIT();
 
     if(val != 0)
+    {
         OS_schedulerUnlock();
+    }
 
     return val;
 }
@@ -147,7 +151,9 @@ bool_t Queue_write(struct Queue_t* o, const void* buff)
 
             pos = o->Tail;
             if((o->Tail += o->ItemSize) > o->BufEnd)
+            {
                 o->Tail = o->Buff;
+            }
 
             lock = (o->WLock)++;
             --(o->Free);
@@ -180,7 +186,9 @@ bool_t Queue_write(struct Queue_t* o, const void* buff)
     CRITICAL_EXIT();
 
     if(val != 0)
+    {
         OS_schedulerUnlock();
+    }
 
     return val;
 }
@@ -212,7 +220,9 @@ bool_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
 {
     bool_t val = Queue_read(o, buff);
     if(val == 0)
+    {
         Queue_pendRead(o, ticksToWait);
+    }
     return val;
 }
 
@@ -245,7 +255,9 @@ bool_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
 {
     bool_t val = Queue_write(o, buff);
     if(val == 0)
+    {
         Queue_pendWrite(o, ticksToWait);
+    }
     return val;
 }
 
