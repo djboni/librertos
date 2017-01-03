@@ -34,6 +34,10 @@ extern "C" {
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_SOFTWARETIMERS
+#define LIBRERTOS_SOFTWARETIMERS     0  /* boolean */
+#endif
+
 #ifndef LIBRERTOS_STATE_GUARDS
 #define LIBRERTOS_STATE_GUARDS       0  /* boolean */
 #endif
@@ -86,6 +90,31 @@ struct task_t {
     #endif
 };
 
+
+
+#if (LIBRERTOS_SOFTWARETIMERS != 0)
+
+struct Timer_t;
+
+typedef void* timerParameter_t;
+typedef void(*timerFunction_t)(struct Timer_t*, timerParameter_t);
+
+enum timerType_t {
+    TIMERTYPE_DEFAULT = 0x00, /* Timer need to be reset to run. Run after period has passed. */
+    TIMERTYPE_AUTO    = 0x01, /* Auto reset timer after it is run. */
+    TIMERTYPE_ONESHOT = 0x02 /* Timer need to be reset to run. Run as soon as it is reset. */
+};
+
+struct Timer_t {
+    enum timerType_t      Type;
+    tick_t                Period;
+    timerFunction_t       Function;
+    timerParameter_t      Parameter;
+    struct taskListNode_t NodeTimer;
+};
+
+#endif
+
 struct libreRtosState_t {
     #if (LIBRERTOS_STATE_GUARDS != 0)
         uint32_t               Guard0;
@@ -105,6 +134,14 @@ struct libreRtosState_t {
     struct taskHeadList_t      PendingReadyTaskList; /* List with ready tasks not removed from list of blocked tasks. */
     struct taskHeadList_t      BlockedTaskList1; /* List with blocked tasks number 1. */
     struct taskHeadList_t      BlockedTaskList2; /* List with blocked tasks number 2. */
+
+    #if (LIBRERTOS_SOFTWARETIMERS != 0)
+        tick_t                 TaskTimerLastRun;
+        struct task_t          TaskTimerTCB; /* Task control block of timer task. */
+        struct taskListNode_t* TimerIndex; /* Points to next timer to be run in TimerList. */
+        struct taskHeadList_t  TimerList; /* List of running timers ordered by wakeup time. */
+        struct taskHeadList_t  TimerUnorderedList; /* List of running timers to be ordered by wakeup time. */
+    #endif
 
     #if (LIBRERTOS_STATISTICS != 0)
         stattime_t        TotalRunTime;
@@ -139,6 +176,25 @@ void OS_taskResume(struct task_t* task);
 
 struct task_t* OS_getCurrentTask(void);
 tick_t OS_getTickCount(void);
+
+#if (LIBRERTOS_SOFTWARETIMERS != 0)
+
+void OS_timerTaskCreate(priority_t priority);
+
+void Timer_init(
+        struct Timer_t* timer,
+        enum timerType_t type,
+        tick_t period,
+        timerFunction_t function,
+        timerParameter_t parameter);
+
+void Timer_start(struct Timer_t* timer);
+void Timer_reset(struct Timer_t* timer);
+void Timer_stop(struct Timer_t* timer);
+
+bool_t Timer_isRunning(const struct Timer_t* timer);
+
+#endif
 
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
