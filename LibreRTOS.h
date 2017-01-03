@@ -121,8 +121,8 @@ struct libreRtosState_t {
     #endif
 
     volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
-    struct task_t*             CurrentTCB; /* Current task control block. */
-    bool_t                     HigherReadyTask; /* Higher priority task is ready to run. */
+    struct task_t*volatile     CurrentTCB; /* Current task control block. */
+    volatile bool_t            HigherReadyTask; /* Higher priority task is ready to run. */
 
     struct task_t*             Task[LIBRERTOS_MAX_PRIORITY]; /* Task priorities. */
 
