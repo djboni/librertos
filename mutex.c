@@ -51,9 +51,8 @@ void Mutex_init(struct Mutex_t* o)
 bool_t Mutex_lock(struct Mutex_t* o)
 {
     bool_t val;
-    CRITICAL_VAL();
 
-    CRITICAL_ENTER();
+    INTERRUPTS_DISABLE();
     {
         struct task_t* currentTask = OS_getCurrentTask();
         val = o->Count == 0 || o->MutexOwner == currentTask;
@@ -63,7 +62,7 @@ bool_t Mutex_lock(struct Mutex_t* o)
             o->MutexOwner = currentTask;
         }
     }
-    CRITICAL_EXIT();
+    INTERRUPTS_ENABLE();
 
     return val;
 }
@@ -160,19 +159,18 @@ void Mutex_pend(struct Mutex_t* o, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Count != 0 && o->MutexOwner != task)
         {
             OS_eventPrePendTask(&o->Event.ListRead, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }

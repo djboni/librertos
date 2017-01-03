@@ -270,19 +270,18 @@ void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Used == 0U)
         {
             OS_eventPrePendTask(&o->Event.ListRead, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }
@@ -309,19 +308,18 @@ void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Free == 0U)
         {
             OS_eventPrePendTask(&o->Event.ListWrite, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }

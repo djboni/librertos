@@ -153,19 +153,18 @@ void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Count == 0U)
         {
             OS_eventPrePendTask(&o->Event.ListRead, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }

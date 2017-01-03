@@ -433,20 +433,19 @@ void Fifo_pendRead(struct Fifo_t* o, len_t length, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Used < length)
         {
             task->NodeEvent.Value = (tick_t)length; /* Length waiting for. */
             OS_eventPrePendTask(&o->Event.ListRead, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }
@@ -474,20 +473,19 @@ void Fifo_pendWrite(struct Fifo_t* o, len_t length, tick_t ticksToWait)
     if(ticksToWait != 0U)
     {
         struct task_t* task = OS_getCurrentTask();
-        CRITICAL_VAL();
 
         OS_schedulerLock();
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         if(o->Free < length)
         {
             task->NodeEvent.Value = (tick_t)length; /* Length waiting for. */
             OS_eventPrePendTask(&o->Event.ListWrite, task);
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
         OS_schedulerUnlock();
     }
