@@ -467,6 +467,7 @@ tick_t OS_getTickCount(void)
 
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
 
+/* Execute a timer. Used by timer task function. */
 static void _OS_timerExecute(struct Timer_t* timer)
 {
     timerFunction_t function;
@@ -480,6 +481,7 @@ static void _OS_timerExecute(struct Timer_t* timer)
     function(timer, parameter);
 }
 
+/* Insert timer into ordered list. Used by timer task function. */
 static void _OS_timerInsertInOrderedList(struct Timer_t* timer, tick_t tickToWakeup)
 {
     struct taskListNode_t* pos;
@@ -562,6 +564,7 @@ static void _OS_timerInsertInOrderedList(struct Timer_t* timer, tick_t tickToWak
     INTERRUPTS_ENABLE();
 }
 
+/* Timer task function. Used by timer task create function. */
 static void _OS_timerFunction(taskParameter_t param)
 {
     uint8_t changeIndex;
@@ -685,11 +688,37 @@ static void _OS_timerFunction(taskParameter_t param)
     }
 }
 
+/** Create timer task.  */
 void OS_timerTaskCreate(priority_t priority)
 {
     OS_taskCreate(&OSstate.TaskTimerTCB, priority, &_OS_timerFunction, NULL);
 }
 
+/** Initialize timer structure.
+
+ This function does not start the timer.
+
+ The types can be of three types: TIMERTYPE_DEFAULT, TIMERTYPE_AUTO,
+ TIMERTYPE_ONESHOT.
+
+ A default timer will run once after its period has timed-out after a reset or
+ start.
+
+ An auto timer will run multiple times after after a reset or start. The auto
+ timer resets itself when it runs.
+
+ An one-shot timer will run once when the timer task is scheduled.
+
+ @param type Define the type of the timer. The types can be TIMERTYPE_DEFAULT,
+ TIMERTYPE_AUTO, TIMERTYPE_ONESHOT.
+ @param period Period of the timer. After a reset or start the timer will run
+ only after its period has timed-out. Note: A one-shot timer does not use the
+ period information; pass value 0 for one-shot timer.
+ @param function Function pointer to the timer function. It will be called by
+ timer task when the timer runs. The prototype must be
+ void timerFunction(struct Timer_t* timer, void* param);
+ @param parameter Parameter passed to the timer function.
+ */
 void Timer_init(
         struct Timer_t* timer,
         enum timerType_t type,
@@ -704,6 +733,10 @@ void Timer_init(
     OS_listNodeInit(&timer->NodeTimer, timer);
 }
 
+/** Start a timer.
+
+ Reset the timer only if it is not running.
+ */
 void Timer_start(struct Timer_t* timer)
 {
     if(!Timer_isRunning(timer))
@@ -712,6 +745,14 @@ void Timer_start(struct Timer_t* timer)
     }
 }
 
+/** Reset a timer.
+
+ For default and auto timers:
+ The timer run only after 'period' ticks have passed after now.
+
+ For one-shot timer:
+ The timer run as soon as the timer task is scheduled.
+ */
 void Timer_reset(struct Timer_t* timer)
 {
     CRITICAL_VAL();
@@ -739,6 +780,10 @@ void Timer_reset(struct Timer_t* timer)
     OS_taskResume(&OSstate.TaskTimerTCB);
 }
 
+/** Stop a timer.
+
+ The timer will not run again until it is started or reset.
+ */
 void Timer_stop(struct Timer_t* timer)
 {
     CRITICAL_VAL();
@@ -759,6 +804,12 @@ void Timer_stop(struct Timer_t* timer)
     CRITICAL_EXIT();
 }
 
+/** Check if a timer is running.
+
+ A timer is running if it has been started or reset and has not stopped.
+
+ @return 1 if timer is running, 0 if it is stopped.
+ */
 bool_t Timer_isRunning(const struct Timer_t* timer)
 {
     bool_t x;
