@@ -226,7 +226,7 @@ struct eventRw_t {
 
 
 struct Semaphore_t {
-    volatile len_t  Count;
+    len_t           Count;
     len_t           Max;
     struct eventR_t Event;
 };
@@ -244,7 +244,7 @@ len_t Semaphore_getMax(const struct Semaphore_t* o);
 
 
 struct Mutex_t {
-    volatile len_t  Count;
+    len_t           Count;
     struct task_t*  MutexOwner;
     struct eventR_t Event;
 };
@@ -263,12 +263,12 @@ struct task_t* Mutex_getOwner(const struct Mutex_t* o);
 
 struct Queue_t {
     len_t             ItemSize;
-    volatile len_t    Free;
-    volatile len_t    Used;
-    volatile len_t    WLock;
-    volatile len_t    RLock;
-    uint8_t *volatile Head;
-    uint8_t *volatile Tail;
+    len_t             Free;
+    len_t             Used;
+    len_t             WLock;
+    len_t             RLock;
+    uint8_t*          Head;
+    uint8_t*          Tail;
     uint8_t*          Buff;
     uint8_t*          BufEnd;
     struct eventRw_t  Event;
@@ -296,12 +296,12 @@ len_t Queue_itemSize(const struct Queue_t *o);
 
 struct Fifo_t {
     len_t             Length;
-    volatile len_t    Free;
-    volatile len_t    Used;
-    volatile len_t    WLock;
-    volatile len_t    RLock;
-    uint8_t *volatile Head;
-    uint8_t *volatile Tail;
+    len_t             Free;
+    len_t             Used;
+    len_t             WLock;
+    len_t             RLock;
+    uint8_t*          Head;
+    uint8_t*          Tail;
     uint8_t*          Buff;
     uint8_t*          BufEnd;
     struct eventRw_t  Event;
