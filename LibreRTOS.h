@@ -309,10 +309,12 @@ struct Fifo_t {
 
 void Fifo_init(struct Fifo_t *o, void *buff, len_t length);
 
+bool_t Fifo_readByte(struct Fifo_t* o, void* buff);
 len_t Fifo_read(struct Fifo_t* o, void* buff, len_t length);
 len_t Fifo_readPend(struct Fifo_t* o, void* buff, len_t length, tick_t ticksToWait);
 void Fifo_pendRead(struct Fifo_t* o, len_t length, tick_t ticksToWait);
 
+bool_t Fifo_writeByte(struct Fifo_t* o, const void* buff);
 len_t Fifo_write(struct Fifo_t* o, const void* buff, len_t length);
 len_t Fifo_writePend(struct Fifo_t* o, const void* buff, len_t length, tick_t ticksToWait);
 void Fifo_pendWrite(struct Fifo_t* o, len_t length, tick_t ticksToWait);

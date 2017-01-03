@@ -52,6 +52,58 @@ void Fifo_init(struct Fifo_t *o, void *buff, len_t length)
     OS_eventRwInit(&o->Event);
 }
 
+/** Read one byte from character FIFO.
+
+ @param buff Buffer where to write the character being read (and removed) from
+ the character FIFO. Must be at least one byte long.
+ @return 1 if one byte was read from the character FIFO, 0 if it was empty.
+
+ Read one byte from character FIFO:
+ Fifo_readByte(&fifo, &ch);
+ */
+bool_t Fifo_readByte(struct Fifo_t* o, void* buff)
+{
+    /* Pop front */
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    if(o->Used > 0)
+    {
+        *(uint8_t*)buff = *o->Head;
+
+        if((o->Head += 1) > o->BufEnd)
+        {
+            o->Head = o->Buff;
+        }
+
+        o->Free = (len_t)(o->Free + 1);
+        o->Used = (len_t)(o->Used - 1);
+
+        OS_schedulerLock();
+
+        if(o->Event.ListWrite.Length != 0)
+        {
+            /* Unblock task waiting to write to this event. */
+            struct taskListNode_t* node = o->Event.ListWrite.Tail;
+
+            /* Length waiting for. */
+            if((len_t)node->Value <= o->Free)
+            {
+                OS_eventUnblockTasks(&(o->Event.ListWrite));
+            }
+        }
+
+        CRITICAL_EXIT();
+        OS_schedulerUnlock();
+        return 1;
+    }
+    else
+    {
+        CRITICAL_EXIT();
+        return 0;
+    }
+}
+
 /** Read from character FIFO.
 
  Remove up to length items from the character FIFO; copy them to the provided
@@ -101,7 +153,9 @@ len_t Fifo_read(struct Fifo_t* o, void* buff, len_t length)
             {
                 memcpy(buff, pos, (size_t)length);
                 if(numFromBegin != 0)
+                {
                     memcpy((uint8_t*)buff + length, o->Buff, (size_t)numFromBegin);
+                }
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -124,16 +178,76 @@ len_t Fifo_read(struct Fifo_t* o, void* buff, len_t length)
 
                 /* Length waiting for. */
                 if((len_t)node->Value <= o->Free)
+                {
                     OS_eventUnblockTasks(&(o->Event.ListWrite));
+                }
             }
         }
     }
     CRITICAL_EXIT();
 
     if(val != 0)
+    {
         OS_schedulerUnlock();
+    }
 
     return val;
+}
+
+/** Write one byte to character FIFO.
+
+ Add up to length characters to the character FIFO, coping them from the
+ provided buffer.
+
+ @param buff Buffer from where to read the character being written to the
+ character FIFO. Must be at least one byte long.
+ @return 1 if one byte was written to the character FIFO, 0 if it was full.
+
+ Write to character FIFO:
+ uint8_t ch = 'a';
+ Fifo_writeByte(&fifo, &ch);
+ */
+bool_t Fifo_writeByte(struct Fifo_t* o, const void* buff)
+{
+    /* Push back */
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    if(o->Free > 0)
+    {
+        *o->Tail = *(uint8_t*)buff;
+
+        if((o->Tail += 1) > o->BufEnd)
+        {
+            o->Tail = o->Buff;
+        }
+
+        o->Free = (len_t)(o->Free - 1);
+        o->Used = (len_t)(o->Used + 1);
+
+        OS_schedulerLock();
+
+        if(o->Event.ListRead.Length != 0)
+        {
+            /* Unblock task waiting to read from this event. */
+            struct taskListNode_t* node = o->Event.ListRead.Tail;
+
+            /* Length waiting for. */
+            if((len_t)node->Value <= o->Used)
+            {
+                OS_eventUnblockTasks(&(o->Event.ListRead));
+            }
+        }
+
+        CRITICAL_EXIT();
+        OS_schedulerUnlock();
+        return 1;
+    }
+    else
+    {
+        CRITICAL_EXIT();
+        return 0;
+    }
 }
 
 /** Write to character FIFO.
@@ -188,7 +302,9 @@ len_t Fifo_write(struct Fifo_t* o, const void* buff, len_t length)
             {
                 memcpy(pos, buff, (size_t)length);
                 if(numFromBegin != 0)
+                {
                     memcpy(o->Buff, (uint8_t*)buff + length, (size_t)numFromBegin);
+                }
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -209,14 +325,18 @@ len_t Fifo_write(struct Fifo_t* o, const void* buff, len_t length)
 
                 /* Length waiting for. */
                 if((len_t)node->Value <= o->Used)
+                {
                     OS_eventUnblockTasks(&(o->Event.ListRead));
+                }
             }
         }
     }
     CRITICAL_EXIT();
 
     if(val != 0)
+    {
         OS_schedulerUnlock();
+    }
 
     return val;
 }
@@ -249,7 +369,9 @@ len_t Fifo_readPend(struct Fifo_t* o, void* buff, len_t length, tick_t ticksToWa
 {
     len_t val = Fifo_read(o, buff, length);
     if(val == 0)
+    {
         Fifo_pendRead(o, length, ticksToWait);
+    }
     return val;
 }
 
@@ -283,7 +405,9 @@ len_t Fifo_writePend(struct Fifo_t* o, const void* buff, len_t length, tick_t ti
 {
     len_t val = Fifo_write(o, buff, length);
     if(val == 0)
+    {
         Fifo_pendWrite(o, length, ticksToWait);
+    }
     return val;
 }
 
