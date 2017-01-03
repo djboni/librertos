@@ -398,7 +398,6 @@ struct task_t* OS_getCurrentTask(void)
 void OS_taskDelay(tick_t ticksToDelay)
 {
     /* Insert task in the blocked tasks list. */
-    CRITICAL_VAL();
 
     OS_schedulerLock();
     if(ticksToDelay != 0)
@@ -421,9 +420,9 @@ void OS_taskDelay(tick_t ticksToDelay)
             blockedTaskList = OSstate.BlockedTaskList_Overflowed;
         }
 
-        CRITICAL_ENTER();
+        INTERRUPTS_DISABLE();
         task->State = TASKSTATE_BLOCKED;
-        CRITICAL_EXIT();
+        INTERRUPTS_ENABLE();
 
         /* Insert task on list. */
         OS_listInsert(blockedTaskList, taskBlockedNode, tickToWakeup);
@@ -998,9 +997,8 @@ void OS_eventPendTask(
 {
     struct taskListNode_t* node = &task->NodeEvent;
     priority_t priority = task->Priority;
-    CRITICAL_VAL();
 
-    CRITICAL_ENTER();
+    INTERRUPTS_DISABLE();
 
     /* Find correct position for the task in the event list. This list may
      be changed by interrupts, so we must do things carefully. */
@@ -1013,7 +1011,7 @@ void OS_eventPendTask(
 
             while(pos != LIST_HEAD(list))
             {
-                CRITICAL_EXIT();
+                INTERRUPTS_ENABLE();
 
                 /* For test coverage only. This macro is used as a deterministic
                  way to create a concurrent access. */
@@ -1022,11 +1020,11 @@ void OS_eventPendTask(
                 if(((struct task_t*)pos->Owner)->Priority <= priority)
                 {
                     /* Found where to insert. Break while(). */
-                    CRITICAL_ENTER();
+                    INTERRUPTS_DISABLE();
                     break;
                 }
 
-                CRITICAL_ENTER();
+                INTERRUPTS_DISABLE();
                 if(pos->List != list)
                 {
                     /* This position was removed from the list. An interrupt
@@ -1083,17 +1081,17 @@ void OS_eventPendTask(
             if(ticksToWait == MAX_DELAY)
             {
                 task->State = TASKSTATE_SUSPENDED;
-                CRITICAL_EXIT();
+                INTERRUPTS_ENABLE();
             }
             else
             {
-                CRITICAL_EXIT();
+                INTERRUPTS_ENABLE();
                 OS_taskDelay(ticksToWait);
             }
         }
         else
         {
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
         }
     }
 }
