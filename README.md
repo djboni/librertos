@@ -5,7 +5,8 @@ by [Djones A. Boni](https://twitter.com/djonesboni)
 
 LibreRTOS is a portable single-stack Real Time Operating System.
 
-Provides both preemptive and cooperative kernel modes.
+Provides preemptive, cooperative and hybrid kernel modes. In hybrid mode only
+higher priority tasks can cause a preemption.
 
 All tasks share the same stack. This allows a large number of tasks to be
 created even on RAM constrained projects.
@@ -19,7 +20,7 @@ unlock before returning.
 # Features
 
 * Single-stack
-* Preemptive or cooperative kernel
+* Preemptive, cooperative or hybrid kernel
 * Software timers (one-shot, periodic, no-period)
 * Semaphore
 * Queue (message queue)

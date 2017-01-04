@@ -34,6 +34,18 @@ extern "C" {
 #define LIBRERTOS_PREEMPTION         0  /* boolean */
 #endif
 
+#ifndef LIBRERTOS_PREEMPT_LIMIT
+#define LIBRERTOS_PREEMPT_LIMIT      0  /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
+#endif
+
+#if (LIBRERTOS_PREEMPT_LIMIT < 0)
+#error "LIBRERTOS_PREEMPT_LIMIT < 0! Should be >= 0."
+#endif
+
+#if (LIBRERTOS_PREEMPT_LIMIT >= LIBRERTOS_MAX_PRIORITY)
+#error "LIBRERTOS_PREEMPT_LIMIT >= LIBRERTOS_MAX_PRIORITY! Makes the kernel cooperative! Should be < LIBRERTOS_MAX_PRIORITY."
+#endif
+
 #ifndef LIBRERTOS_SOFTWARETIMERS
 #define LIBRERTOS_SOFTWARETIMERS     0  /* boolean */
 #endif

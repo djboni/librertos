@@ -273,12 +273,21 @@ static void _OS_tickUnblockTimedoutTasks(void)
 
         #if (LIBRERTOS_PREEMPTION != 0)
         {
-            /* Inside critical section. We can read CurrentTCB directly. */
-            if(     OSstate.CurrentTCB == NULL ||
-                    task->Priority > OSstate.CurrentTCB->Priority)
+            #if (LIBRERTOS_PREEMPT_LIMIT > 0)
+            if(task->Priority >= LIBRERTOS_PREEMPT_LIMIT)
             {
-                OSstate.HigherReadyTask = 1;
+            #endif
+
+                /* Inside critical section. We can read CurrentTCB directly. */
+                if(     OSstate.CurrentTCB == NULL ||
+                        task->Priority > OSstate.CurrentTCB->Priority)
+                {
+                    OSstate.HigherReadyTask = 1;
+                }
+
+            #if (LIBRERTOS_PREEMPT_LIMIT > 0)
             }
+            #endif
         }
         #endif /* LIBRERTOS_PREEMPTION */
 
@@ -299,12 +308,21 @@ static void _OS_tickUnblockPendingReadyTasks(void)
 
         #if (LIBRERTOS_PREEMPTION != 0)
         {
-            /* Inside critical section. We can read CurrentTCB directly. */
-            if(     OSstate.CurrentTCB == NULL ||
-                    task->Priority > OSstate.CurrentTCB->Priority)
+            #if (LIBRERTOS_PREEMPT_LIMIT > 0)
+            if(task->Priority >= LIBRERTOS_PREEMPT_LIMIT)
             {
-                OSstate.HigherReadyTask = 1;
+            #endif
+
+                /* Inside critical section. We can read CurrentTCB directly. */
+                if(     OSstate.CurrentTCB == NULL ||
+                        task->Priority > OSstate.CurrentTCB->Priority)
+                {
+                    OSstate.HigherReadyTask = 1;
+                }
+
+            #if (LIBRERTOS_PREEMPT_LIMIT > 0)
             }
+            #endif
         }
         #endif /* LIBRERTOS_PREEMPTION */
 
