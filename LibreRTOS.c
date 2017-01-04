@@ -43,7 +43,12 @@ void OS_init(void)
 
     OSstate.SchedulerLock = 1;
     OSstate.CurrentTCB = NULL;
-    OSstate.HigherReadyTask = 0;
+
+    #if (LIBRERTOS_PREEMPTION != 0)
+    {
+        OSstate.HigherReadyTask = 0;
+    }
+    #endif
 
     OS_listHeadInit(&OSstate.PendingReadyTaskList);
 
@@ -266,12 +271,16 @@ static void _OS_tickUnblockTimedoutTasks(void)
             OS_listRemove(&task->NodeEvent);
         }
 
-        /* Inside critical section. We can read CurrentTCB directly. */
-        if(     OSstate.CurrentTCB == NULL ||
-                task->Priority > OSstate.CurrentTCB->Priority)
+        #if (LIBRERTOS_PREEMPTION != 0)
         {
-            OSstate.HigherReadyTask = 1;
+            /* Inside critical section. We can read CurrentTCB directly. */
+            if(     OSstate.CurrentTCB == NULL ||
+                    task->Priority > OSstate.CurrentTCB->Priority)
+            {
+                OSstate.HigherReadyTask = 1;
+            }
         }
+        #endif /* LIBRERTOS_PREEMPTION */
 
         INTERRUPTS_ENABLE();
     }
@@ -288,12 +297,16 @@ static void _OS_tickUnblockPendingReadyTasks(void)
         /* Remove from pending ready list. */
         OS_listRemove(&task->NodeEvent);
 
-        /* Inside critical section. We can read CurrentTCB directly. */
-        if(     OSstate.CurrentTCB == NULL ||
-                task->Priority > OSstate.CurrentTCB->Priority)
+        #if (LIBRERTOS_PREEMPTION != 0)
         {
-            OSstate.HigherReadyTask = 1;
+            /* Inside critical section. We can read CurrentTCB directly. */
+            if(     OSstate.CurrentTCB == NULL ||
+                    task->Priority > OSstate.CurrentTCB->Priority)
+            {
+                OSstate.HigherReadyTask = 1;
+            }
         }
+        #endif /* LIBRERTOS_PREEMPTION */
 
         INTERRUPTS_ENABLE();
 
@@ -346,7 +359,7 @@ void OS_schedulerUnlock(void)
 
             INTERRUPTS_ENABLE();
         }
-        #endif
+        #endif /* LIBRERTOS_PREEMPTION */
     }
     else
     {
