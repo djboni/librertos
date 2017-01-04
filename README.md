@@ -5,50 +5,27 @@ by [Djones A. Boni](https://twitter.com/djonesboni)
 
 LibreRTOS is a portable single-stack Real Time Operating System.
 
-All tasks share the same stack, allowing a large number or tasks
-to be created even on architectures with low RAM, such as ATmega328P (2kB).
+Provides both preemptive and cooperative kernel modes.
 
-The tasks must follow a "run to completion" scheme, usually using a state
-machine.
+All tasks share the same stack. This allows a large number of tasks to be
+created even on RAM constrained projects.
 
-Upon creation each task is given a different priority.
-The priority is used by the scheduler to choose which task will run.
-The higher priority task that is ready to run will be scheduled.
+Tasks must run to completion and also must hold its state into static memory.
 
-LibreRTOS may be configured as preemptive or cooperative mode.
-In cooperative mode the current task running must finish before another task
-runs (schedule only after completion).
-In preemptive mode the current task running may be stopped to run a higher
-priority task, resuming the low priority task as soon as the higher priority
-task finishes (schedule higher priority task as soon as possible).
-In both cases the scheduler chooses the highest priority ready task to run.
+Interrupts that use LibreRTOS API must lock the scheduler at the beginning and
+unlock before returning.
 
 
+# Features
 
-LibreRTOS provides:
-
-* Task delay
-* Events
-* Pend on events
-* Pend with timeout
-
-Events available:
-
+* Single-stack
+* Preemptive or cooperative kernel
+* Software timers (one-shot, periodic, no-period)
 * Semaphore
-* Queue (variable length data)
+* Queue (message queue)
 * Fifo (character queue)
 * Mutex (no priority inheritance mechanism)
-
-
-
-You can use LibreRTOS both for closed- and open-source projects. You are also
-free to keep changes to this library to yourself. However we'll enjoy your
-improvements and suggestions. `:-)`
-
-You are free to copy, modify, and distribute LibreRTOS with attribution under
-the terms of the
-[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
-See the doc/LICENSE file for details.
+* Documentation is in the source files
 
 
 ## How to use LibreRTOS
@@ -100,6 +77,18 @@ int main(void)
 
 If you have suggestions for improving LibreRTOS, please
 [open an issue or pull request on GitHub](https://github.com/djboni/librertos).
+
+
+# Licensing
+
+You can use LibreRTOS both for closed- and open-source projects. You are also
+free to keep changes to yourself. However we'll enjoy your improvements and
+suggestions. `:-)`
+
+You are free to copy, modify, and distribute LibreRTOS with attribution under
+the terms of the
+[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+See the doc/LICENSE file for details.
 
 
 ## Important files
