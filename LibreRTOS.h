@@ -100,9 +100,9 @@ typedef void* timerParameter_t;
 typedef void(*timerFunction_t)(struct Timer_t*, timerParameter_t);
 
 enum timerType_t {
-    TIMERTYPE_DEFAULT = 0x00, /* Timer need to be reset to run. Run after period has passed. */
-    TIMERTYPE_AUTO    = 0x01, /* Auto reset timer after it is run. */
-    TIMERTYPE_ONESHOT = 0x02 /* Timer need to be reset to run. Run as soon as it is reset. */
+    TIMERTYPE_ONESHOT  = 0x00, /* Timer need to be reset to run. Run after period has passed. */
+    TIMERTYPE_AUTO     = 0x01, /* Auto reset timer after it has run. */
+    TIMERTYPE_NOPERIOD = 0x02 /* Timer need to be reset to run. Run as soon as it is reset. */
 };
 
 struct Timer_t {

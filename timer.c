@@ -148,7 +148,7 @@ static void _OS_timerFunction(taskParameter_t param)
         struct taskListNode_t* node = OSstate.TimerUnorderedList.Head;
         struct Timer_t* timer = (struct Timer_t*)node->Owner;
 
-        if(timer->Type == TIMERTYPE_ONESHOT)
+        if(timer->Type == TIMERTYPE_NOPERIOD)
         {
             /* Execute one-shot timer. */
             OS_listRemove(node);
@@ -254,22 +254,24 @@ void OS_timerTaskCreate(priority_t priority)
 
  This function does not start the timer.
 
- The types can be of three types: TIMERTYPE_DEFAULT, TIMERTYPE_AUTO,
- TIMERTYPE_ONESHOT.
+ The types can be of three types: TIMERTYPE_ONESHOT, TIMERTYPE_AUTO or
+ TIMERTYPE_NOPERIOD.
 
- A default timer will run once after its period has timed-out after a reset or
+ An one-shot timer will run once after its period has timed-out after a reset or
  start.
 
  An auto timer will run multiple times after after a reset or start. The auto
  timer resets itself when it runs.
 
- An one-shot timer will run once when the timer task is scheduled.
+ A no-period timer will run once when the timer task is scheduled. It is
+ equivalent to a timer with period equal to zero, but avoids being inserted into
+ the ordered timers list. It does not use the period information, but user
+ should initialize with value 0 as its period.
 
- @param type Define the type of the timer. The types can be TIMERTYPE_DEFAULT,
- TIMERTYPE_AUTO, TIMERTYPE_ONESHOT.
+ @param type Define the type of the timer. The types can be TIMERTYPE_ONESHOT,
+ TIMERTYPE_AUTO or TIMERTYPE_NOPERIOD.
  @param period Period of the timer. After a reset or start the timer will run
- only after its period has timed-out. Note: A one-shot timer does not use the
- period information; pass value 0 for one-shot timer.
+ only after its period has timed-out.
  @param function Function pointer to the timer function. It will be called by
  timer task when the timer runs. The prototype must be
  void timerFunction(struct Timer_t* timer, void* param);
