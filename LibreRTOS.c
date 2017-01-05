@@ -199,7 +199,22 @@ void OS_scheduler(void)
                         OSstate.Task[priority]->State == TASKSTATE_READY)
                 {
                     /* Higher priority task ready. */
-                    task = OSstate.Task[priority];
+
+                    #if (LIBRERTOS_PREEMPTION != 0 && LIBRERTOS_PREEMPT_LIMIT > 0)
+                    {
+                        /* Schedule only if preemption limit allows it. */
+                        if(     priority >= LIBRERTOS_PREEMPT_LIMIT ||
+                                currentTaskPriority == LIBRERTOS_NO_TASK_RUNNING)
+                        {
+                            task = OSstate.Task[priority];
+                        }
+                    }
+                    #else /* LIBRERTOS_PREEMPTION && LIBRERTOS_PREEMPT_LIMIT */
+                    {
+                        task = OSstate.Task[priority];
+                    }
+                    #endif /* LIBRERTOS_PREEMPTION && LIBRERTOS_PREEMPT_LIMIT */
+
                     INTERRUPTS_ENABLE();
                     break;
                 }
