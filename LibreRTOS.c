@@ -92,6 +92,7 @@ void OS_init(void)
 /** Start OS. Must be called once before the scheduler. */
 void OS_start(void)
 {
+    INTERRUPTS_ENABLE();
     OS_schedulerUnlock();
 }
 
@@ -173,66 +174,54 @@ static void _OS_scheduleTask(struct task_t*const task)
  handling. */
 void OS_scheduler(void)
 {
-    /* Atomically test and lock scheduler. */
-    INTERRUPTS_DISABLE();
+    OS_schedulerLock();
 
-    if(OSstate.SchedulerLock != 0)
+    for(;;)
     {
-        /* Scheduler locked. Cannot run other task. */
-        INTERRUPTS_ENABLE();
-    }
-    else
-    {
-        /* Scheduler unlocked. */
+        /* Schedule higher priority task. */
 
-        OS_schedulerLock();
-        INTERRUPTS_ENABLE();
+        /* Save current TCB. */
+        struct task_t* task = NULL;
 
-        do {
-            /* Schedule higher priority task. */
+        {
+            /* Scheduler locked. We can read CurrentTCB directly. */
+            priority_t currentTaskPriority = (OSstate.CurrentTCB == NULL ?
+                    LIBRERTOS_NO_TASK_RUNNING : OSstate.CurrentTCB->Priority);
+            priority_t priority;
 
-            /* Save current TCB. */
-            struct task_t* task = NULL;
-
+            for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
+                    priority > currentTaskPriority;
+                    --priority)
             {
-                /* Scheduler locked. We can read CurrentTCB directly. */
-                priority_t currentTaskPriority = (OSstate.CurrentTCB == NULL ?
-                        LIBRERTOS_NO_TASK_RUNNING : OSstate.CurrentTCB->Priority);
-                priority_t priority;
-
-                for(    priority = LIBRERTOS_MAX_PRIORITY - 1;
-                        priority > currentTaskPriority;
-                        --priority)
+                /* Atomically test TaskState. */
+                INTERRUPTS_DISABLE();
+                if(     OSstate.Task[priority] != NULL &&
+                        OSstate.Task[priority]->State == TASKSTATE_READY)
                 {
-                    /* Atomically test TaskState. */
-                    INTERRUPTS_DISABLE();
-                    if(     OSstate.Task[priority] != NULL &&
-                            OSstate.Task[priority]->State == TASKSTATE_READY)
-                    {
-                        /* Higher priority task ready. */
-                        task = OSstate.Task[priority];
-                        INTERRUPTS_ENABLE();
-                        break;
-                    }
+                    /* Higher priority task ready. */
+                    task = OSstate.Task[priority];
                     INTERRUPTS_ENABLE();
+                    break;
                 }
+                INTERRUPTS_ENABLE();
             }
+        }
 
-            if(task != NULL)
-            {
-                /* Higher priority task ready. */
-                _OS_scheduleTask(task);
-            }
-            else
-            {
-                /* No higher priority task ready. */
-                OS_schedulerUnlock();
-                break;
-            }
+        if(task != NULL)
+        {
+            /* Higher priority task ready. */
+            _OS_scheduleTask(task);
+        }
+        else
+        {
+            /* No higher priority task ready. */
+            OS_schedulerUnlock();
+            break;
+        }
 
-            /* Loop to check if another higher priority task is ready. */
-        } while(1);
-    }
+        /* Loop to check if another higher priority task is ready. */
+
+    } /* for(;;) */
 }
 
 /** Lock scheduler (recursive lock). Current task cannot be preempted if
@@ -372,6 +361,7 @@ void OS_schedulerUnlock(void)
             if(OSstate.HigherReadyTask != 0)
             {
                 OSstate.HigherReadyTask = 0;
+                INTERRUPTS_ENABLE();
                 OS_scheduler();
             }
 
