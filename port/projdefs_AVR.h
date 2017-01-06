@@ -47,14 +47,14 @@ typedef uint8_t  bool_t;
 #define INTERRUPTS_DISABLE() __asm __volatile("cli" ::: "memory")
 
 /* Nested critical section management macros. */
-#define CRITICAL_VAL()
-#define CRITICAL_ENTER() __asm __volatile(       \
-        "in    __tmp_reg__,__SREG__   \n\t"      \
-        "cli                          \n\t"      \
-        "push  __tmp_reg__" ::: "memory")
-#define CRITICAL_EXIT()  __asm __volatile(       \
-        "pop   __tmp_reg__            \n\t"      \
-        "out   __SREG__,__tmp_reg__" ::: "memory")
+#define CRITICAL_VAL()   uint8_t __istate_val
+#define CRITICAL_ENTER() __asm __volatile( \
+        "in %0, __SREG__ \n\t"             \
+        "cli             \n\t"             \
+        :"=r" (__istate_val) ::"memory")
+#define CRITICAL_EXIT()  __asm __volatile( \
+        "out __SREG__, %0 \n\t"            \
+        ::"r" (__istate_val) :"memory")
 
 /* Simulate concurrent access. For test coverage only. */
 #define LIBRERTOS_TEST_CONCURRENT_ACCESS()
