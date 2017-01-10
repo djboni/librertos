@@ -133,6 +133,7 @@ struct libreRtosState_t {
     #endif
 
     volatile schedulerLock_t   SchedulerLock; /* Scheduler lock. Controls if another task can be scheduled. */
+    volatile schedulerLock_t   SchedulerUnlockTodo; /* Flags the schedule unlock function has work to do. */
     struct task_t*volatile     CurrentTCB; /* Current task control block. */
 
     #if (LIBRERTOS_PREEMPTION != 0)

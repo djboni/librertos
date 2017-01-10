@@ -34,6 +34,7 @@ struct libreRtosState_t OSstate;
 static void _OS_tickInvertBlockedTasksLists(void);
 static void _OS_tickUnblockTimedoutTasks(void);
 static void _OS_tickUnblockPendingReadyTasks(void);
+static void _OS_schedulerReal(void);
 static void _OS_scheduleTask(struct task_t*const task);
 
 /** Initialize OS. Must be called before any other OS function. */
@@ -42,6 +43,7 @@ void OS_init(void)
     uint16_t i;
 
     OSstate.SchedulerLock = 1;
+    OSstate.SchedulerUnlockTodo = 0;
     OSstate.CurrentTCB = NULL;
 
     #if (LIBRERTOS_PREEMPTION != 0)
@@ -109,7 +111,12 @@ static void _OS_tickInvertBlockedTasksLists(void)
 void OS_tick(void)
 {
     OS_schedulerLock();
+
     ++OSstate.DelayedTicks;
+
+    /* Scheduler unlock has work todo. */
+    OSstate.SchedulerUnlockTodo = 1;
+
     OS_schedulerUnlock();
 }
 
@@ -170,12 +177,18 @@ static void _OS_scheduleTask(struct task_t*const task)
     INTERRUPTS_ENABLE();
 }
 
-/** Schedule a task. May be called in the main loop and after interrupt
- handling. */
+/** Schedule a task. Called in the main loop. */
 void OS_scheduler(void)
 {
     OS_schedulerLock();
+    _OS_schedulerReal();
+    OS_schedulerUnlock();
+}
 
+/** Scheduler algorithm a task. Called by scheduler functions and by scheduler
+ unlock function. */
+static void _OS_schedulerReal(void)
+{
     for(;;)
     {
         /* Schedule higher priority task. */
@@ -230,7 +243,6 @@ void OS_scheduler(void)
         else
         {
             /* No higher priority task ready. */
-            OS_schedulerUnlock();
             break;
         }
 
@@ -349,40 +361,53 @@ static void _OS_tickUnblockPendingReadyTasks(void)
  scheduler is unlocked. */
 void OS_schedulerUnlock(void)
 {
-    if(OSstate.SchedulerLock == 1)
+    if(OSstate.SchedulerUnlockTodo != 0 && OSstate.SchedulerLock == 1)
     {
-        INTERRUPTS_DISABLE();
+        CRITICAL_VAL();
+        CRITICAL_ENTER();
 
-        while(OSstate.DelayedTicks != 0)
+        for(;;)
         {
-            --OSstate.DelayedTicks;
-            ++OSstate.Tick;
+            OSstate.SchedulerUnlockTodo = 0;
 
-            INTERRUPTS_ENABLE();
-            _OS_tickUnblockTimedoutTasks();
-            INTERRUPTS_DISABLE();
-        }
-
-        INTERRUPTS_ENABLE();
-
-        _OS_tickUnblockPendingReadyTasks();
-
-        --OSstate.SchedulerLock;
-
-        #if (LIBRERTOS_PREEMPTION != 0)
-        {
-            INTERRUPTS_DISABLE();
-
-            if(OSstate.HigherReadyTask != 0)
+            while(OSstate.DelayedTicks != 0)
             {
-                OSstate.HigherReadyTask = 0;
+                --OSstate.DelayedTicks;
+                ++OSstate.Tick;
+
                 INTERRUPTS_ENABLE();
-                OS_scheduler();
+                _OS_tickUnblockTimedoutTasks();
+                INTERRUPTS_DISABLE();
             }
 
             INTERRUPTS_ENABLE();
+
+            _OS_tickUnblockPendingReadyTasks();
+
+            INTERRUPTS_DISABLE();
+
+            #if (LIBRERTOS_PREEMPTION != 0)
+            {
+                if(OSstate.HigherReadyTask != 0)
+                {
+                    OSstate.HigherReadyTask = 0;
+                    INTERRUPTS_ENABLE();
+                    _OS_schedulerReal();
+                    INTERRUPTS_DISABLE();
+                }
+            }
+            #endif /* LIBRERTOS_PREEMPTION */
+
+            if(OSstate.SchedulerUnlockTodo == 0)
+            {
+                /* Scheduler unlock has no work todo. */
+                break;
+            }
         }
-        #endif /* LIBRERTOS_PREEMPTION */
+
+        --OSstate.SchedulerLock;
+
+        CRITICAL_EXIT();
     }
     else
     {
@@ -484,6 +509,9 @@ void OS_taskResume(struct task_t* task)
 
             /* Add to pending ready tasks list. */
             OS_listInsertAfter(&OSstate.PendingReadyTaskList, OSstate.PendingReadyTaskList.Head, node);
+
+            /* Scheduler unlock has work todo. */
+            OSstate.SchedulerUnlockTodo = 1;
         }
         CRITICAL_EXIT();
     }
@@ -786,5 +814,8 @@ void OS_eventUnblockTasks(struct taskHeadList_t* list)
 
         /* Insert in the pending ready tasks . */
         OS_listInsertAfter(&OSstate.PendingReadyTaskList, OSstate.PendingReadyTaskList.Head, node);
+
+        /* Scheduler unlock has work todo. */
+        OSstate.SchedulerUnlockTodo = 1;
     }
 }
