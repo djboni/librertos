@@ -99,6 +99,7 @@ struct task_t {
 
     #if (LIBRERTOS_STATISTICS != 0)
         stattime_t        TaskRunTime;
+        stattime_t        TaskNumSchedules;
     #endif
 };
 
@@ -225,6 +226,7 @@ extern stattime_t US_systemRunTime(void);
 stattime_t OS_totalRunTime(void);
 stattime_t OS_noTaskRunTime(void);
 stattime_t OS_taskRunTime(struct task_t* task);
+stattime_t OS_taskNumSchedules(struct task_t* task);
 
 #endif
 

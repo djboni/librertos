@@ -142,6 +142,7 @@ static void _OS_scheduleTask(struct task_t*const task)
         stattime_t now = US_systemRunTime();
         OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
         OSstate.TotalRunTime = now;
+        ++task->TaskNumSchedules;
     }
     #endif
 
@@ -460,6 +461,7 @@ void OS_taskCreate(
     #if (LIBRERTOS_STATISTICS != 0)
     {
         task->TaskRunTime = 0;
+        task->TaskNumSchedules = 0;
     }
     #endif
 
@@ -591,6 +593,16 @@ stattime_t OS_taskRunTime(struct task_t* task)
     CRITICAL_VAL();
     CRITICAL_ENTER();
     val = task->TaskRunTime;
+    CRITICAL_EXIT();
+    return val;
+}
+
+stattime_t OS_taskNumSchedules(struct task_t* task)
+{
+    stattime_t val;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    val = task->TaskNumSchedules;
     CRITICAL_EXIT();
     return val;
 }
