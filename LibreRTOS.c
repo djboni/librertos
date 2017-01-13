@@ -222,8 +222,7 @@ static void _OS_schedulerReal(void)
             {
                 /* Atomically test TaskState. */
                 INTERRUPTS_DISABLE();
-                if(     OSstate.Task[priority] != NULL &&
-                        OSstate.Task[priority]->State == TASKSTATE_READY)
+                if(OSstate.Task[priority] != NULL)
                 {
                     /* Higher priority task ready. */
 
@@ -312,6 +311,8 @@ static void _OS_tickUnblockTimedoutTasks(void)
             OS_listRemove(&task->NodeEvent);
         }
 
+        OSstate.Task[task->Priority] = task;
+
         #if (LIBRERTOS_PREEMPTION != 0)
         {
             #if (LIBRERTOS_PREEMPT_LIMIT > 0)
@@ -378,6 +379,8 @@ static void _OS_tickUnblockPendingReadyTasks(void)
         task->State = TASKSTATE_READY;
 
         INTERRUPTS_DISABLE();
+
+        OSstate.Task[task->Priority] = task;
     }
     INTERRUPTS_ENABLE();
 }
@@ -509,6 +512,7 @@ void OS_taskDelay(tick_t ticksToDelay)
 
         INTERRUPTS_DISABLE();
         task->State = TASKSTATE_BLOCKED;
+        OSstate.Task[task->Priority] = NULL;
         INTERRUPTS_ENABLE();
 
         /* Insert task on list. */
@@ -822,6 +826,7 @@ void OS_eventPendTask(
             if(ticksToWait == MAX_DELAY)
             {
                 task->State = TASKSTATE_SUSPENDED;
+                OSstate.Task[task->Priority] = NULL;
                 INTERRUPTS_ENABLE();
             }
             else
