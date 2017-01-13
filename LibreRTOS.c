@@ -140,14 +140,7 @@ static void _OS_scheduleTask(struct task_t*const task)
     #if (LIBRERTOS_STATISTICS != 0)
     {
         stattime_t now = US_systemRunTime();
-        if(currentTask != NULL)
-        {
-            currentTask->TaskRunTime += now - OSstate.TotalRunTime;
-        }
-        else
-        {
-            OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
-        }
+        OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
         OSstate.TotalRunTime = now;
     }
     #endif
@@ -189,6 +182,26 @@ void OS_scheduler(void)
  unlock function. */
 static void _OS_schedulerReal(void)
 {
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        stattime_t now;
+        /* Scheduler locked. We can read CurrentTCB directly. */
+        struct task_t* currentTask = OSstate.CurrentTCB;
+        INTERRUPTS_DISABLE();
+        now = US_systemRunTime();
+        if(currentTask != NULL)
+        {
+            currentTask->TaskRunTime += now - OSstate.TotalRunTime;
+        }
+        else
+        {
+            OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
+        }
+        OSstate.TotalRunTime = now;
+        INTERRUPTS_ENABLE();
+    }
+    #endif
+
     for(;;)
     {
         /* Schedule higher priority task. */
@@ -249,6 +262,17 @@ static void _OS_schedulerReal(void)
         /* Loop to check if another higher priority task is ready. */
 
     } /* for(;;) */
+
+    #if (LIBRERTOS_STATISTICS != 0)
+    {
+        stattime_t now;
+        INTERRUPTS_DISABLE();
+        now = US_systemRunTime();
+        OSstate.NoTaskRunTime += now - OSstate.TotalRunTime;
+        OSstate.TotalRunTime = now;
+        INTERRUPTS_ENABLE();
+    }
+    #endif
 }
 
 /** Lock scheduler (recursive lock). Current task cannot be preempted if
