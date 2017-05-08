@@ -64,6 +64,8 @@ ISR(TIMER0_OVF_vect)
     OS_tick();
 }
 
+struct task_t TcbTaskA;
+
 /* TaskA code. Toggle PORTB5 (Arduino LED). */
 void taskA(void* param)
 {
@@ -87,8 +89,8 @@ int main(void)
     /* PORTB5 Output (Arduino LED). */
     DDRB |= (1 << DDB5);
 
-    /* Create TaskA. Priority=0, Function=taskA, Parameter=0. */
-    OS_taskCreate(0, &taskA, 0);
+    /* Create TaskA. TaskControlBlock=TcbTaskA, Function=taskA, Priority=0, Parameter=0. */
+    OS_taskCreate(&TcbTaskA, 0, &taskA, 0);
 
     /* Start scheduler. */
     OS_start();
