@@ -591,7 +591,7 @@ stattime_t OS_noTaskRunTime(void)
     return val;
 }
 
-stattime_t OS_taskRunTime(struct task_t* task)
+stattime_t OS_taskRunTime(const struct task_t* task)
 {
     stattime_t val;
     CRITICAL_VAL();
@@ -601,7 +601,7 @@ stattime_t OS_taskRunTime(struct task_t* task)
     return val;
 }
 
-stattime_t OS_taskNumSchedules(struct task_t* task)
+stattime_t OS_taskNumSchedules(const struct task_t* task)
 {
     stattime_t val;
     CRITICAL_VAL();
