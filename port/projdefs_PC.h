@@ -21,6 +21,7 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #include <assert.h>
 
 /* LibreRTOS definitions. */

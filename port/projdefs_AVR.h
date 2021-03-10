@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /* LibreRTOS definitions. */
 #define LIBRERTOS_MAX_PRIORITY 3   /* integer > 0 */
 #define LIBRERTOS_PREEMPTION 0     /* boolean */

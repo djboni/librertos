@@ -29,8 +29,6 @@
 #define LIBRERTOS_GUARD_U32 0xFA57C0DEUL
 #endif
 
-struct libreRtosState_t OSstate;
-
 static void _OS_tickInvertBlockedTasksLists(void);
 static void _OS_tickUnblockTimedoutTasks(void);
 static void _OS_tickUnblockPendingReadyTasks(void);
