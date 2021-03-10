@@ -24,20 +24,20 @@ extern "C" {
 #include <assert.h>
 
 /* LibreRTOS definitions. */
-#define LIBRERTOS_MAX_PRIORITY       3  /* integer > 0 */
-#define LIBRERTOS_PREEMPTION         0  /* boolean */
-#define LIBRERTOS_PREEMPT_LIMIT      0  /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
-#define LIBRERTOS_SOFTWARETIMERS     0  /* boolean */
-#define LIBRERTOS_STATE_GUARDS       0  /* boolean */
-#define LIBRERTOS_STATISTICS         0  /* boolean */
+#define LIBRERTOS_MAX_PRIORITY 3   /* integer > 0 */
+#define LIBRERTOS_PREEMPTION 0     /* boolean */
+#define LIBRERTOS_PREEMPT_LIMIT 0  /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
+#define LIBRERTOS_SOFTWARETIMERS 0 /* boolean */
+#define LIBRERTOS_STATE_GUARDS 0   /* boolean */
+#define LIBRERTOS_STATISTICS 0     /* boolean */
 
-typedef int8_t   priority_t;
-typedef uint8_t  schedulerLock_t;
+typedef int8_t priority_t;
+typedef uint8_t schedulerLock_t;
 typedef uint16_t tick_t;
-typedef int16_t  difftick_t;
+typedef int16_t difftick_t;
 typedef uint32_t stattime_t;
 typedef uint16_t len_t;
-typedef uint8_t  bool_t;
+typedef uint8_t bool_t;
 
 #define MAX_DELAY ((tick_t)-1)
 

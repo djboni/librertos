@@ -27,23 +27,17 @@ extern "C" {
 
 #include <stddef.h>
 
-void OS_listHeadInit(struct taskHeadList_t* list);
+void OS_listHeadInit(struct taskHeadList_t *list);
 
-void OS_listNodeInit(
-        struct taskListNode_t* node,
-        void* owner);
+void OS_listNodeInit(struct taskListNode_t *node, void *owner);
 
-void OS_listInsert(
-        struct taskHeadList_t* list,
-        struct taskListNode_t* node,
-        tick_t value);
+void OS_listInsert(struct taskHeadList_t *list, struct taskListNode_t *node,
+                   tick_t value);
 
-void OS_listInsertAfter(
-        struct taskHeadList_t* list,
-        struct taskListNode_t* pos,
-        struct taskListNode_t* node);
+void OS_listInsertAfter(struct taskHeadList_t *list, struct taskListNode_t *pos,
+                        struct taskListNode_t *node);
 
-void OS_listRemove(struct taskListNode_t* node);
+void OS_listRemove(struct taskListNode_t *node);
 
 #ifdef __cplusplus
 }

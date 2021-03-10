@@ -32,11 +32,10 @@
  Counting semaphore with maximum count 3:
  Semaphore_init(&sem, 3, 3)
  */
-void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max)
-{
-    o->Count = count;
-    o->Max = max;
-    OS_eventRInit(&o->Event);
+void Semaphore_init(struct Semaphore_t *o, len_t count, len_t max) {
+  o->Count = count;
+  o->Max = max;
+  OS_eventRInit(&o->Event);
 }
 
 /** Take semaphore.
@@ -49,22 +48,20 @@ void Semaphore_init(struct Semaphore_t* o, len_t count, len_t max)
  Take a semaphore:
  Semaphore_take(&sem)
  */
-bool_t Semaphore_take(struct Semaphore_t* o)
-{
-    bool_t val;
-    CRITICAL_VAL();
+bool_t Semaphore_take(struct Semaphore_t *o) {
+  bool_t val;
+  CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        val = (o->Count > 0);
-        if(val != 0)
-        {
-            --o->Count;
-        }
+  CRITICAL_ENTER();
+  {
+    val = (o->Count > 0);
+    if (val != 0) {
+      --o->Count;
     }
-    CRITICAL_EXIT();
+  }
+  CRITICAL_EXIT();
 
-    return val;
+  return val;
 }
 
 /** Give semaphore.
@@ -77,34 +74,31 @@ bool_t Semaphore_take(struct Semaphore_t* o)
  Give a semaphore:
  Semaphore_give(&sem)
  */
-bool_t Semaphore_give(struct Semaphore_t* o)
-{
-    bool_t val;
+bool_t Semaphore_give(struct Semaphore_t *o) {
+  bool_t val;
 
-    CRITICAL_VAL();
+  CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        val = (o->Count < o->Max);
-        if(val != 0)
-        {
-            ++o->Count;
+  CRITICAL_ENTER();
+  {
+    val = (o->Count < o->Max);
+    if (val != 0) {
+      ++o->Count;
 
-            OS_schedulerLock();
+      OS_schedulerLock();
 
-            if(o->Event.ListRead.Length != 0)
-            {
-                /* Unblock tasks waiting to read from this event. */
-                OS_eventUnblockTasks(&(o->Event.ListRead));
-            }
-        }
+      if (o->Event.ListRead.Length != 0) {
+        /* Unblock tasks waiting to read from this event. */
+        OS_eventUnblockTasks(&(o->Event.ListRead));
+      }
     }
-    CRITICAL_EXIT();
+  }
+  CRITICAL_EXIT();
 
-    if(val != 0)
-        OS_schedulerUnlock();
+  if (val != 0)
+    OS_schedulerUnlock();
 
-    return val;
+  return val;
 }
 
 /** Take or pend on semaphore.
@@ -125,14 +119,12 @@ bool_t Semaphore_give(struct Semaphore_t* o)
  Take or pend on semaphore with timeout of 10 ticks:
  Semaphore_takePend(&sem, 10)
  */
-bool_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
-{
-    bool_t val = Semaphore_take(o);
-    if(val == 0)
-    {
-        Semaphore_pend(o, ticksToWait);
-    }
-    return val;
+bool_t Semaphore_takePend(struct Semaphore_t *o, tick_t ticksToWait) {
+  bool_t val = Semaphore_take(o);
+  if (val == 0) {
+    Semaphore_pend(o, ticksToWait);
+  }
+  return val;
 }
 
 /** Pend on semaphore.
@@ -150,26 +142,21 @@ bool_t Semaphore_takePend(struct Semaphore_t* o, tick_t ticksToWait)
  Pend on semaphore with timeout of 10 ticks:
  Semaphore_pend(&sem, 10)
  */
-void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
-{
-    if(ticksToWait != 0U)
-    {
-        struct task_t* task = OS_getCurrentTask();
+void Semaphore_pend(struct Semaphore_t *o, tick_t ticksToWait) {
+  if (ticksToWait != 0U) {
+    struct task_t *task = OS_getCurrentTask();
 
-        OS_schedulerLock();
-        INTERRUPTS_DISABLE();
-        if(o->Count == 0U)
-        {
-            OS_eventPrePendTask(&o->Event.ListRead, task);
-            INTERRUPTS_ENABLE();
-            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
-        }
-        else
-        {
-            INTERRUPTS_ENABLE();
-        }
-        OS_schedulerUnlock();
+    OS_schedulerLock();
+    INTERRUPTS_DISABLE();
+    if (o->Count == 0U) {
+      OS_eventPrePendTask(&o->Event.ListRead, task);
+      INTERRUPTS_ENABLE();
+      OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+    } else {
+      INTERRUPTS_ENABLE();
     }
+    OS_schedulerUnlock();
+  }
 }
 
 /** Get semaphore count value.
@@ -179,16 +166,13 @@ void Semaphore_pend(struct Semaphore_t* o, tick_t ticksToWait)
  Get semaphore count value:
  Semaphore_getCount(&sem)
  */
-len_t Semaphore_getCount(const struct Semaphore_t* o)
-{
-    len_t val;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    {
-        val = o->Count;
-    }
-    CRITICAL_EXIT();
-    return val;
+len_t Semaphore_getCount(const struct Semaphore_t *o) {
+  len_t val;
+  CRITICAL_VAL();
+  CRITICAL_ENTER();
+  { val = o->Count; }
+  CRITICAL_EXIT();
+  return val;
 }
 
 /** Get semaphore maximum count value.
@@ -198,8 +182,7 @@ len_t Semaphore_getCount(const struct Semaphore_t* o)
  Get semaphore maximum count value:
  Semaphore_getMax(&sem)
  */
-len_t Semaphore_getMax(const struct Semaphore_t* o)
-{
-    /* This value is constant after initialization. No need for locks. */
-    return o->Max;
+len_t Semaphore_getMax(const struct Semaphore_t *o) {
+  /* This value is constant after initialization. No need for locks. */
+  return o->Max;
 }

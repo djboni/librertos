@@ -36,20 +36,19 @@
  struct Queue_t que;
  Queue_init(&que, queBuffer, QUELEN, QUEISZ);
  */
-void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size)
-{
-    uint8_t *buff8 = (uint8_t*)buff;
+void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size) {
+  uint8_t *buff8 = (uint8_t *)buff;
 
-    o->ItemSize = item_size;
-    o->Free = length;
-    o->Used = 0U;
-    o->WLock = 0U;
-    o->RLock = 0U;
-    o->Head = buff8;
-    o->Tail = buff8;
-    o->Buff = buff8;
-    o->BufEnd = &buff8[(length - 1) * item_size];
-    OS_eventRwInit(&o->Event);
+  o->ItemSize = item_size;
+  o->Free = length;
+  o->Used = 0U;
+  o->WLock = 0U;
+  o->RLock = 0U;
+  o->Head = buff8;
+  o->Tail = buff8;
+  o->Buff = buff8;
+  o->BufEnd = &buff8[(length - 1) * item_size];
+  OS_eventRwInit(&o->Event);
 }
 
 /** Read item from queue.
@@ -64,62 +63,56 @@ void Queue_init(struct Queue_t *o, void *buff, len_t length, len_t item_size)
  uint8_t buff[QUEISZ];
  Queue_read(&que, buff);
  */
-bool_t Queue_read(struct Queue_t* o, void* buff)
-{
-    /* Pop front */
-    bool_t val;
-    CRITICAL_VAL();
+bool_t Queue_read(struct Queue_t *o, void *buff) {
+  /* Pop front */
+  bool_t val;
+  CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        val = (o->Used != 0U);
-        if(val != 0U)
-        {
-            uint8_t *pos;
-            len_t lock;
+  CRITICAL_ENTER();
+  {
+    val = (o->Used != 0U);
+    if (val != 0U) {
+      uint8_t *pos;
+      len_t lock;
 
-            pos = o->Head;
-            if((o->Head += o->ItemSize) > o->BufEnd)
-            {
-                o->Head = o->Buff;
-            }
+      pos = o->Head;
+      if ((o->Head += o->ItemSize) > o->BufEnd) {
+        o->Head = o->Buff;
+      }
 
-            lock = (o->RLock)++;
-            --(o->Used);
+      lock = (o->RLock)++;
+      --(o->Used);
 
-            CRITICAL_EXIT();
-            {
-                memcpy(buff, pos, (size_t)o->ItemSize);
+      CRITICAL_EXIT();
+      {
+        memcpy(buff, pos, (size_t)o->ItemSize);
 
-                /* For test coverage only. This macro is used as a deterministic
-                 way to create a concurrent access. */
-                LIBRERTOS_TEST_CONCURRENT_ACCESS();
-            }
-            CRITICAL_ENTER();
+        /* For test coverage only. This macro is used as a deterministic
+         way to create a concurrent access. */
+        LIBRERTOS_TEST_CONCURRENT_ACCESS();
+      }
+      CRITICAL_ENTER();
 
-            if(lock == 0U)
-            {
-                o->Free = (len_t)(o->Free + o->RLock);
-                o->RLock = 0U;
-            }
+      if (lock == 0U) {
+        o->Free = (len_t)(o->Free + o->RLock);
+        o->RLock = 0U;
+      }
 
-            OS_schedulerLock();
+      OS_schedulerLock();
 
-            if(o->Event.ListWrite.Length != 0)
-            {
-                /* Unblock tasks waiting to write to this event. */
-                OS_eventUnblockTasks(&(o->Event.ListWrite));
-            }
-        }
+      if (o->Event.ListWrite.Length != 0) {
+        /* Unblock tasks waiting to write to this event. */
+        OS_eventUnblockTasks(&(o->Event.ListWrite));
+      }
     }
-    CRITICAL_EXIT();
+  }
+  CRITICAL_EXIT();
 
-    if(val != 0)
-    {
-        OS_schedulerUnlock();
-    }
+  if (val != 0) {
+    OS_schedulerUnlock();
+  }
 
-    return val;
+  return val;
 }
 
 /** Write item to queue.
@@ -135,62 +128,56 @@ bool_t Queue_read(struct Queue_t* o, void* buff)
  init_buff(buff);
  Queue_write(&que, buff);
  */
-bool_t Queue_write(struct Queue_t* o, const void* buff)
-{
-    /* Push back */
-    bool_t val;
-    CRITICAL_VAL();
+bool_t Queue_write(struct Queue_t *o, const void *buff) {
+  /* Push back */
+  bool_t val;
+  CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        val = (o->Free != 0U);
-        if(val != 0U)
-        {
-            uint8_t *pos;
-            len_t lock;
+  CRITICAL_ENTER();
+  {
+    val = (o->Free != 0U);
+    if (val != 0U) {
+      uint8_t *pos;
+      len_t lock;
 
-            pos = o->Tail;
-            if((o->Tail += o->ItemSize) > o->BufEnd)
-            {
-                o->Tail = o->Buff;
-            }
+      pos = o->Tail;
+      if ((o->Tail += o->ItemSize) > o->BufEnd) {
+        o->Tail = o->Buff;
+      }
 
-            lock = (o->WLock)++;
-            --(o->Free);
+      lock = (o->WLock)++;
+      --(o->Free);
 
-            OS_schedulerLock();
+      OS_schedulerLock();
 
-            CRITICAL_EXIT();
-            {
-                memcpy(pos, buff, (size_t)o->ItemSize);
+      CRITICAL_EXIT();
+      {
+        memcpy(pos, buff, (size_t)o->ItemSize);
 
-                /* For test coverage only. This macro is used as a deterministic
-                 way to create a concurrent access. */
-                LIBRERTOS_TEST_CONCURRENT_ACCESS();
-            }
-            CRITICAL_ENTER();
+        /* For test coverage only. This macro is used as a deterministic
+         way to create a concurrent access. */
+        LIBRERTOS_TEST_CONCURRENT_ACCESS();
+      }
+      CRITICAL_ENTER();
 
-            if(lock == 0U)
-            {
-                o->Used = (len_t)(o->Used + o->WLock);
-                o->WLock = 0U;
-            }
+      if (lock == 0U) {
+        o->Used = (len_t)(o->Used + o->WLock);
+        o->WLock = 0U;
+      }
 
-            if(o->Event.ListRead.Length != 0)
-            {
-                /* Unblock tasks waiting to read from this event. */
-                OS_eventUnblockTasks(&(o->Event.ListRead));
-            }
-        }
+      if (o->Event.ListRead.Length != 0) {
+        /* Unblock tasks waiting to read from this event. */
+        OS_eventUnblockTasks(&(o->Event.ListRead));
+      }
     }
-    CRITICAL_EXIT();
+  }
+  CRITICAL_EXIT();
 
-    if(val != 0)
-    {
-        OS_schedulerUnlock();
-    }
+  if (val != 0) {
+    OS_schedulerUnlock();
+  }
 
-    return val;
+  return val;
 }
 
 /** Read or pend on queue.
@@ -216,14 +203,12 @@ bool_t Queue_write(struct Queue_t* o, const void* buff)
  uint8_t buff[QUEISZ];
  Queue_readPend(&que, buff, 10);
  */
-bool_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
-{
-    bool_t val = Queue_read(o, buff);
-    if(val == 0)
-    {
-        Queue_pendRead(o, ticksToWait);
-    }
-    return val;
+bool_t Queue_readPend(struct Queue_t *o, void *buff, tick_t ticksToWait) {
+  bool_t val = Queue_read(o, buff);
+  if (val == 0) {
+    Queue_pendRead(o, ticksToWait);
+  }
+  return val;
 }
 
 /** Write or pend on queue.
@@ -251,14 +236,13 @@ bool_t Queue_readPend(struct Queue_t* o, void* buff, tick_t ticksToWait)
  init_buff(buff);
  Queue_writePend(&que, buff, 10);
  */
-bool_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
-{
-    bool_t val = Queue_write(o, buff);
-    if(val == 0)
-    {
-        Queue_pendWrite(o, ticksToWait);
-    }
-    return val;
+bool_t Queue_writePend(struct Queue_t *o, const void *buff,
+                       tick_t ticksToWait) {
+  bool_t val = Queue_write(o, buff);
+  if (val == 0) {
+    Queue_pendWrite(o, ticksToWait);
+  }
+  return val;
 }
 
 /** Pend on queue waiting to read.
@@ -277,26 +261,21 @@ bool_t Queue_writePend(struct Queue_t* o, const void* buff, tick_t ticksToWait)
  Pend on queue waiting to read with timeout of 10 ticks:
  Queue_pendRead(&que, 10);
  */
-void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait)
-{
-    if(ticksToWait != 0U)
-    {
-        struct task_t* task = OS_getCurrentTask();
+void Queue_pendRead(struct Queue_t *o, tick_t ticksToWait) {
+  if (ticksToWait != 0U) {
+    struct task_t *task = OS_getCurrentTask();
 
-        OS_schedulerLock();
-        INTERRUPTS_DISABLE();
-        if(o->Used == 0U)
-        {
-            OS_eventPrePendTask(&o->Event.ListRead, task);
-            INTERRUPTS_ENABLE();
-            OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
-        }
-        else
-        {
-            INTERRUPTS_ENABLE();
-        }
-        OS_schedulerUnlock();
+    OS_schedulerLock();
+    INTERRUPTS_DISABLE();
+    if (o->Used == 0U) {
+      OS_eventPrePendTask(&o->Event.ListRead, task);
+      INTERRUPTS_ENABLE();
+      OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+    } else {
+      INTERRUPTS_ENABLE();
     }
+    OS_schedulerUnlock();
+  }
 }
 
 /** Pend on queue waiting to write.
@@ -315,26 +294,21 @@ void Queue_pendRead(struct Queue_t* o, tick_t ticksToWait)
  Pend on queue waiting to write with timeout of 10 ticks:
  Queue_pendWrite(&que, 10);
  */
-void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
-{
-    if(ticksToWait != 0U)
-    {
-        struct task_t* task = OS_getCurrentTask();
+void Queue_pendWrite(struct Queue_t *o, tick_t ticksToWait) {
+  if (ticksToWait != 0U) {
+    struct task_t *task = OS_getCurrentTask();
 
-        OS_schedulerLock();
-        INTERRUPTS_DISABLE();
-        if(o->Free == 0U)
-        {
-            OS_eventPrePendTask(&o->Event.ListWrite, task);
-            INTERRUPTS_ENABLE();
-            OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
-        }
-        else
-        {
-            INTERRUPTS_ENABLE();
-        }
-        OS_schedulerUnlock();
+    OS_schedulerLock();
+    INTERRUPTS_DISABLE();
+    if (o->Free == 0U) {
+      OS_eventPrePendTask(&o->Event.ListWrite, task);
+      INTERRUPTS_ENABLE();
+      OS_eventPendTask(&o->Event.ListWrite, task, ticksToWait);
+    } else {
+      INTERRUPTS_ENABLE();
     }
+    OS_schedulerUnlock();
+  }
 }
 
 /** Get number of used items on a queue.
@@ -346,16 +320,13 @@ void Queue_pendWrite(struct Queue_t* o, tick_t ticksToWait)
  Get number of used items on a queue:
  Queue_used(&que)
  */
-len_t Queue_used(const struct Queue_t *o)
-{
-    len_t val;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    {
-        val = o->Used;
-    }
-    CRITICAL_EXIT();
-    return val;
+len_t Queue_used(const struct Queue_t *o) {
+  len_t val;
+  CRITICAL_VAL();
+  CRITICAL_ENTER();
+  { val = o->Used; }
+  CRITICAL_EXIT();
+  return val;
 }
 
 /** Get number of free items on a queue.
@@ -367,16 +338,13 @@ len_t Queue_used(const struct Queue_t *o)
  Get number of free items on a queue:
  Queue_free(&que)
  */
-len_t Queue_free(const struct Queue_t *o)
-{
-    len_t val;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    {
-        val = o->Free;
-    }
-    CRITICAL_EXIT();
-    return val;
+len_t Queue_free(const struct Queue_t *o) {
+  len_t val;
+  CRITICAL_VAL();
+  CRITICAL_ENTER();
+  { val = o->Free; }
+  CRITICAL_EXIT();
+  return val;
 }
 
 /** Get queue length.
@@ -388,16 +356,13 @@ len_t Queue_free(const struct Queue_t *o)
  Get length of a queue:
  Queue_length(&que)
  */
-len_t Queue_length(const struct Queue_t *o)
-{
-    len_t val;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    {
-        val = (len_t)(o->Free + o->Used + o->WLock + o->RLock);
-    }
-    CRITICAL_EXIT();
-    return val;
+len_t Queue_length(const struct Queue_t *o) {
+  len_t val;
+  CRITICAL_VAL();
+  CRITICAL_ENTER();
+  { val = (len_t)(o->Free + o->Used + o->WLock + o->RLock); }
+  CRITICAL_EXIT();
+  return val;
 }
 
 /** Get queue item size.
@@ -410,8 +375,7 @@ len_t Queue_length(const struct Queue_t *o)
  Get queue item size:
  Queue_itemSize(&que)
  */
-len_t Queue_itemSize(const struct Queue_t *o)
-{
-    /* This value is constant after initialization. No need for locks. */
-    return o->ItemSize;
+len_t Queue_itemSize(const struct Queue_t *o) {
+  /* This value is constant after initialization. No need for locks. */
+  return o->ItemSize;
 }
