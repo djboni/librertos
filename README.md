@@ -27,6 +27,7 @@ unlock before returning.
 * Fifo (character queue)
 * Mutex (no priority inheritance mechanism)
 * Documentation is in the source files
+* Unit-tested [LibreRTOS Test](https://github.com/djboni/librertos_test)
 
 
 ## How to use LibreRTOS
@@ -84,7 +85,7 @@ If you have suggestions for improving LibreRTOS, please
 
 You can use LibreRTOS both for closed- and open-source projects. You are also
 free to keep changes to yourself. However we'll enjoy your improvements and
-suggestions. `:-)`
+suggestions.
 
 You are free to copy, modify, and distribute LibreRTOS with attribution under
 the terms of the
