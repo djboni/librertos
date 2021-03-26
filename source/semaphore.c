@@ -18,8 +18,8 @@
  limitations under the License.
  */
 
-#include "LibreRTOS.h"
-#include "OSevent.h"
+#include "librertos.h"
+#include "librertos_impl.h"
 
 /** Initialize semaphore.
 
@@ -32,10 +32,10 @@
  Counting semaphore with maximum count 3:
  Semaphore_init(&sem, 3, 3)
  */
-void Semaphore_init(struct Semaphore_t *o, len_t count, len_t max) {
-  o->Count = count;
-  o->Max = max;
-  OS_eventRInit(&o->Event);
+void SemaphoreInit(struct semaphore_t *ptr, len_t count, len_t max) {
+  ptr->count = count;
+  ptr->max = max;
+  OSEventRInit(&ptr->event);
 }
 
 /** Take semaphore.
@@ -46,17 +46,17 @@ void Semaphore_init(struct Semaphore_t *o, len_t count, len_t max) {
  @return 1 if success, 0 otherwise.
 
  Take a semaphore:
- Semaphore_take(&sem)
+ semaphore_take(&sem)
  */
-bool_t Semaphore_take(struct Semaphore_t *o) {
+bool_t SemaphoreTake(struct semaphore_t *ptr) {
   bool_t val;
   CRITICAL_VAL();
 
   CRITICAL_ENTER();
   {
-    val = (o->Count > 0);
+    val = (ptr->count > 0);
     if (val != 0) {
-      --o->Count;
+      --ptr->count;
     }
   }
   CRITICAL_EXIT();
@@ -74,29 +74,29 @@ bool_t Semaphore_take(struct Semaphore_t *o) {
  Give a semaphore:
  Semaphore_give(&sem)
  */
-bool_t Semaphore_give(struct Semaphore_t *o) {
+bool_t SemaphoreGive(struct semaphore_t *ptr) {
   bool_t val;
 
   CRITICAL_VAL();
 
   CRITICAL_ENTER();
   {
-    val = (o->Count < o->Max);
+    val = (ptr->count < ptr->max);
     if (val != 0) {
-      ++o->Count;
+      ++ptr->count;
 
-      OS_schedulerLock();
+      SchedulerLock();
 
-      if (o->Event.ListRead.Length != 0) {
+      if (ptr->event.list_read.length != 0) {
         /* Unblock tasks waiting to read from this event. */
-        OS_eventUnblockTasks(&(o->Event.ListRead));
+        OSEventUnblockTasks(&(ptr->event.list_read));
       }
     }
   }
   CRITICAL_EXIT();
 
   if (val != 0)
-    OS_schedulerUnlock();
+    SchedulerUnlock();
 
   return val;
 }
@@ -109,20 +109,20 @@ bool_t Semaphore_give(struct Semaphore_t *o) {
 
  The task will not run until the semaphore is given or the timeout expires.
 
- @param ticksToWait Number of ticks the task will wait for the semaphore
+ @param ticks_to_wait Number of ticks the task will wait for the semaphore
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
  @return 1 if success, 0 otherwise.
 
  Take or pend on semaphore without timeout:
- Semaphore_takePend(&sem, MAX_DELAY)
+ semaphore_takePend(&sem, MAX_DELAY)
 
  Take or pend on semaphore with timeout of 10 ticks:
- Semaphore_takePend(&sem, 10)
+ semaphore_takePend(&sem, 10)
  */
-bool_t Semaphore_takePend(struct Semaphore_t *o, tick_t ticksToWait) {
-  bool_t val = Semaphore_take(o);
+bool_t SemaphoreTakePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
+  bool_t val = SemaphoreTake(ptr);
   if (val == 0) {
-    Semaphore_pend(o, ticksToWait);
+    SemaphorePend(ptr, ticks_to_wait);
   }
   return val;
 }
@@ -133,7 +133,7 @@ bool_t Semaphore_takePend(struct Semaphore_t *o, tick_t ticksToWait) {
 
  The task will not run until the semaphore is given or the timeout expires.
 
- @param ticksToWait Number of ticks the task will wait for the semaphore
+ @param ticks_to_wait Number of ticks the task will wait for the semaphore
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
  Pend on semaphore without timeout:
@@ -142,20 +142,20 @@ bool_t Semaphore_takePend(struct Semaphore_t *o, tick_t ticksToWait) {
  Pend on semaphore with timeout of 10 ticks:
  Semaphore_pend(&sem, 10)
  */
-void Semaphore_pend(struct Semaphore_t *o, tick_t ticksToWait) {
-  if (ticksToWait != 0U) {
-    struct task_t *task = OS_getCurrentTask();
+void SemaphorePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
+  if (ticks_to_wait != 0U) {
+    struct task_t *task_ptr = GetCurrentTask();
 
-    OS_schedulerLock();
+    SchedulerLock();
     INTERRUPTS_DISABLE();
-    if (o->Count == 0U) {
-      OS_eventPrePendTask(&o->Event.ListRead, task);
+    if (ptr->count == 0U) {
+      OSEventPrePendTask(&ptr->event.list_read, task_ptr);
       INTERRUPTS_ENABLE();
-      OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+      OSEventPendTask(&ptr->event.list_read, task_ptr, ticks_to_wait);
     } else {
       INTERRUPTS_ENABLE();
     }
-    OS_schedulerUnlock();
+    SchedulerUnlock();
   }
 }
 
@@ -166,11 +166,11 @@ void Semaphore_pend(struct Semaphore_t *o, tick_t ticksToWait) {
  Get semaphore count value:
  Semaphore_getCount(&sem)
  */
-len_t Semaphore_getCount(const struct Semaphore_t *o) {
+len_t SemaphoreGetCount(const struct semaphore_t *ptr) {
   len_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  { val = o->Count; }
+  { val = ptr->count; }
   CRITICAL_EXIT();
   return val;
 }
@@ -182,7 +182,7 @@ len_t Semaphore_getCount(const struct Semaphore_t *o) {
  Get semaphore maximum count value:
  Semaphore_getMax(&sem)
  */
-len_t Semaphore_getMax(const struct Semaphore_t *o) {
+len_t SemaphoreGetMax(const struct semaphore_t *ptr) {
   /* This value is constant after initialization. No need for locks. */
-  return o->Max;
+  return ptr->max;
 }

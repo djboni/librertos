@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-#ifndef PROJDEFS_H_
-#define PROJDEFS_H_
+#ifndef PROJDEFS_AVR_H_
+#define PROJDEFS_AVR_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +32,7 @@ extern "C" {
 #define LIBRERTOS_STATISTICS 0     /* boolean */
 
 typedef int8_t priority_t;
-typedef uint8_t schedulerLock_t;
+typedef uint8_t scheduler_lock_t;
 typedef uint16_t tick_t;
 typedef int16_t difftick_t;
 typedef uint32_t stattime_t;
@@ -64,4 +64,4 @@ typedef uint8_t bool_t;
 }
 #endif
 
-#endif /* PROJDEFS_H_ */
+#endif /* PROJDEFS_AVR_H_ */

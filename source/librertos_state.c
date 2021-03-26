@@ -20,7 +20,7 @@
  limitations under the License.
  */
 
-#include "LibreRTOS.h"
+#include "librertos.h"
+#include "librertos_impl.h"
 
-struct libreRtosState_t OSstate;
-
+struct librertos_state_t OS_State;

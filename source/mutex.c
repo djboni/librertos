@@ -18,8 +18,8 @@
  limitations under the License.
  */
 
-#include "LibreRTOS.h"
-#include "OSevent.h"
+#include "librertos.h"
+#include "librertos_impl.h"
 
 #define MUTEX_NOT_OWNED ((struct task_t *)NULL)
 
@@ -28,10 +28,10 @@
  Initialize mutex:
  Mutex_init(&mtx)
  */
-void Mutex_init(struct Mutex_t *o) {
-  o->Count = 0;
-  o->MutexOwner = MUTEX_NOT_OWNED;
-  OS_eventRInit(&o->Event);
+void MutexInit(struct mutex_t *ptr) {
+  ptr->count = 0;
+  ptr->mutex_owner_ptr = MUTEX_NOT_OWNED;
+  OSEventRInit(&ptr->event);
 }
 
 /** Lock mutex.
@@ -47,16 +47,16 @@ void Mutex_init(struct Mutex_t *o) {
  Lock a mutex:
  Mutex_lock(&mtx)
  */
-bool_t Mutex_lock(struct Mutex_t *o) {
+bool_t MutexLock(struct mutex_t *ptr) {
   bool_t val;
 
   INTERRUPTS_DISABLE();
   {
-    struct task_t *currentTask = OS_getCurrentTask();
-    val = o->Count == 0 || o->MutexOwner == currentTask;
+    struct task_t *current_task_ptr = GetCurrentTask();
+    val = ptr->count == 0 || ptr->mutex_owner_ptr == current_task_ptr;
     if (val != 0) {
-      ++o->Count;
-      o->MutexOwner = currentTask;
+      ++ptr->count;
+      ptr->mutex_owner_ptr = current_task_ptr;
     }
   }
   INTERRUPTS_ENABLE();
@@ -75,25 +75,25 @@ bool_t Mutex_lock(struct Mutex_t *o) {
  Unlock a mutex:
  Mutex_unlock(&mtx)
  */
-bool_t Mutex_unlock(struct Mutex_t *o) {
+bool_t MutexUnlock(struct mutex_t *ptr) {
   bool_t val;
   CRITICAL_VAL();
 
   CRITICAL_ENTER();
   {
-    val = o->Count > 0;
+    val = ptr->count > 0;
 
     if (val != 0) {
-      --o->Count;
+      --ptr->count;
 
-      OS_schedulerLock();
+      SchedulerLock();
 
-      if (o->Count == 0) {
-        o->MutexOwner = NULL;
+      if (ptr->count == 0) {
+        ptr->mutex_owner_ptr = NULL;
 
-        if (o->Event.ListRead.Length != 0) {
+        if (ptr->event.list_read.length != 0) {
           /* Unblock tasks waiting to read from this event. */
-          OS_eventUnblockTasks(&(o->Event.ListRead));
+          OSEventUnblockTasks(&(ptr->event.list_read));
         }
       }
     }
@@ -101,7 +101,7 @@ bool_t Mutex_unlock(struct Mutex_t *o) {
   CRITICAL_EXIT();
 
   if (val != 0)
-    OS_schedulerUnlock();
+    SchedulerUnlock();
 
   return val;
 }
@@ -114,7 +114,7 @@ bool_t Mutex_unlock(struct Mutex_t *o) {
 
  The task will not run until the mutex is unlocked or the timeout expires.
 
- @param ticksToWait Number of ticks the task will wait for the mutex
+ @param ticks_to_wait Number of ticks the task will wait for the mutex
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
  @return 1 if success, 0 otherwise.
 
@@ -124,10 +124,10 @@ bool_t Mutex_unlock(struct Mutex_t *o) {
  Lock or pend on mutex with timeout of 10 ticks:
  Mutex_lockPend(&mtx, 10)
  */
-bool_t Mutex_lockPend(struct Mutex_t *o, tick_t ticksToWait) {
-  bool_t val = Mutex_lock(o);
+bool_t MutexLockPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
+  bool_t val = MutexLock(ptr);
   if (val == 0) {
-    Mutex_pend(o, ticksToWait);
+    MutexPend(ptr, ticks_to_wait);
   }
   return val;
 }
@@ -138,7 +138,7 @@ bool_t Mutex_lockPend(struct Mutex_t *o, tick_t ticksToWait) {
 
  The task will not run until the mutex is unlocked or the timeout expires.
 
- @param ticksToWait Number of ticks the task will wait for the mutex
+ @param ticks_to_wait Number of ticks the task will wait for the mutex
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
  Lock or pend on mutex without timeout:
@@ -147,20 +147,20 @@ bool_t Mutex_lockPend(struct Mutex_t *o, tick_t ticksToWait) {
  Lock or pend on mutex with timeout of 10 ticks:
  Mutex_pend(&mtx, 10)
  */
-void Mutex_pend(struct Mutex_t *o, tick_t ticksToWait) {
-  if (ticksToWait != 0U) {
-    struct task_t *task = OS_getCurrentTask();
+void MutexPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
+  if (ticks_to_wait != 0U) {
+    struct task_t *task_ptr = GetCurrentTask();
 
-    OS_schedulerLock();
+    SchedulerLock();
     INTERRUPTS_DISABLE();
-    if (o->Count != 0 && o->MutexOwner != task) {
-      OS_eventPrePendTask(&o->Event.ListRead, task);
+    if (ptr->count != 0 && ptr->mutex_owner_ptr != task_ptr) {
+      OSEventPrePendTask(&ptr->event.list_read, task_ptr);
       INTERRUPTS_ENABLE();
-      OS_eventPendTask(&o->Event.ListRead, task, ticksToWait);
+      OSEventPendTask(&ptr->event.list_read, task_ptr, ticks_to_wait);
     } else {
       INTERRUPTS_ENABLE();
     }
-    OS_schedulerUnlock();
+    SchedulerUnlock();
   }
 }
 
@@ -171,11 +171,11 @@ void Mutex_pend(struct Mutex_t *o, tick_t ticksToWait) {
  Get mutex count value:
  Mutex_getCount(&mtx)
  */
-len_t Mutex_getCount(const struct Mutex_t *o) {
+len_t MutexGetCount(const struct mutex_t *ptr) {
   len_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  { val = o->Count; }
+  { val = ptr->count; }
   CRITICAL_EXIT();
   return val;
 }
@@ -187,11 +187,11 @@ len_t Mutex_getCount(const struct Mutex_t *o) {
  Get mutex owner:
  Mutex_getOwner(&mtx)
  */
-struct task_t *Mutex_getOwner(const struct Mutex_t *o) {
-  struct task_t *val;
+struct task_t *MutexGetOwner(const struct mutex_t *ptr) {
+  struct task_t *task_ptr;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  { val = o->MutexOwner; }
+  { task_ptr = ptr->mutex_owner_ptr; }
   CRITICAL_EXIT();
-  return val;
+  return task_ptr;
 }
