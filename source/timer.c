@@ -187,13 +187,14 @@ static void OSTimerFunction(task_parameter_t param) {
 
     if (OS_State.timer_index_ptr !=
         (struct task_list_node_t *)&OS_State.timer_list) {
-      next_timer_ptr = OS_State.timer_index_ptr->owner_ptr;
+      next_timer_ptr = (struct timer_t *)OS_State.timer_index_ptr->owner_ptr;
       ticks_to_sleep = (tick_t)(next_timer_ptr->node_timer.value -
                                 OS_State.task_timer_last_run);
       INTERRUPTS_ENABLE();
     } else if (OS_State.timer_list.head_ptr !=
                (struct task_list_node_t *)&OS_State.timer_list) {
-      next_timer_ptr = OS_State.timer_list.head_ptr->owner_ptr;
+      next_timer_ptr =
+          (struct timer_t *)OS_State.timer_list.head_ptr->owner_ptr;
       ticks_to_sleep =
           (tick_t)(next_timer_ptr->node_timer.value - OS_State.tick);
       INTERRUPTS_ENABLE();

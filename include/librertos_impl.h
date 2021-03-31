@@ -83,7 +83,7 @@ struct librertos_state_t {
 #endif
 };
 
-struct librertos_state_t OS_State;
+extern struct librertos_state_t OS_State;
 
 void OSListHeadInit(struct task_head_list_t *ptr);
 
