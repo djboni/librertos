@@ -27,10 +27,14 @@
  @param max Max count value.
 
  Taken binary semaphore:
- Semaphore_init(&sem, 0, 1)
+
+ struct semaphore_t sem;
+ SemaphoreInit(&sem, 0, 1);
 
  Counting semaphore with maximum count 3:
- Semaphore_init(&sem, 3, 3)
+
+ struct semaphore_t sem;
+ SemaphoreInit(&sem, 3, 3);
  */
 void SemaphoreInit(struct semaphore_t *ptr, len_t count, len_t max) {
   ptr->count = count;
@@ -46,7 +50,13 @@ void SemaphoreInit(struct semaphore_t *ptr, len_t count, len_t max) {
  @return 1 if success, 0 otherwise.
 
  Take a semaphore:
- semaphore_take(&sem)
+
+ if(SemaphoreTake(&sem)) {
+   // Success
+ }
+ else {
+   // Taken
+ }
  */
 bool_t SemaphoreTake(struct semaphore_t *ptr) {
   bool_t val;
@@ -72,7 +82,13 @@ bool_t SemaphoreTake(struct semaphore_t *ptr) {
  @return 1 if success, 0 otherwise.
 
  Give a semaphore:
- Semaphore_give(&sem)
+
+ if(SemaphoreGive(&sem)) {
+   // Success
+ }
+ else {
+   // Given
+ }
  */
 bool_t SemaphoreGive(struct semaphore_t *ptr) {
   bool_t val;
@@ -95,15 +111,14 @@ bool_t SemaphoreGive(struct semaphore_t *ptr) {
   }
   CRITICAL_EXIT();
 
-  if (val != 0)
+  if (val != 0) {
     SchedulerUnlock();
+  }
 
   return val;
 }
 
-/** Take or pend on semaphore.
-
- Try take semaphore; pend on it not successful.
+/** Take and, if fails, pend on semaphore.
 
  Can be called only by tasks.
 
@@ -113,11 +128,23 @@ bool_t SemaphoreGive(struct semaphore_t *ptr) {
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
  @return 1 if success, 0 otherwise.
 
- Take or pend on semaphore without timeout:
- semaphore_takePend(&sem, MAX_DELAY)
+ Take or pend on semaphore without timeout (pend forever):
+
+ if(SemaphoreTakePend(&sem, MAX_DELAY)) {
+   // Success
+ }
+ else {
+   // Taken
+ }
 
  Take or pend on semaphore with timeout of 10 ticks:
- semaphore_takePend(&sem, 10)
+
+ if(SemaphoreTakePend(&sem, 10)) {
+   // Success
+ }
+ else {
+   // Given
+ }
  */
 bool_t SemaphoreTakePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
   bool_t val = SemaphoreTake(ptr);
@@ -136,11 +163,13 @@ bool_t SemaphoreTakePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
  @param ticks_to_wait Number of ticks the task will wait for the semaphore
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
- Pend on semaphore without timeout:
- Semaphore_pend(&sem, MAX_DELAY)
+ Pend on semaphore without (pend forever):
+
+ SemaphorePend(&sem, MAX_DELAY);
 
  Pend on semaphore with timeout of 10 ticks:
- Semaphore_pend(&sem, 10)
+
+ SemaphorePend(&sem, 10);
  */
 void SemaphorePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -164,7 +193,13 @@ void SemaphorePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
  @return Semaphore count value.
 
  Get semaphore count value:
- Semaphore_getCount(&sem)
+
+ if(SemaphoreGetCount(&sem) == 0) {
+   // Taken
+ }
+ else {
+   // Given
+ }
  */
 len_t SemaphoreGetCount(const struct semaphore_t *ptr) {
   len_t val;
@@ -180,7 +215,13 @@ len_t SemaphoreGetCount(const struct semaphore_t *ptr) {
  @return Semaphore maximum count value.
 
  Get semaphore maximum count value:
- Semaphore_getMax(&sem)
+
+ if(SemaphoreGetMax(&sem) == 1) {
+   // Binary semaphore
+ }
+ else {
+   // Counting semaphore
+ }
  */
 len_t SemaphoreGetMax(const struct semaphore_t *ptr) {
   /* This value is constant after initialization. No need for locks. */

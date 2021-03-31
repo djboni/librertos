@@ -26,7 +26,9 @@
 /** Initialize mutex.
 
  Initialize mutex:
- Mutex_init(&mtx)
+
+ struct mutex_t mtx;
+ MutexInit(&mtx);
  */
 void MutexInit(struct mutex_t *ptr) {
   ptr->count = 0;
@@ -38,14 +40,21 @@ void MutexInit(struct mutex_t *ptr) {
 
  Can be called only by tasks.
 
- The task that owns the mutex can lock it multiple times; to completely
+ The task that owns the mutex can lock it multiple times. To completely
  unlock the mutex the task must unlock it the same number of times it was
  locked.
 
  @return 1 if success, 0 otherwise.
 
  Lock a mutex:
- Mutex_lock(&mtx)
+
+ if(MutexLock(&mtx)) {
+   // Success
+   MutexUnlock();
+ }
+ else {
+   // Locked
+ }
  */
 bool_t MutexLock(struct mutex_t *ptr) {
   bool_t val;
@@ -66,14 +75,23 @@ bool_t MutexLock(struct mutex_t *ptr) {
 
 /** Unlock mutex.
 
- The task that owns the mutex can lock it multiple times; to completely
+ Can be called by tasks and by interrupts.
+
+ The task that owns the mutex can lock it multiple times. To completely
  unlock the mutex the task must unlock it the same number of times it was
  locked.
 
  @return 1 if success, 0 otherwise.
 
  Unlock a mutex:
- Mutex_unlock(&mtx)
+
+ if(MutexLock(&mtx)) {
+   // Success
+   MutexUnlock();
+ }
+ else {
+   // Locked
+ }
  */
 bool_t MutexUnlock(struct mutex_t *ptr) {
   bool_t val;
@@ -100,15 +118,14 @@ bool_t MutexUnlock(struct mutex_t *ptr) {
   }
   CRITICAL_EXIT();
 
-  if (val != 0)
+  if (val != 0) {
     SchedulerUnlock();
+  }
 
   return val;
 }
 
-/** Lock or pend on mutex.
-
- Try lock mutex; pend on it not successful.
+/** Lock and, if fails, pend on mutex.
 
  Can be called only by tasks.
 
@@ -119,10 +136,22 @@ bool_t MutexUnlock(struct mutex_t *ptr) {
  @return 1 if success, 0 otherwise.
 
  Lock or pend on mutex without timeout:
- Mutex_lockPend(&mtx, MAX_DELAY)
+
+ if(MutexLockPend(&mtx, MAX_DELAY)) {
+   // Success
+ }
+ else {
+   // Locked
+ }
 
  Lock or pend on mutex with timeout of 10 ticks:
- Mutex_lockPend(&mtx, 10)
+
+ if(MutexLockPend(&mtx, 10)) {
+   // Success
+ }
+ else {
+   // Locked
+ }
  */
 bool_t MutexLockPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
   bool_t val = MutexLock(ptr);
@@ -142,10 +171,12 @@ bool_t MutexLockPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
  Lock or pend on mutex without timeout:
- Mutex_pend(&mtx, MAX_DELAY)
+
+ MutexPend(&mtx, MAX_DELAY);
 
  Lock or pend on mutex with timeout of 10 ticks:
- Mutex_pend(&mtx, 10)
+
+ MutexPend(&mtx, 10);
  */
 void MutexPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -169,7 +200,13 @@ void MutexPend(struct mutex_t *ptr, tick_t ticks_to_wait) {
  @return Number of times the owner of the mutex recursively locked it.
 
  Get mutex count value:
- Mutex_getCount(&mtx)
+
+ if(MutexGetCount(&mtx) == 0) {
+   // Unlocked
+ }
+ else {
+   // Locked
+ }
  */
 len_t MutexGetCount(const struct mutex_t *ptr) {
   len_t val;
@@ -185,7 +222,13 @@ len_t MutexGetCount(const struct mutex_t *ptr) {
  @return Pointer to the task that locked the mutex.
 
  Get mutex owner:
- Mutex_getOwner(&mtx)
+
+ if(Mutex_getOwner(&mtx) == NULL) {
+   // Unlocked
+ }
+ else {
+   // Locked
+ }
  */
 struct task_t *MutexGetOwner(const struct mutex_t *ptr) {
   struct task_t *task_ptr;

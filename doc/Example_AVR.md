@@ -3,7 +3,7 @@
 Microcontroller ATmega328P.
 
 ```c
-#include "LibreRTOS.h"
+#include "librertos.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -11,10 +11,11 @@ Microcontroller ATmega328P.
 #define TIMER_PRESCALER  64
 #define TICKS_PER_SECOND ((tick_t)(F_CPU / (256.0 * TIMER_PRESCALER)))
 
-/* Timer0 configuration. Code borrowed from Arduinutil
- https://github.com/djboni/arduinutil . */
-void timerBegin(void)
-{
+/* Timer0 configuration.
+Code borrowed from Arduinutil.
+https://github.com/djboni/arduinutil
+ */
+void timerBegin(void) {
     uint8_t prescaler;
 
     PRR &= ~(1U << PRTIM0); /* Enable timer clock. */
@@ -59,16 +60,14 @@ void timerBegin(void)
 }
 
 /* Timer0 overflow ISR. */
-ISR(TIMER0_OVF_vect)
-{
-    OS_tick();
+ISR(TIMER0_OVF_vect) {
+    LibrertosTick();
 }
 
 struct task_t TcbTaskA;
 
 /* TaskA code. Toggle PORTB5 (Arduino LED). */
-void taskA(void* param)
-{
+void FuncTaskA(void* param) {
     (void)param;
 
     /* Toggle PORTB5 (Arduino LED). */
@@ -78,10 +77,9 @@ void taskA(void* param)
     OS_taskDelay(0.5 * TICKS_PER_SECOND);
 }
 
-int main(void)
-{
+int main(void) {
     /* Initialize LibreRTOS data structures. */
-    OS_init();
+    LibrertosInit();
 
     /* Start Timer0. */
     timerBegin();
@@ -89,16 +87,15 @@ int main(void)
     /* PORTB5 Output (Arduino LED). */
     DDRB |= (1 << DDB5);
 
-    /* Create TaskA. TaskControlBlock=TcbTaskA, Function=taskA, Priority=0, Parameter=0. */
-    OS_taskCreate(&TcbTaskA, 0, &taskA, 0);
+    /* Create TaskA. TaskControlBlock=TcbTaskA, Function=FuncTaskA, Priority=0, Parameter=0. */
+    LibrertosTaskCreate(&TcbTaskA, 0, &FuncTaskA, NULL);
 
     /* Start scheduler. */
-    OS_start();
+    LibrertosStart();
 
     /* Run scheduler. */
-    for(;;)
-    {
-        OS_scheduler();
+    for(;;) {
+        LibrertosScheduler();
     }
 }
 ```

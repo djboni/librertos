@@ -4,8 +4,8 @@
 
 The timer type defines how it will behave when it runs.
 
-- TIMERTYPE_ONESHOT One-shot timers, after reset, will run once after 'period' ticks have passed.
-- TIMERTYPE_AUTO Auto-reset timers (or periodic timers), after reset, will run once every 'period' ticks have passed.
+- TIMERTYPE_ONESHOT When reset, one-shot timers will run once after 'period' ticks have passed.
+- TIMERTYPE_AUTO When reset, auto-reset timers (or periodic timers) will run once every 'period' ticks have passed.
 - TIMERTYPE_NOPERIOD No-period timers are faster one-shot timers with
 period zero. They run once as soon as the timer task is scheduled.
 
@@ -13,7 +13,7 @@ One-shot timers are used to execute code if the timer is not reset in time, as a
 
 Auto-reset timers are used for periodic tasks, such as blinking a LED, read push-buttons, watchdog reset/feed.
 
-No-period timers offer an alternative for processing in interrupt context. Instead, the interrupt starts a no-period timer, which will process the data in task context.
+No-period timers offer an alternative for processing in interrupt context. Instead, the interrupt starts a no-period timer, which will process the data in task context instead of interrupt context.
 
 ## Initializing timer
 
@@ -26,36 +26,35 @@ After initialization a timer is inactive (stopped), therefore it will not run un
 In most cases a timer (and other structures) are initialized in the main function, before peripherals initialization and before the OS starts scheduling tasks.
 
 ```c
-struct Timer_t timerBlink; /* Timer structure */
+struct Timer_t Timer_Blink; /* Timer structure */
 
-void func_timerBlink(struct Timer_t* timer, void* param)
-{
+void FuncTimerBlink(struct Timer_t* timer, void* param) {
   LED_TOGGLE(); /* digitalWrite(LED, !digitalRead(LED)) */
 }
 
-void main(void)
-{
-  OS_init();
-  timerBegin();
+void main(void) {
+  LibrertosInit();
+  Timer0Begin();
   
   /* Create timer task */
-  OS_timerTaskCreate(LIBRERTOS_MAX_PRIORITY - 1);
+  LibrertosTimerTaskCreate(LIBRERTOS_MAX_PRIORITY - 1);
   
   /* Create other tasks */
 
   /* Initialize timer */
-  Timer_init(&timerBlink, TIMERTYPE_AUTO, MS_TO_TICKS(500), &func_timerBlink,
-      (void*)0);
+  TimerInit(&Timer_Blink, TIMERTYPE_AUTO, MS_TO_TICKS(500), &FuncTimerBlink,
+      NULL);
   
   /* Start timer */
-  Timer_start(&timerBlink);
+  TimerStart(&Timer_Blink);
   
   /* Initialize peripherals */
   LED_CONFIG(); /* pinMode(LED, OUTPUT) */
 
-  OS_start();
-  for(;;)
-    OS_scheduler();
+  LibrertosStart();
+  for(;;) {
+    LibrertosScheduler();
+  }
 }
 ```
 
@@ -70,7 +69,7 @@ Auto-reset timers (periodic) will be reset when they run.
 No-period timers will be stopped when they run.
 
 ```c
-Timer_reset(&timer);
+TimerReset(&timer);
 ```
 
 ## Timer start
@@ -78,7 +77,7 @@ Timer_reset(&timer);
 Starting a timer will reset it only if it is inactive.
 
 ```c
-Timer_start(&timer);
+TimerStart(&timer);
 ```
 
 ## Timer stop
@@ -86,5 +85,5 @@ Timer_start(&timer);
 Stopping a timer will make it inactive. It will not run anymore, unless it is reset or started.
 
 ```c
-Timer_stop(&timer);
+TimerStop(&timer);
 ```

@@ -114,8 +114,9 @@ typedef void (*timer_function_t)(struct timer_t *, timer_parameter_t);
 enum timer_type_t {
   TIMERTYPE_ONESHOT =
       0, /* Timer need to be reset to run. Run after period has passed. */
-  TIMERTYPE_AUTO, /* Auto reset timer after it has run. */
-  TIMERTYPE_NOPERIOD /* Timer need to be reset to run. Run as soon as it is reset. */
+  TIMERTYPE_AUTO,    /* Auto reset timer after it has run. */
+  TIMERTYPE_NOPERIOD /* Timer need to be reset to run. Run as soon as it is
+                        reset. */
 };
 
 struct timer_t {
@@ -149,7 +150,7 @@ void LibrertosScheduler(void);
 void LibrertosTick(void);
 
 void LibrertosTaskCreate(struct task_t *ptr, priority_t priority,
-                task_function_t function, task_parameter_t parameter);
+                         task_function_t function, task_parameter_t parameter);
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
 void LibrertosTimerTaskCreate(priority_t priority);
 #endif

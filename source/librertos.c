@@ -1,10 +1,6 @@
 /*
  LibreRTOS - Portable single-stack Real Time Operating System.
 
- Scheduler.
- Linked list.
- Pend on events.
-
  Copyright 2016-2021 Djones A. Boni
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +30,18 @@ static void OSTickUnblockPendingReadyTasks(void);
 static void OSSchedulerReal(void);
 static void OSScheduleTask(struct task_t *const task_ptr);
 
-/** Initialize OS. Must be called before any other OS function. */
+/**
+ Initialize OS.
+
+ Must be called before any other OS function.
+
+ LibrertosInit();
+ // Peripherals, data sctructures, and tasks init
+ LibrertosStart();
+ for(;;) {
+   LibrertosScheduler();
+ }
+ */
 void LibrertosInit(void) {
   uint16_t i;
 
@@ -85,13 +92,26 @@ void LibrertosInit(void) {
 #endif
 }
 
-/** Start OS. Must be called once before the scheduler. */
+/** Start OS.
+
+ Must be called once before the scheduler.
+
+ LibrertosInit();
+ // Peripherals, data sctructures, and tasks init
+ LibrertosStart();
+ for(;;) {
+   LibrertosScheduler();
+ }
+ */
 void LibrertosStart(void) {
   INTERRUPTS_ENABLE();
   SchedulerUnlock();
 }
 
-/* Invert blocked tasks lists. Called by unblock timedout tasks function. */
+/** Invert blocked tasks lists.
+
+ Called by unblock timedout tasks function.
+ */
 static void OSTickInvertBlockedTasksLists(void) {
   struct task_head_list_t *temp_ptr =
       OS_State.blocked_task_list_not_overflowed_ptr;
@@ -100,8 +120,14 @@ static void OSTickInvertBlockedTasksLists(void) {
   OS_State.blocked_task_list_overflowed_ptr = temp_ptr;
 }
 
-/** Increment OS tick. Called by the tick interrupt (defined by the
- user). */
+/** Increment OS tick.
+
+ Called by the tick interrupt (defined by the user).
+
+ void Timer0OverflowInterrupt(void) {
+   LibrertosTick();
+ }
+ */
 void LibrertosTick(void) {
   SchedulerLock();
 
@@ -113,7 +139,10 @@ void LibrertosTick(void) {
   SchedulerUnlock();
 }
 
-/** Schedule a task. Called by scheduler. */
+/** Schedule a task.
+
+ Called by scheduler.
+ */
 static void OSScheduleTask(struct task_t *const task_ptr) {
   struct task_t *current_task_ptr;
 
@@ -163,7 +192,18 @@ static void OSScheduleTask(struct task_t *const task_ptr) {
   INTERRUPTS_ENABLE();
 }
 
-/** Schedule a task. Called in the main loop. */
+/**
+ Schedule a task.
+
+ Called in the main loop.
+
+ LibrertosInit();
+ // Peripherals, data sctructures, and tasks init
+ LibrertosStart();
+ for(;;) {
+   LibrertosScheduler();
+ }
+ */
 void LibrertosScheduler(void) {
   SchedulerLock();
   OSSchedulerReal();
@@ -254,12 +294,16 @@ static void OSSchedulerReal(void) {
 #endif
 }
 
-/** Lock scheduler (recursive lock). Current task cannot be preempted if
- scheduler is locked. */
+/** Lock scheduler (recursive lock).
+
+ Current task cannot be preempted if scheduler is locked.
+ */
 void SchedulerLock(void) { ++OS_State.scehduler_lock; }
 
-/* Unblock tasks that have timedout (process OS ticks). Called by scheduler
- unlock function. */
+/** Unblock tasks that have timedout (process OS ticks).
+
+ Called by scheduler unlock function.
+ */
 static void OSTickUnblockTimedoutTasks(void) {
   /* Unblock tasks that have timed-out. */
 
@@ -310,7 +354,10 @@ static void OSTickUnblockTimedoutTasks(void) {
   }
 }
 
-/* Unblock pending ready tasks. Called by scheduler unlock function. */
+/** Unblock pending ready tasks.
+
+ Called by scheduler unlock function.
+ */
 static void OSTickUnblockPendingReadyTasks(void) {
   INTERRUPTS_DISABLE();
   while (OS_State.pending_ready_task_list.length != 0) {
@@ -354,8 +401,10 @@ static void OSTickUnblockPendingReadyTasks(void) {
   INTERRUPTS_ENABLE();
 }
 
-/** Unlock scheduler (recursive lock). Current task may be preempted if
- scheduler is unlocked. */
+/** Unlock scheduler (recursive lock).
+
+ Current task may be preempted if scheduler is unlocked.
+ */
 void SchedulerUnlock(void) {
   if (OS_State.scheduler_unlock_todo != 0 && OS_State.scehduler_lock == 1) {
     CRITICAL_VAL();
@@ -404,9 +453,22 @@ void SchedulerUnlock(void) {
   }
 }
 
-/** Create task. */
+/** Create task.
+
+ @param priority Task priority from 0 (lower) to LIBRERTOS_MAX_PRIORITY - 1
+ (higher).
+ @param function Task function with prototype void function(void *).
+ @param parameter Task parameter with type void *.
+
+ task_t task_idle;
+ task_t task_blink;
+ task_t task_serial;
+ LibrertosTaskCreate(&task_idle,   0, &TaskIdle,   NULL);
+ LibrertosTaskCreate(&task_blink,  1, &TaskBlink,  NULL);
+ LibrertosTaskCreate(&task_serial, 2, &TaskSerial, NULL);
+ */
 void LibrertosTaskCreate(struct task_t *ptr, priority_t priority,
-                task_function_t function, task_parameter_t parameter) {
+                         task_function_t function, task_parameter_t parameter) {
   ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
   ASSERT(OS_State.task_ptr[priority] == NULL);
 
@@ -438,7 +500,18 @@ struct task_t *GetCurrentTask(void) {
   return task_ptr;
 }
 
-/** Delay task. */
+/** Delay task.
+
+ Can only be called by tasks.
+
+ @param ticks_to_delay Number of system ticks to wait before resuming the task.
+
+ void TaskBlink(void *param_ptr) {
+   (void*)param_ptr;
+   LEDToggle();
+   TaskDelay(50);
+ }
+*/
 void TaskDelay(tick_t ticks_to_delay) {
   /* Insert task in the blocked tasks list. */
 
@@ -471,8 +544,8 @@ void TaskDelay(tick_t ticks_to_delay) {
 }
 
 /** Resume task. */
-void TaskResume(struct task_t *task_ptr) {
-  struct task_list_node_t *node_ptr = &task_ptr->node_event;
+void TaskResume(struct task_t *ptr) {
+  struct task_list_node_t *node_ptr = &ptr->node_event;
   CRITICAL_VAL();
 
   SchedulerLock();
@@ -481,7 +554,7 @@ void TaskResume(struct task_t *task_ptr) {
     {
       /* Remove from event list. */
       if (node_ptr->list_ptr != NULL) {
-        OSListRemove(&task_ptr->node_event);
+        OSListRemove(&ptr->node_event);
       }
 
       /* Add to pending ready tasks list. */
@@ -496,7 +569,10 @@ void TaskResume(struct task_t *task_ptr) {
   SchedulerUnlock();
 }
 
-/** Get current OS tick. */
+/** Get current OS tick.
+
+ @return Number of system ticks since start (may overflow).
+*/
 tick_t GetTickCount(void) {
   tick_t tick_now;
   SchedulerLock();
@@ -507,7 +583,9 @@ tick_t GetTickCount(void) {
 
 #if (LIBRERTOS_STATE_GUARDS != 0)
 
-/** Return 1 if OS_State guards are fine. 0 otherwise. */
+/** Check OS_state guards.
+
+ @return 1 if OS_State guards are fine, 0 otherwise. */
 bool_t LibrertosStateCheck(void) {
   return (OS_State.guard_start == LIBRERTOS_GUARD_U32 &&
           OS_State.guard_end == LIBRERTOS_GUARD_U32);
@@ -517,6 +595,10 @@ bool_t LibrertosStateCheck(void) {
 
 #if (LIBRERTOS_STATISTICS != 0)
 
+/** Get total system run time.
+
+ @return Total system run time.
+ */
 stattime_t LibrertosTotalRunTime(void) {
   stattime_t val;
   CRITICAL_VAL();
@@ -526,6 +608,10 @@ stattime_t LibrertosTotalRunTime(void) {
   return val;
 }
 
+/** Get no task run time (time scheduling tasks).
+
+ @return No task run time.
+ */
 stattime_t LibrertosNoTaskRunTime(void) {
   stattime_t val;
   CRITICAL_VAL();
@@ -535,20 +621,30 @@ stattime_t LibrertosNoTaskRunTime(void) {
   return val;
 }
 
-stattime_t LibrertosTaskRunTime(const struct task_t *ptr) {
+/** Get the run time of a given task.
+
+ @param task_ptr Task pointer.
+ @return Task run time.
+ */
+stattime_t LibrertosTaskRunTime(const struct task_t *task_ptr) {
   stattime_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  val = ptr->task_run_time;
+  val = task_ptr->task_run_time;
   CRITICAL_EXIT();
   return val;
 }
 
-stattime_t LibrertosTaskNumSchedules(const struct task_t *ptr) {
+/** Get the number of times a given task was scheduled.
+
+ @param task_ptr Task pointer.
+ @return Number of schedules of the task.
+ */
+stattime_t LibrertosTaskNumSchedules(const struct task_t *task_ptr) {
   stattime_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  val = ptr->task_num_sched;
+  val = task_ptr->task_num_sched;
   CRITICAL_EXIT();
   return val;
 }
@@ -601,7 +697,7 @@ void OSListInsert(struct task_head_list_t *ptr,
   ++ptr->length;
 }
 
-/** Insert node into list after pos. */
+/** Insert node into list after pos_ptr. */
 void OSListInsertAfter(struct task_head_list_t *ptr,
                        struct task_list_node_t *pos_ptr,
                        struct task_list_node_t *node_ptr) {

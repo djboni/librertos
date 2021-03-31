@@ -25,22 +25,22 @@ extern void *memcpy(void *dest_ptr, const void *src_ptr, size_t num);
 
 /** Initialize queue.
 
- @param buff Pointer to the memory buffer the queue will use. Must be at least
- length * item_size bytes long.
+ @param buff_ptr Pointer to the memory buffer the queue will use. Must be at
+ least length * item_size bytes long.
  @param length Length of the queue (the number of items it can hold).
  @param item_size Size of each queue item.
 
  Initialize queue:
+
  #define QUELEN 4
  #define QUEISZ 16
- uint8_t queBuffer[QUELEN * QUEISZ];
+ uint8_t que_buffer[QUELEN * QUEISZ];
  struct queue_t que;
- Queue_init(&que, queBuffer, QUELEN, QUEISZ);
+ QueueInit(&que, que_buffer, QUELEN, QUEISZ);
  */
 void QueueInit(struct queue_t *ptr, void *buff_ptr, len_t length,
                len_t item_size) {
   uint8_t *buff8_ptr = (uint8_t *)buff_ptr;
-
   ptr->item_size = item_size;
   ptr->free = length;
   ptr->used = 0U;
@@ -53,20 +53,25 @@ void QueueInit(struct queue_t *ptr, void *buff_ptr, len_t length,
   OSEventRwInit(&ptr->event);
 }
 
-/** Read item from queue.
+/** Read item from queue (pop front).
 
- Remove one item from the queue; copy it to the provided buffer.
+ Remove one item from the queue; copy it to the buffer.
 
- @param buff Buffer where to write the item being read (and removed) from the
- queue. Must be at least QUEISZ bytes long.
+ @param buff_ptr Buffer where to write the item being read (and removed) from
+ the queue. Must be at least QUEISZ bytes long.
  @return 1 if success, 0 otherwise.
 
  Read item from queue:
+
  uint8_t buff[QUEISZ];
- Queue_read(&que, buff);
+ if(QueueRead(&que, buff)) {
+   // Success
+ }
+ else {
+   // Empty
+ }
  */
 bool_t QueueRead(struct queue_t *ptr, void *buff_ptr) {
-  /* Pop front */
   bool_t val;
   CRITICAL_VAL();
 
@@ -117,21 +122,26 @@ bool_t QueueRead(struct queue_t *ptr, void *buff_ptr) {
   return val;
 }
 
-/** Write item to queue.
+/** Write item to queue (push back).
 
- Add one item to the queue, coping it from the provided buffer.
+ Add one item to the queue, coping it from the buffer.
 
- @param buff Buffer from where to read item being written to the queue. Must be
- at least QUEISZ bytes long.
+ @param buff_ptr Buffer from where to read item being written to the queue. Must
+ be at least QUEISZ bytes long.
  @return 1 if success, 0 otherwise.
 
  Write item to queue:
+
  uint8_t buff[QUEISZ];
- init_buff(buff);
- Queue_write(&que, buff);
+ WriteDataToBuff(buff);
+ if(QueueWrite(&que, buff)) {
+   // Success
+ }
+ else {
+   // Full
+ }
  */
 bool_t QueueWrite(struct queue_t *ptr, const void *buff_ptr) {
-  /* Push back */
   bool_t val;
   CRITICAL_VAL();
 
@@ -182,28 +192,38 @@ bool_t QueueWrite(struct queue_t *ptr, const void *buff_ptr) {
   return val;
 }
 
-/** Read or pend on queue.
-
- Try read the queue; pend on it not successful.
+/** Read and, if fails, pend on queue.
 
  Can be called only by tasks.
 
  If the task pends it will not run until the queue is written or the timeout
  expires.
 
- @param buff Buffer where to write the item being read (and removed) from the
- queue. Must be at least QUEISZ bytes long.
+ @param buff_ptr Buffer where to write the item being read (and removed) from
+ the queue. Must be at least QUEISZ bytes long.
  @param ticks_to_wait Number of ticks the task will wait for the queue
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
  @return 1 if success, 0 otherwise.
 
  Read or pend on queue without timeout:
+
  uint8_t buff[QUEISZ];
- Queue_readPend(&que, buff, MAX_DELAY);
+ if(QueueReadPend(&que, buff, MAX_DELAY)) {
+   // Success
+ }
+ else {
+   // Empty
+ }
 
  Read or pend on queue with timeout of 10 ticks:
+
  uint8_t buff[QUEISZ];
- Queue_readPend(&que, buff, 10);
+ if(QueueReadPend(&que, buff, 10)) {
+   // Success
+ }
+ else {
+   // Empty
+ }
  */
 bool_t QueueReadPend(struct queue_t *ptr, void *buff_ptr,
                      tick_t ticks_to_wait) {
@@ -214,30 +234,40 @@ bool_t QueueReadPend(struct queue_t *ptr, void *buff_ptr,
   return val;
 }
 
-/** Write or pend on queue.
-
- Try write the queue; pend on it not successful.
+/** Write and, if fails, pend on queue.
 
  Can be called only by tasks.
 
  If the task pends it will not run until the queue is read or the timeout
  expires.
 
- @param buff Buffer from where to read item being written to the queue. Must be
- at least QUEISZ bytes long.
+ @param buff_ptr Buffer from where to read item being written to the queue. Must
+ be at least QUEISZ bytes long.
  @param ticks_to_wait Number of ticks the task will wait for the queue
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
  @return 1 if success, 0 otherwise.
 
  Write or pend on queue without timeout:
+
  uint8_t buff[QUEISZ];
- init_buff(buff);
- Queue_writePend(&que, buff, MAX_DELAY);
+ WriteDataToBuff(buff);
+ QueueWritePend(&que, buff, MAX_DELAY) {
+   // Success
+ }
+ else {
+   // Full
+ }
 
  Write or pend on queue with timeout of 10 ticks:
+
  uint8_t buff[QUEISZ];
- init_buff(buff);
- Queue_writePend(&que, buff, 10);
+ WriteDataToBuff(buff);
+ QueueWritePend(&que, buff, 10) {
+   // Success
+ }
+ else {
+   // Full
+ }
  */
 bool_t QueueWritePend(struct queue_t *ptr, const void *buff_ptr,
                       tick_t ticks_to_wait) {
@@ -259,10 +289,12 @@ bool_t QueueWritePend(struct queue_t *ptr, const void *buff_ptr,
  @return 1 if success, 0 otherwise.
 
  Pend on queue waiting to read without timeout:
- Queue_pendRead(&que, MAX_DELAY);
+
+ QueuePendRead(&que, MAX_DELAY);
 
  Pend on queue waiting to read with timeout of 10 ticks:
- Queue_pendRead(&que, 10);
+
+ QueuePendRead(&que, 10);
  */
 void QueuePendRead(struct queue_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -292,10 +324,12 @@ void QueuePendRead(struct queue_t *ptr, tick_t ticks_to_wait) {
  @return 1 if success, 0 otherwise.
 
  Pend on queue waiting to write without timeout:
- Queue_pendWrite(&que, MAX_DELAY);
+
+ QueuePendWrite(&que, MAX_DELAY);
 
  Pend on queue waiting to write with timeout of 10 ticks:
- Queue_pendWrite(&que, 10);
+
+ QueuePendWrite(&que, 10);
  */
 void QueuePendWrite(struct queue_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -321,7 +355,10 @@ void QueuePendWrite(struct queue_t *ptr, tick_t ticks_to_wait) {
  @return Number of used items.
 
  Get number of used items on a queue:
- Queue_used(&que)
+
+ if(QueueUsed(&que) > 0) {
+   // Read
+ }
  */
 len_t QueueUsed(const struct queue_t *ptr) {
   len_t val;
@@ -339,7 +376,10 @@ len_t QueueUsed(const struct queue_t *ptr) {
  @return Number of free items.
 
  Get number of free items on a queue:
- Queue_free(&que)
+
+ if(Queue_free(&que) > 0) {
+   // Write
+ }
  */
 len_t QueueFree(const struct queue_t *ptr) {
   len_t val;
@@ -357,7 +397,8 @@ len_t QueueFree(const struct queue_t *ptr) {
  @return Queue length.
 
  Get length of a queue:
- Queue_length(&que)
+
+ len_t alocated_items = QueuLength(&que);
  */
 len_t QueuLength(const struct queue_t *ptr) {
   len_t val;
@@ -376,13 +417,30 @@ len_t QueuLength(const struct queue_t *ptr) {
  @return Queue item size.
 
  Get queue item size:
- Queue_itemSize(&que)
+
+ len_t allocated_buffer = QueuLength(&que) * QueueItemSize(&que);
  */
 len_t QueueItemSize(const struct queue_t *ptr) {
   /* This value is constant after initialization. No need for locks. */
   return ptr->item_size;
 }
 
+/** Test if a queue is empty.
+
+ @return 1 if empty (no items), 0 otherwise.
+
+ if(QueueEmpty(que)) {
+   // Do stuff
+ }
+ */
 bool_t QueueEmpty(const struct queue_t *ptr) { return QueueUsed(ptr) == 0; }
 
+/** Test if a queue is full.
+
+ @return 1 if full (no space), 0 otherwise.
+
+ if(QueueFull(que)) {
+   // Do stuff
+ }
+ */
 bool_t QueueFull(const struct queue_t *ptr) { return QueueFree(ptr) == 0; }

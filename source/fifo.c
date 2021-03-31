@@ -26,16 +26,17 @@ extern void *memcpy(void *dest_ptr, const void *src_ptr, size_t num);
 
 /** Initialize character FIFO.
 
- @param buff Pointer to the memory buffer the FIFO will use. The memory buffer
- must be at least length bytes long.
+ @param buff_ptr Pointer to the memory buffer the FIFO will use. The memory
+ buffer must be at least length bytes long.
  @param length length of the character FIFO (the number of characters it can
  hold).
 
  Initialize character FIFO:
+
  #define FIFOLEN 16
- uint8_t fifoBuffer[FIFOLEN];
+ uint8_t fifo_buffer[FIFOLEN];
  struct fifo_t fifo;
- Fifo_init(&fifo, fifoBuffer, FIFOLEN);
+ FifoInit(&fifo, fifo_buffer, FIFOLEN);
  */
 void FifoInit(struct fifo_t *ptr, void *buff_ptr, len_t length) {
   uint8_t *buff8_ptr = (uint8_t *)buff_ptr;
@@ -52,17 +53,23 @@ void FifoInit(struct fifo_t *ptr, void *buff_ptr, len_t length) {
   OSEventRwInit(&ptr->event);
 }
 
-/** Read one byte from character FIFO.
+/** Read one byte from character FIFO (pop front).
 
- @param buff Buffer where to write the character being read (and removed) from
- the character FIFO. Must be at least one byte long.
+ @param buff_ptr Buffer where to write the character being read (and removed)
+ from the character FIFO. Must be at least one byte long.
  @return 1 if one byte was read from the character FIFO, 0 if it was empty.
 
  Read one byte from character FIFO:
- Fifo_readByte(&fifo, &ch);
+
+ uint8_t ch;
+ if(FifoReadByte(&fifo, &ch)) {
+   // Success
+ }
+ else {
+   // Empty
+ }
  */
 bool_t FifoReadByte(struct fifo_t *ptr, void *buff_ptr) {
-  /* Pop front */
   CRITICAL_VAL();
 
   CRITICAL_ENTER();
@@ -97,23 +104,27 @@ bool_t FifoReadByte(struct fifo_t *ptr, void *buff_ptr) {
   }
 }
 
-/** Read from character FIFO.
+/** Read from character FIFO (pop front).
 
- Remove up to length items from the character FIFO; copy them to the provided
- buffer.
+ Remove up to length items from the character FIFO; copy them to the buffer.
 
- @param buff Buffer where to write the characters being read (and removed) from
- the character FIFO. Must be at least length bytes long.
+ @param buff_ptr Buffer where to write the characters being read (and removed)
+ from the character FIFO. Must be at least length bytes long.
  @param length Maximum number of characters to be read from the character FIFO.
  @return Number of characters read from the character FIFO, 0 if it is empty.
 
  Read from character FIFO:
+
  #define NUM 3
  uint8_t buff[NUM];
- Fifo_read(&fifo, buff, NUM);
+ FifoRead(&fifo, buff, NUM) {
+   // Success or partial
+ }
+ else {
+   // Empty
+ }
  */
 len_t FifoRead(struct fifo_t *ptr, void *buff_ptr, len_t length) {
-  /* Pop front */
   len_t val;
   CRITICAL_VAL();
 
@@ -180,21 +191,25 @@ len_t FifoRead(struct fifo_t *ptr, void *buff_ptr, len_t length) {
   return val;
 }
 
-/** Write one byte to character FIFO.
+/** Write one byte to character FIFO (push back).
 
- Add up to length characters to the character FIFO, coping them from the
- provided buffer.
+ Add up to length characters to the character FIFO, coping them from the buffer.
 
- @param buff Buffer from where to read the character being written to the
+ @param buff_ptr Buffer from where to read the character being written to the
  character FIFO. Must be at least one byte long.
  @return 1 if one byte was written to the character FIFO, 0 if it was full.
 
  Write to character FIFO:
+
  uint8_t ch = 'a';
- Fifo_writeByte(&fifo, &ch);
+ if(FifoWriteByte(&fifo, &ch)) {
+   // Success or partial
+ }
+ else {
+   // Full
+ }
  */
 bool_t FifoWriteByte(struct fifo_t *ptr, const void *buff_ptr) {
-  /* Push back */
   CRITICAL_VAL();
 
   CRITICAL_ENTER();
@@ -229,10 +244,9 @@ bool_t FifoWriteByte(struct fifo_t *ptr, const void *buff_ptr) {
   }
 }
 
-/** Write to character FIFO.
+/** Write to character FIFO (push back).
 
- Add up to length characters to the character FIFO, coping them from the
- provided buffer.
+ Add up to length characters to the character FIFO, coping them from the buffer.
 
  @param buff Buffer from where to read the characters being written to the
  character FIFO. Must be at least length bytes long.
@@ -240,13 +254,18 @@ bool_t FifoWriteByte(struct fifo_t *ptr, const void *buff_ptr) {
  @return Number of characters written to the character FIFO, 0 if it is full.
 
  Write to character FIFO:
+
  #define NUM 3
  uint8_t buff[NUM];
  init_buff(buff);
- Fifo_write(&fifo, buff, NUM);
+ if(FifoWrite(&fifo, buff, NUM)) {
+   // Success or partial
+ }
+ else {
+   // Full
+ }
  */
 len_t FifoWrite(struct fifo_t *ptr, const void *buff_ptr, len_t length) {
-  /* Push back */
   len_t val;
   CRITICAL_VAL();
 
@@ -313,7 +332,7 @@ len_t FifoWrite(struct fifo_t *ptr, const void *buff_ptr, len_t length) {
   return val;
 }
 
-/** Read or pend on character FIFO.
+/** Read and, if fails, pend on character FIFO.
 
  Try read the character FIFO; pend on it not successful.
 
@@ -322,7 +341,7 @@ len_t FifoWrite(struct fifo_t *ptr, const void *buff_ptr, len_t length) {
  If the task pends it will not run until the character FIFO has least length
  used bytes or the timeout expires.
 
- @param buff Buffer from where to read the characters being written to the
+ @param buff_ptr Buffer from where to read the characters being written to the
  character FIFO. Must be at least length bytes long.
  @param length Maximum number of characters to be written to the character FIFO.
  @param ticks_to_wait Number of ticks the task will wait for the character FIFO
@@ -330,12 +349,24 @@ len_t FifoWrite(struct fifo_t *ptr, const void *buff_ptr, len_t length) {
  @return Number of characters read from the character FIFO, 0 if it is empty.
 
  Read or pend on character FIFO without timeout:
+
  uint8_t buff[LEN];
- Fifo_readPend(&fifo, buff, LEN, MAX_DELAY);
+ if(FifoReadPend(&fifo, buff, LEN, MAX_DELAY)) {
+   // Success our partial
+ }
+ else {
+   // Empty
+ }
 
  Read or pend on character FIFO with timeout of 10 ticks:
+
  uint8_t buff[LEN];
- Fifo_readPend(&fifo, buff, LEN, 10);
+ Fifo_readPend(&fifo, buff, LEN, 10){
+   // Success our partial
+ }
+ else {
+   // Empty
+ }
  */
 len_t FifoReadPend(struct fifo_t *ptr, void *buff_ptr, len_t length,
                    tick_t ticks_to_wait) {
@@ -346,7 +377,7 @@ len_t FifoReadPend(struct fifo_t *ptr, void *buff_ptr, len_t length,
   return val;
 }
 
-/** Write or pend on character FIFO.
+/** Write and, if fails, pend on character FIFO.
 
  Try write the character FIFO; pend on it not successful.
 
@@ -355,7 +386,7 @@ len_t FifoReadPend(struct fifo_t *ptr, void *buff_ptr, len_t length,
  If the task pends it will not run until the character FIFO has at least length
  free bytes or the timeout expires.
 
- @param buff Buffer from where to read the characters being written to the
+ @param buff_ptr Buffer from where to read the characters being written to the
  character FIFO. Must be at least length bytes long.
  @param length Maximum number of characters to be written to the character FIFO.
  @param ticks_to_wait Number of ticks the task will wait for the character FIFO
@@ -363,14 +394,26 @@ len_t FifoReadPend(struct fifo_t *ptr, void *buff_ptr, len_t length,
  @return Number of characters written to the character FIFO, 0 if it is full.
 
  Write or pend on character FIFO without timeout:
+
  uint8_t buff[LEN];
  init_buff(buff);
- Fifo_writePend(&fifo, buff, LEN, MAX_DELAY);
+ if(FifoWritePend(&fifo, buff, LEN, MAX_DELAY)) {
+   // Success or partial
+ }
+ else {
+   // Full
+ }
 
  Write or pend on character FIFO with timeout of 10 ticks:
+
  uint8_t buff[LEN];
  init_buff(buff);
- Fifo_writePend(&fifo, buff, LEN, 10);
+ if(FifoWritePend(&fifo, buff, LEN, 10)) {
+   // Success or partial
+ }
+ else {
+   // Full
+ }
  */
 len_t FifoWritePend(struct fifo_t *ptr, const void *buff_ptr, len_t length,
                     tick_t ticks_to_wait) {
@@ -393,10 +436,12 @@ len_t FifoWritePend(struct fifo_t *ptr, const void *buff_ptr, len_t length,
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
  Pend on character FIFO waiting to read without timeout:
- Fifo_pendRead(&fifo, LEN, MAX_DELAY);
+
+ FifoPendRead(&fifo, LEN, MAX_DELAY);
 
  Pend on character FIFO waiting to read with timeout of 10 ticks:
- Fifo_pendRead(&fifo, LEN, 10);
+
+ FifoPendRead(&fifo, LEN, 10);
  */
 void FifoPendRead(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -428,10 +473,12 @@ void FifoPendRead(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
  (timeout). Passing MAX_DELAY the task will not wakeup by timeout.
 
  Pend on character FIFO waiting to write:
- Fifo_pendWrite(&fifo,, LEN, MAX_DELAY);
+
+ FifoPendWrite(&fifo,, LEN, MAX_DELAY);
 
  Pend on character FIFO waiting to write:
- Fifo_pendWrite(&fifo,, LEN, 10);
+
+ FifoPendWrite(&fifo,, LEN, 10);
  */
 void FifoPendWrite(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
@@ -458,7 +505,10 @@ void FifoPendWrite(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
  @return Number of used items.
 
  Get number of used items on a character FIFO:
- Fifo_used(&fifo)
+
+ if(FifoUsed(&fifo) > 0) {
+   // Read
+ }
  */
 len_t FifoUsed(const struct fifo_t *ptr) {
   len_t val;
@@ -476,7 +526,10 @@ len_t FifoUsed(const struct fifo_t *ptr) {
  @return Number of free items.
 
  Get number of free items on a character FIFO:
- Fifo_free(&fifo)
+
+ if(FifoFree(&fifo) > 0) {
+   // Write
+ }
  */
 len_t FifoFree(const struct fifo_t *ptr) {
   len_t val;
@@ -494,13 +547,30 @@ len_t FifoFree(const struct fifo_t *ptr) {
  @return Character FIFO length.
 
  Get length of a character FIFO:
- Fifo_length(&fifo)
+
+ len_t alocated_bytes = FifoLength(&fifo);
  */
 len_t FifoLength(const struct fifo_t *ptr) {
   /* This value is constant after initialization. No need for locks. */
   return ptr->length;
 }
 
+/** Test if a FIFO is empty.
+
+ @return 1 if empty (no items), 0 otherwise.
+
+ if(FifoEmpty(que)) {
+   // Do stuff
+ }
+ */
 bool_t FifoEmpty(const struct fifo_t *ptr) { return FifoUsed(ptr) == 0; }
 
+/** Test if a FIFO is full.
+
+ @return 1 if full (no space), 0 otherwise.
+
+ if(FifoFull(que)) {
+   // Do stuff
+ }
+ */
 bool_t FifoFull(const struct fifo_t *ptr) { return FifoFree(ptr) == 0; }

@@ -23,7 +23,10 @@
 
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
 
-/* Execute a timer. Used by timer task function. */
+/** Execute a timer.
+
+ Used by timer task function.
+ */
 static void OSTimerExecute(struct timer_t *ptr) {
   timer_function_t function;
   timer_parameter_t parameter;
@@ -36,7 +39,10 @@ static void OSTimerExecute(struct timer_t *ptr) {
   function(ptr, parameter);
 }
 
-/* Insert timer into ordered list. Used by timer task function. */
+/** Insert timer into ordered list.
+
+ Used by timer task function.
+ */
 static void OSTimerInsertInOrderedList(struct timer_t *ptr,
                                        tick_t tick_to_wakeup) {
   struct task_list_node_t *pos_ptr;
@@ -107,7 +113,10 @@ static void OSTimerInsertInOrderedList(struct timer_t *ptr,
   INTERRUPTS_ENABLE();
 }
 
-/* Timer task function. Used by timer task create function. */
+/** Timer task function.
+
+ Used by timer task create function.
+ */
 static void OSTimerFunction(task_parameter_t param) {
   uint8_t change_index;
   (void)param;
@@ -216,9 +225,10 @@ static void OSTimerFunction(task_parameter_t param) {
   }
 }
 
-/** Create timer task.  */
+/** Create timer task. */
 void LibrertosTimerTaskCreate(priority_t priority) {
-  LibrertosTaskCreate(&OS_State.task_timer_tcb, priority, &OSTimerFunction, NULL);
+  LibrertosTaskCreate(&OS_State.task_timer_tcb, priority, &OSTimerFunction,
+                      NULL);
 }
 
 /** Initialize timer structure.
@@ -235,9 +245,9 @@ void LibrertosTimerTaskCreate(priority_t priority) {
  timer resets itself when it runs.
 
  A no-period timer will run once when the timer task is scheduled. It is
- equivalent to a timer with period equal to zero, but avoids being inserted into
- the ordered timers list. It does not use the period information, but user
- should initialize with value 0 as its period.
+ equivalent to a timer with period equal to zero, but is faster (avoids being
+ inserted into the ordered timers list). It does not use the period information.
+ User should initialize with value 0 as its period.
 
  @param type Define the type of the timer. The types can be TIMERTYPE_ONESHOT,
  TIMERTYPE_AUTO or TIMERTYPE_NOPERIOD.
