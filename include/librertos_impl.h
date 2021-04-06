@@ -26,6 +26,9 @@ extern "C" {
 #include "librertos.h"
 #include <stddef.h>
 
+#define LIBRERTOS_NO_TASK_RUNNING -1
+#define LIST_HEAD(x) ((struct task_list_node_t *)x)
+
 struct librertos_state_t {
 #if (LIBRERTOS_STATE_GUARDS != 0)
   uint32_t guard_start;
@@ -62,13 +65,13 @@ struct librertos_state_t {
 
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
   tick_t task_timer_last_run;
-  struct task_t task_timer_tcb; /* Task control block of timer task. */
   struct task_list_node_t
       *timer_index_ptr; /* Points to next timer to be run in TimerList. */
   struct task_head_list_t
       timer_list; /* List of running timers ordered by wakeup time. */
   struct task_head_list_t timer_unordered_list; /* List of running timers to be
                                                ordered by wakeup time. */
+  struct task_t task_timer_tcb; /* Task control block of timer task. */
 #endif
 
 #if (LIBRERTOS_STATISTICS != 0)
@@ -84,29 +87,27 @@ struct librertos_state_t {
 extern struct librertos_state_t OS_State;
 
 void OSListHeadInit(struct task_head_list_t *ptr);
-
 void OSListNodeInit(struct task_list_node_t *ptr, void *owner_ptr);
-
 void OSListInsert(struct task_head_list_t *ptr,
                   struct task_list_node_t *node_ptr, tick_t value);
-
 void OSListInsertAfter(struct task_head_list_t *ptr,
                        struct task_list_node_t *pos_ptr,
                        struct task_list_node_t *node_ptr);
-
 void OSListRemove(struct task_list_node_t *ptr);
 
 void OSEventRInit(struct event_r_t *ptr);
-
 void OSEventRwInit(struct event_rw_t *ptr);
-
 void OSEventPrePendTask(struct task_head_list_t *list_ptr,
                         struct task_t *task_ptr);
-
 void OSEventPendTask(struct task_head_list_t *list_ptr, struct task_t *task_ptr,
                      tick_t ticks_to_wait);
-
 void OSEventUnblockTasks(struct task_head_list_t *list_ptr);
+
+void OSTickInvertBlockedTasksLists(void);
+void OSTickUnblockTimedoutTasks(void);
+void OSTickUnblockPendingReadyTasks(void);
+void OSSchedulerReal(void);
+void OSScheduleTask(struct task_t *const task_ptr);
 
 #ifdef __cplusplus
 }

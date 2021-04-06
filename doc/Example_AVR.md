@@ -74,7 +74,7 @@ void FuncTaskA(void* param) {
     PORTB ^= (1 << PORTB5);
 
     /* Delay for half a second. */
-    OS_taskDelay(0.5 * TICKS_PER_SECOND);
+    TaskDelay(0.5 * TICKS_PER_SECOND);
 }
 
 int main(void) {

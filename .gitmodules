@@ -1,0 +1,3 @@
+[submodule "test/unit_test_c_with_python"]
+	path = test/unit_test_c_with_python
+	url = https://github.com/djboni/unit_test_c_with_python

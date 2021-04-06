@@ -1,0 +1,10 @@
+# python
+__pycache__/
+*.pyc
+
+# unit_test_c_with_python
+*_.c
+*.o
+*.so
+*.gcda
+*.gcno

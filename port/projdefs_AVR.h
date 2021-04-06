@@ -41,9 +41,6 @@ typedef uint8_t bool_t;
 
 #define MAX_DELAY ((tick_t)-1)
 
-/* Assert macro. */
-#define ASSERT(x)
-
 /* Enable/disable interrupts macros. */
 #define INTERRUPTS_ENABLE() __asm __volatile("sei" ::: "memory")
 #define INTERRUPTS_DISABLE() __asm __volatile("cli" ::: "memory")

@@ -173,11 +173,10 @@ bool_t SemaphoreTakePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
  */
 void SemaphorePend(struct semaphore_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
-    struct task_t *task_ptr = GetCurrentTask();
-
     SchedulerLock();
     INTERRUPTS_DISABLE();
     if (ptr->count == 0U) {
+      struct task_t *task_ptr = GetCurrentTask();
       OSEventPrePendTask(&ptr->event.list_read, task_ptr);
       INTERRUPTS_ENABLE();
       OSEventPendTask(&ptr->event.list_read, task_ptr, ticks_to_wait);

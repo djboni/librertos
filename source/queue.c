@@ -298,11 +298,10 @@ bool_t QueueWritePend(struct queue_t *ptr, const void *buff_ptr,
  */
 void QueuePendRead(struct queue_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
-    struct task_t *task_ptr = GetCurrentTask();
-
     SchedulerLock();
     INTERRUPTS_DISABLE();
     if (ptr->used == 0U) {
+      struct task_t *task_ptr = GetCurrentTask();
       OSEventPrePendTask(&ptr->event.list_read, task_ptr);
       INTERRUPTS_ENABLE();
       OSEventPendTask(&ptr->event.list_read, task_ptr, ticks_to_wait);
@@ -333,11 +332,10 @@ void QueuePendRead(struct queue_t *ptr, tick_t ticks_to_wait) {
  */
 void QueuePendWrite(struct queue_t *ptr, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
-    struct task_t *task_ptr = GetCurrentTask();
-
     SchedulerLock();
     INTERRUPTS_DISABLE();
     if (ptr->free == 0U) {
+      struct task_t *task_ptr = GetCurrentTask();
       OSEventPrePendTask(&ptr->event.list_write, task_ptr);
       INTERRUPTS_ENABLE();
       OSEventPendTask(&ptr->event.list_write, task_ptr, ticks_to_wait);
@@ -400,7 +398,7 @@ len_t QueueFree(const struct queue_t *ptr) {
 
  len_t alocated_items = QueuLength(&que);
  */
-len_t QueuLength(const struct queue_t *ptr) {
+len_t QueueLength(const struct queue_t *ptr) {
   len_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();

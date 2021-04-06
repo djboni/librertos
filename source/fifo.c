@@ -445,11 +445,10 @@ len_t FifoWritePend(struct fifo_t *ptr, const void *buff_ptr, len_t length,
  */
 void FifoPendRead(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
-    struct task_t *task_ptr = GetCurrentTask();
-
     SchedulerLock();
     INTERRUPTS_DISABLE();
     if (ptr->used < length) {
+      struct task_t *task_ptr = GetCurrentTask();
       task_ptr->node_event.value = (tick_t)length; /* length waiting for. */
       OSEventPrePendTask(&ptr->event.list_read, task_ptr);
       INTERRUPTS_ENABLE();
@@ -482,11 +481,10 @@ void FifoPendRead(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
  */
 void FifoPendWrite(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait) {
   if (ticks_to_wait != 0U) {
-    struct task_t *task_ptr = GetCurrentTask();
-
     SchedulerLock();
     INTERRUPTS_DISABLE();
     if (ptr->free < length) {
+      struct task_t *task_ptr = GetCurrentTask();
       task_ptr->node_event.value = (tick_t)length; /* length waiting for. */
       OSEventPrePendTask(&ptr->event.list_write, task_ptr);
       INTERRUPTS_ENABLE();

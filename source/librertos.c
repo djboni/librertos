@@ -24,11 +24,14 @@
 #define LIBRERTOS_GUARD_U32 0xFA57C0DEUL
 #endif
 
-static void OSTickInvertBlockedTasksLists(void);
-static void OSTickUnblockTimedoutTasks(void);
-static void OSTickUnblockPendingReadyTasks(void);
-static void OSSchedulerReal(void);
-static void OSScheduleTask(struct task_t *const task_ptr);
+#if (LIBRERTOS_PREEMPT_LIMIT < 0)
+#error "LIBRERTOS_PREEMPT_LIMIT < 0! Should be >= 0."
+#endif
+
+#if (LIBRERTOS_PREEMPT_LIMIT >= LIBRERTOS_MAX_PRIORITY)
+#error                                                                         \
+    "LIBRERTOS_PREEMPT_LIMIT >= LIBRERTOS_MAX_PRIORITY! Makes the kernel cooperative! Should be < LIBRERTOS_MAX_PRIORITY."
+#endif
 
 /**
  Initialize OS.
@@ -53,18 +56,19 @@ void LibrertosInit(void) {
   { OS_State.higher_ready_task = 0; }
 #endif
 
-  OSListHeadInit(&OS_State.pending_ready_task_list);
-
-  OS_State.tick = 0U;
-  OS_State.delayed_ticks = 0U;
-  OS_State.blocked_task_list_not_overflowed_ptr = &OS_State.blocked_task_list_1;
-  OS_State.blocked_task_list_overflowed_ptr = &OS_State.blocked_task_list_2;
-  OSListHeadInit(&OS_State.blocked_task_list_1);
-  OSListHeadInit(&OS_State.blocked_task_list_2);
-
   for (i = 0; i < LIBRERTOS_MAX_PRIORITY; ++i) {
     OS_State.task_ptr[i] = NULL;
   }
+
+  OS_State.tick = 0U;
+  OS_State.delayed_ticks = 0U;
+
+  OS_State.blocked_task_list_not_overflowed_ptr = &OS_State.blocked_task_list_1;
+  OS_State.blocked_task_list_overflowed_ptr = &OS_State.blocked_task_list_2;
+
+  OSListHeadInit(&OS_State.pending_ready_task_list);
+  OSListHeadInit(&OS_State.blocked_task_list_1);
+  OSListHeadInit(&OS_State.blocked_task_list_2);
 
 #if (LIBRERTOS_SOFTWARETIMERS != 0)
   {
@@ -112,7 +116,7 @@ void LibrertosStart(void) {
 
  Called by unblock timedout tasks function.
  */
-static void OSTickInvertBlockedTasksLists(void) {
+void OSTickInvertBlockedTasksLists(void) {
   struct task_head_list_t *temp_ptr =
       OS_State.blocked_task_list_not_overflowed_ptr;
   OS_State.blocked_task_list_not_overflowed_ptr =
@@ -143,7 +147,7 @@ void LibrertosTick(void) {
 
  Called by scheduler.
  */
-static void OSScheduleTask(struct task_t *const task_ptr) {
+void OSScheduleTask(struct task_t *const task_ptr) {
   struct task_t *current_task_ptr;
 
   /* Get task function and parameter. */
@@ -212,7 +216,7 @@ void LibrertosScheduler(void) {
 
 /** Scheduler algorithm a task. Called by scheduler functions and by scheduler
  unlock function. */
-static void OSSchedulerReal(void) {
+void OSSchedulerReal(void) {
 #if (LIBRERTOS_STATISTICS != 0)
   {
     stattime_t now;
@@ -304,7 +308,7 @@ void SchedulerLock(void) { ++OS_State.scehduler_lock; }
 
  Called by scheduler unlock function.
  */
-static void OSTickUnblockTimedoutTasks(void) {
+void OSTickUnblockTimedoutTasks(void) {
   /* Unblock tasks that have timed-out. */
 
   if (OS_State.tick == 0) {
@@ -358,7 +362,7 @@ static void OSTickUnblockTimedoutTasks(void) {
 
  Called by scheduler unlock function.
  */
-static void OSTickUnblockPendingReadyTasks(void) {
+void OSTickUnblockPendingReadyTasks(void) {
   INTERRUPTS_DISABLE();
   while (OS_State.pending_ready_task_list.length != 0) {
     struct task_t *task_ptr =
@@ -469,9 +473,6 @@ void SchedulerUnlock(void) {
  */
 void LibrertosTaskCreate(struct task_t *ptr, priority_t priority,
                          task_function_t function, task_parameter_t parameter) {
-  ASSERT(priority < LIBRERTOS_MAX_PRIORITY);
-  ASSERT(OS_State.task_ptr[priority] == NULL);
-
   ptr->state = TASKSTATE_READY;
   ptr->function = function;
   ptr->parameter = parameter;
@@ -626,11 +627,11 @@ stattime_t LibrertosNoTaskRunTime(void) {
  @param task_ptr Task pointer.
  @return Task run time.
  */
-stattime_t LibrertosTaskRunTime(const struct task_t *task_ptr) {
+stattime_t LibrertosTaskRunTime(const struct task_t *ptr) {
   stattime_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  val = task_ptr->task_run_time;
+  val = ptr->task_run_time;
   CRITICAL_EXIT();
   return val;
 }
@@ -640,218 +641,13 @@ stattime_t LibrertosTaskRunTime(const struct task_t *task_ptr) {
  @param task_ptr Task pointer.
  @return Number of schedules of the task.
  */
-stattime_t LibrertosTaskNumSchedules(const struct task_t *task_ptr) {
+stattime_t LibrertosTaskNumSchedules(const struct task_t *ptr) {
   stattime_t val;
   CRITICAL_VAL();
   CRITICAL_ENTER();
-  val = task_ptr->task_num_sched;
+  val = ptr->task_num_sched;
   CRITICAL_EXIT();
   return val;
 }
 
 #endif /* LIBRERTOS_STATISTICS */
-
-#define LIST_HEAD(x) ((struct task_list_node_t *)x)
-
-/** Initialize list head. */
-void OSListHeadInit(struct task_head_list_t *ptr) {
-  /* Use the list head as a node. */
-  ptr->head_ptr = LIST_HEAD(ptr);
-  ptr->tail_ptr = LIST_HEAD(ptr);
-  ptr->length = 0;
-}
-
-/** Initialize list node. */
-void OSListNodeInit(struct task_list_node_t *ptr, void *owner_ptr) {
-  ptr->next_ptr = NULL;
-  ptr->prev_ptr = NULL;
-  ptr->value = 0;
-  ptr->list_ptr = NULL;
-  ptr->owner_ptr = owner_ptr;
-}
-
-/** Insert node into list. Position according to value. */
-void OSListInsert(struct task_head_list_t *ptr,
-                  struct task_list_node_t *node_ptr, tick_t value) {
-  struct task_list_node_t *pos_ptr = ptr->head_ptr;
-
-  while (pos_ptr != LIST_HEAD(ptr)) {
-    if (value >= pos_ptr->value) {
-      /* Not here. */
-      pos_ptr = pos_ptr->next_ptr;
-    } else {
-      /* Insert here. */
-      break;
-    }
-  }
-
-  node_ptr->value = value;
-  node_ptr->list_ptr = ptr;
-
-  node_ptr->next_ptr = pos_ptr;
-  node_ptr->prev_ptr = pos_ptr->prev_ptr;
-
-  pos_ptr->prev_ptr->next_ptr = node_ptr;
-  pos_ptr->prev_ptr = node_ptr;
-
-  ++ptr->length;
-}
-
-/** Insert node into list after pos_ptr. */
-void OSListInsertAfter(struct task_head_list_t *ptr,
-                       struct task_list_node_t *pos_ptr,
-                       struct task_list_node_t *node_ptr) {
-  node_ptr->list_ptr = ptr;
-
-  node_ptr->next_ptr = pos_ptr->next_ptr;
-  node_ptr->prev_ptr = pos_ptr;
-
-  pos_ptr->next_ptr->prev_ptr = node_ptr;
-  pos_ptr->next_ptr = node_ptr;
-
-  ++ptr->length;
-}
-
-/** Remove node from list. */
-void OSListRemove(struct task_list_node_t *ptr) {
-  struct task_list_node_t *next_ptr = ptr->next_ptr;
-  struct task_list_node_t *prev_ptr = ptr->prev_ptr;
-
-  --ptr->list_ptr->length;
-
-  next_ptr->prev_ptr = prev_ptr;
-  prev_ptr->next_ptr = next_ptr;
-
-  ptr->next_ptr = NULL;
-  ptr->prev_ptr = NULL;
-  ptr->list_ptr = NULL;
-}
-
-/** Initialize event (read) struct. */
-void OSEventRInit(struct event_r_t *ptr) { OSListHeadInit(&ptr->list_read); }
-
-/** Initialize event (read/write) struct. */
-void OSEventRwInit(struct event_rw_t *ptr) {
-  OSListHeadInit(&ptr->list_read);
-  OSListHeadInit(&ptr->list_write);
-}
-
-/** Pend task on an event (part 1). Must be called with interrupts disabled and
- scheduler locked. */
-void OSEventPrePendTask(struct task_head_list_t *list_ptr,
-                        struct task_t *task_ptr) {
-  /* Put task on the head position in the event list. So the task may be
-   unblocked by an interrupt. */
-
-  struct task_list_node_t *node_ptr = &task_ptr->node_event;
-  OSListInsertAfter(list_ptr, (struct task_list_node_t *)list_ptr, node_ptr);
-}
-
-/** Pend task on an event (part 2). Must be called with interrupts enabled and
- scheduler locked. Parameter ticks_to_wait must not be zero. */
-void OSEventPendTask(struct task_head_list_t *list_ptr, struct task_t *task_ptr,
-                     tick_t ticks_to_wait) {
-  struct task_list_node_t *node_ptr = &task_ptr->node_event;
-  priority_t priority = task_ptr->priority;
-
-  INTERRUPTS_DISABLE();
-
-  /* Find correct position for the task in the event list. This list may
-   be changed by interrupts, so we must do things carefully. */
-  {
-    struct task_list_node_t *pos_ptr;
-
-    for (;;) {
-      pos_ptr = list_ptr->tail_ptr;
-
-      while (pos_ptr != LIST_HEAD(list_ptr)) {
-        INTERRUPTS_ENABLE();
-
-        /* For test coverage only. This macro is used as a deterministic
-         way to create a concurrent access. */
-        LIBRERTOS_TEST_CONCURRENT_ACCESS();
-
-        if (((struct task_t *)pos_ptr->owner_ptr)->priority <= priority) {
-          /* Found where to insert. Break while(). */
-          INTERRUPTS_DISABLE();
-          break;
-        }
-
-        INTERRUPTS_DISABLE();
-        if (pos_ptr->list_ptr != list_ptr) {
-          /* This position was removed from the list. An interrupt
-           resumed this task. Break while(). */
-          break;
-        }
-
-        /* As this task is inserted in the head of the list, if an
-         interrupt resumed the task then pos_ptr also must have been
-         modified.
-         So break the while loop if current task was changed is
-         redundant. */
-
-        pos_ptr = pos_ptr->prev_ptr;
-      }
-
-      if (pos_ptr != LIST_HEAD(list_ptr) && pos_ptr->list_ptr != list_ptr &&
-          node_ptr->list_ptr == list_ptr) {
-        /* This pos_ptr was removed from the list and node_ptr was not
-         removed. Must restart to find where to insert node.
-         Continue for(;;). */
-        continue;
-      } else {
-        /* Found where to insert. Insert after pos_ptr.
-         OR
-         Item node was removed from the list (interrupt resumed the
-         task). Nothing to insert.
-         Break for(;;). */
-        break;
-      }
-    }
-
-    if (node_ptr->list_ptr == list_ptr) {
-      /* If an interrupt didn't resume the task. */
-
-      /* Don't need to remove and insert if the task is already in its
-       position. */
-
-      if (node_ptr != pos_ptr) {
-        /* Now insert in the right position. */
-        OSListRemove(node_ptr);
-        OSListInsertAfter(list_ptr, pos_ptr, node_ptr);
-      }
-
-      /* Suspend or block task. */
-      /* Ticks enabled. Suspend if ticks to wait is maximum delay, block with
-          timeout otherwise. */
-      if (ticks_to_wait == MAX_DELAY) {
-        task_ptr->state = TASKSTATE_SUSPENDED;
-        OS_State.task_ptr[task_ptr->priority] = NULL;
-        INTERRUPTS_ENABLE();
-      } else {
-        INTERRUPTS_ENABLE();
-        TaskDelay(ticks_to_wait);
-      }
-    } else {
-      INTERRUPTS_ENABLE();
-    }
-  }
-}
-
-/** Unblock task in an event list. Must be called with scheduler locked and in a
- critical section. */
-void OSEventUnblockTasks(struct task_head_list_t *list_ptr) {
-  if (list_ptr->length != 0) {
-    struct task_list_node_t *node_ptr = list_ptr->tail_ptr;
-
-    /* Remove from event list. */
-    OSListRemove(node_ptr);
-
-    /* Insert in the pending ready tasks . */
-    OSListInsertAfter(&OS_State.pending_ready_task_list,
-                      OS_State.pending_ready_task_list.head_ptr, node_ptr);
-
-    /* Scheduler unlock has work todo. */
-    OS_State.scheduler_unlock_todo = 1;
-  }
-}

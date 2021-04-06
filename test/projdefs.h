@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-#ifndef PROJDEFS_PC_H_
-#define PROJDEFS_PC_H_
+#ifndef PROJDEFS_H_
+#define PROJDEFS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,12 +24,27 @@ extern "C" {
 #include <stdint.h>
 
 /* LibreRTOS definitions. */
-#define LIBRERTOS_MAX_PRIORITY 3   /* integer > 0 */
-#define LIBRERTOS_PREEMPTION 0     /* boolean */
-#define LIBRERTOS_PREEMPT_LIMIT 0  /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
+#define LIBRERTOS_MAX_PRIORITY 3 /* integer > 0 */
+
+#ifndef LIBRERTOS_PREEMPTION
+#define LIBRERTOS_PREEMPTION 0 /* boolean */
+#endif
+
+#ifndef LIBRERTOS_PREEMPT_LIMIT
+#define LIBRERTOS_PREEMPT_LIMIT 0 /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
+#endif
+
+#ifndef LIBRERTOS_PREEMPT_LIMIT
 #define LIBRERTOS_SOFTWARETIMERS 0 /* boolean */
+#endif
+
+#ifndef LIBRERTOS_STATE_GUARDS
 #define LIBRERTOS_STATE_GUARDS 0   /* boolean */
+#endif
+
+#ifndef LIBRERTOS_STATISTICS
 #define LIBRERTOS_STATISTICS 0     /* boolean */
+#endif
 
 typedef int8_t priority_t;
 typedef uint8_t scheduler_lock_t;
@@ -42,19 +57,26 @@ typedef uint8_t bool_t;
 #define MAX_DELAY ((tick_t)-1)
 
 /* Enable/disable interrupts macros. */
-#define INTERRUPTS_ENABLE()
-#define INTERRUPTS_DISABLE()
+#define INTERRUPTS_ENABLE() InterruptsEnable()
+#define INTERRUPTS_DISABLE() InterruptsDisable()
 
 /* Nested critical section management macros. */
-#define CRITICAL_VAL()
-#define CRITICAL_ENTER()
-#define CRITICAL_EXIT()
+#define CRITICAL_VAL() CriticalVal()
+#define CRITICAL_ENTER() CriticalEnter()
+#define CRITICAL_EXIT() CriticalExit()
 
 /* Simulate concurrent access. For test coverage only. */
-#define LIBRERTOS_TEST_CONCURRENT_ACCESS()
+#define LIBRERTOS_TEST_CONCURRENT_ACCESS() LibrertosTestConcurrentAccess()
+
+extern void InterruptsEnable(void);
+extern void InterruptsDisable(void);
+extern void CriticalVal(void);
+extern void CriticalEnter(void);
+extern void CriticalExit(void);
+extern void LibrertosTestConcurrentAccess(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* PROJDEFS_PC_H_ */
+#endif /* PROJDEFS_H_ */
