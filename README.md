@@ -26,14 +26,30 @@ Features:
 Clone and initialize the submodules:
 
 ```sh
-git clone https://github.com/djboni/librertos.git --recurse-submodules
+$ git clone https://github.com/djboni/librertos.git --recurse-submodules
 ```
 
 If you cloned without `--recurse-submodules`, you can manually initialize the
 submodules:
 
 ```sh
-git submodule update --init
+$ git submodule update --init
+```
+
+## Running Tests
+
+It is simple to build and run the unit-tests:
+
+```sh
+$ make run_tests    # Run tests
+$ make run_coverage # Run tests and print coverage
+```
+
+If you want to run a specific test use the script `misc/run_tests.sh` and pass
+the **source** path:
+
+```sh
+$ misc/run_tests.sh src/semaphore.c
 ```
 
 ## Things to Be Aware of
