@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include "librertos_port.h"
+#include "librertos_proj.h"
 #include <stdint.h>
 
 typedef enum
@@ -60,6 +61,10 @@ uint8_t queue_isempty(queue_t *que);
 uint8_t queue_isfull(queue_t *que);
 uint8_t queue_numitems(queue_t *que);
 uint8_t queue_itemsize(queue_t *que);
+
+void librertos_init(void);
+void tick_interrupt(void);
+tick_t get_tick(void);
 
 #ifdef __cplusplus
 }

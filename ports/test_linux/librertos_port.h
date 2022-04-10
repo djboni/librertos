@@ -4,6 +4,16 @@
 #define LIBRERTOS_PORT_H_
 
 #ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "librertos_proj.h"
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
 
     #if __cplusplus >= 201103L
         #define NOEXCEPT_FALSE noexcept(false)
@@ -97,13 +107,5 @@ private:
     #define CRITICAL_EXIT() --__balanced_critical
 
 #endif /* __cplusplus */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBRERTOS_PORT_H_ */
