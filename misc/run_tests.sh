@@ -8,6 +8,7 @@ CPPUTEST_DIR="misc/cpputest"
 
 BuildDir="build"
 SrcDir="src"
+PortDir="ports"
 TestsDir="tests"
 TestsEnd="_test.[cC]*"
 TestsObjDir="$BuildDir/obj_tests"
@@ -107,7 +108,7 @@ DoRunTest() {
     # Arguments
     File="$1"
 
-    Test="$(echo $File | sed -E "s:($SrcDir)/(.*)(\.[cC].*):$TestsDir/\2$TestsEnd:")"
+    Test="$(echo $File | sed -E "s:(.*)(\.[cC].*):$TestsDir/\1$TestsEnd:")"
     Test="$(ls -1 $Test | head -n 1)"
 
     # Determine file names and directories
@@ -147,7 +148,7 @@ DoRunTest() {
         CXX="g++"
         CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
         CXXFLAGS="$CXXFLAGS -include misc/teststuff/MemoryLeakDetector.h"
-        CPPFLAGS="-I include -I port -I tests -I $CPPUTEST_DIR/include"
+        CPPFLAGS="-I include -I $PortDir/test_linux -I tests -I $CPPUTEST_DIR/include"
         LD="g++"
         LDFLAGS="--coverage $ASAN $UBSAN -l CppUTest -l CppUTestExt -L $CPPUTEST_DIR/cpputest_build/lib"
 
@@ -161,7 +162,7 @@ DoRunTest() {
         make -f $BuildScript \
             EXEC="$Exec" \
             OBJ_DIR="$TestsObjDir" \
-            INPUTS="$File $Test $AdditionalFiles misc/teststuff/main.cpp" \
+            INPUTS="$File $Test $AdditionalFiles misc/teststuff/main.cpp $PortDir/test_linux/librertos_port.cpp" \
             CC="$CC" \
             CFLAGS="$CFLAGS" \
             CXX="$CXX" \
@@ -198,7 +199,7 @@ DoRunTest() {
     CFLAGS="-g -O0 -std=c90 -pedantic -Wall -Wextra -Werror -Wno-long-long"
     CXX="g++"
     CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Werror -Wno-long-long"
-    CPPFLAGS="-I include -I port"
+    CPPFLAGS="-I include -I $PortDir/test_linux"
     LD="gcc"
     LDFLAGS=""
 
@@ -223,10 +224,14 @@ DoRunTest() {
 }
 
 DoCoverageIfRequested() {
-    gcovr --filter="$SrcDir/" --filter="\.\./code/$SrcDir/" --xml cov.xml
+    gcovr --filter="$SrcDir/" --filter="$PortDir/" --xml cov.xml \
+            --exclude-unreachable-branches \
+            --exclude-throw-branches
     if [ ! -z $FlagCoverage ]; then
-        gcovr --filter="$SrcDir/" --filter="\.\./code/$SrcDir/" --branch
-        gcovr --filter="$SrcDir/" --filter="\.\./code/$SrcDir/" | sed '1,4d'
+        gcovr --filter="$SrcDir/" --filter="$PortDir/" --branch \
+            --exclude-unreachable-branches \
+            --exclude-throw-branches
+        gcovr --filter="$SrcDir/" --filter="$PortDir/" | sed '1,4d'
     fi
 }
 
@@ -267,7 +272,7 @@ DoProcessCommandLineArguments() {
             FlagCoverage=1
             ;;
         -a|--all)
-            for File in $(find $SrcDir/ -name '*.[cC]*'); do
+            for File in $(find $SrcDir/ $PortDir/ -name '*.[cC]*'); do
                 DoRunTest "$File"
             done
             ;;
