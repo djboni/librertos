@@ -1,7 +1,7 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
-#ifndef LIBRERTOS_TEST_H_
-#define LIBRERTOS_TEST_H_
+#ifndef LIBRERTOS_TEST_UTILS_H_
+#define LIBRERTOS_TEST_UTILS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,4 +16,4 @@ void set_tick(tick_t tick);
 }
 #endif
 
-#endif /* LIBRERTOS_TEST_H_ */
+#endif /* LIBRERTOS_TEST_UTILS_H_ */

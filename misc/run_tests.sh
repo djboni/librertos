@@ -68,13 +68,23 @@ DoBuildCppUTestIfNecessary() {
     fi
 }
 
+DetermineMainFile() {
+    MainFile="$(
+        sed -En '
+            s/(^|.*\s)(Main file): (\S+(\s+\S+)*)(.*|$)/\3/p
+        ' "$Test"
+    )"
+
+    echo "$MainFile"
+}
+
 DetermineAdditionalFiles() {
     Test="$1"
     TestDir="${Test%/*}"
 
     ListOfFiles="$(
         sed -En '
-            s/(^|.*\s)Also compile: (\S+(\s+\S+)*)(.*|$)/\2/p
+            s/(^|.*\s)(Also compile|Main file): (\S+(\s+\S+)*)(.*|$)/\3/p
         ' "$Test"
     )"
 
@@ -106,18 +116,16 @@ DetermineAdditionalFiles() {
 DoRunTest() {
 
     # Arguments
-    File="$1"
-
-    Test="$(echo $File | sed -E "s:(.*)(\.[cC].*):$TestsDir/\1$TestsEnd:")"
-    Test="$(ls -1 $Test | head -n 1)"
+    Test="$1"
 
     # Determine file names and directories
 
-    Exec="$BuildDir/${File%.[cC]*}.elf"
+    Exec="$BuildDir/${Test%.[cC]*}.elf"
     ExecDir="${Exec%/*}"
 
-    Object="$ObjDir/${File%.[cC]*}.o"
-    ObjectDir="${Object%/*}"
+    MainFile="$(DetermineMainFile "$Test")"
+    MainObject="$ObjDir/${MainFile%.[cC]*}.o"
+    MainObjectDir="${MainObject%/*}"
 
     # Create directories
 
@@ -125,8 +133,8 @@ DoRunTest() {
         mkdir -p "$ExecDir"
     fi
 
-    if [ ! -d "$ObjectDir" ]; then
-        mkdir -p "$ObjectDir"
+    if [ ! -d "$MainObjectDir" ]; then
+        mkdir -p "$MainObjectDir"
     fi
 
     if [ ! -f "$Test" ]; then
@@ -162,7 +170,7 @@ DoRunTest() {
         make -f $BuildScript \
             EXEC="$Exec" \
             OBJ_DIR="$TestsObjDir" \
-            INPUTS="$File $Test $AdditionalFiles misc/teststuff/main.cpp $PortDir/test_linux/librertos_port.cpp" \
+            INPUTS="$Test $AdditionalFiles misc/teststuff/main.cpp $PortDir/test_linux/librertos_port.cpp" \
             CC="$CC" \
             CFLAGS="$CFLAGS" \
             CXX="$CXX" \
@@ -205,7 +213,7 @@ DoRunTest() {
 
     make -f $BuildScript \
         OBJ_DIR="$ObjDir" \
-        INPUTS="$File" \
+        INPUTS="$MainFile" \
         CC="$CC" \
         CFLAGS="$CFLAGS" \
         CXX="$CXX" \
@@ -213,7 +221,7 @@ DoRunTest() {
         CPPFLAGS="$CPPFLAGS" \
         LD="$LD" \
         LDFLAGS="$LDFLAGS" \
-        "$Object"
+        "$MainObject"
     BuildResult=$?
 
     # Update results and return if building fails
@@ -272,7 +280,7 @@ DoProcessCommandLineArguments() {
             FlagCoverage=1
             ;;
         -a|--all)
-            for File in $(find $SrcDir/ $PortDir/ -name '*.[cC]*'); do
+            for File in $(find $TestsDir/ -name '*_test.[cC]*'); do
                 DoRunTest "$File"
             done
             ;;

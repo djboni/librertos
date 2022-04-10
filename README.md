@@ -46,10 +46,10 @@ $ make run_coverage # Run tests and print coverage
 ```
 
 If you want to run a specific test use the script `misc/run_tests.sh` and pass
-the **source** path:
+the **test** path. Example:
 
 ```sh
-$ misc/run_tests.sh src/semaphore.c
+$ misc/run_tests.sh misc/run_tests.sh tests/src/semaphore_test.cpp
 ```
 
 ## Things to Be Aware of

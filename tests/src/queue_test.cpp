@@ -2,6 +2,10 @@
 
 #include "librertos.h"
 
+/*
+ * Main file: src/queue.c
+ */
+
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
