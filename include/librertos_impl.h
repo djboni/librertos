@@ -12,7 +12,9 @@ extern "C" {
 typedef struct
 {
     tick_t tick;
-    struct list_t tasks[NUM_PRIORITIES];
+    task_t *current_task;
+    struct list_t tasks_ready[NUM_PRIORITIES];
+    struct list_t tasks_suspended;
 } librertos_t;
 
 extern librertos_t librertos;

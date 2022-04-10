@@ -22,3 +22,14 @@ void set_tick(tick_t tick)
     }
     CRITICAL_EXIT();
 }
+
+void set_current_task(task_t *task)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        librertos.current_task = task;
+    }
+    CRITICAL_EXIT();
+}

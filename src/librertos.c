@@ -35,8 +35,12 @@ void librertos_init(void)
 
         librertos.tick = 0;
 
+        librertos.current_task = NULL;
+
         for (i = 0; i < NUM_PRIORITIES; i++)
-            list_init(&librertos.tasks[i]);
+            list_init(&librertos.tasks_ready[i]);
+
+        list_init(&librertos.tasks_suspended);
     }
     CRITICAL_EXIT();
 }
@@ -61,7 +65,7 @@ void librertos_create_task(
         task->priority = (priority_t)priority;
         node_init(&task->sched_node, task);
 
-        list_insert_last(&librertos.tasks[priority], &task->sched_node);
+        list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
     }
     CRITICAL_EXIT();
 }
@@ -72,6 +76,7 @@ void librertos_create_task(
 void librertos_sched(void)
 {
     int8_t i;
+    task_t *current_task;
     CRITICAL_VAL();
 
     /* Disable interrupts to determine the highest priority task that is ready
@@ -81,18 +86,23 @@ void librertos_sched(void)
 
     for (i = HIGH_PRIORITY; i >= LOW_PRIORITY; i--)
     {
-        if (!list_empty(&librertos.tasks[i]))
+        if (!list_empty(&librertos.tasks_ready[i]))
         {
-            struct node_t *node = list_get_first(&librertos.tasks[i]);
+            struct node_t *node = list_get_first(&librertos.tasks_ready[i]);
             task_t *task = (task_t *)node->owner;
 
             list_remove(node);
-            list_insert_last(&librertos.tasks[i], node);
+            list_insert_last(&librertos.tasks_ready[i], node);
+
+            current_task = librertos.current_task;
+            librertos.current_task = task;
 
             /* Enable interrupts while running the task. */
             CRITICAL_EXIT();
             task->func(task->param);
             CRITICAL_ENTER();
+
+            librertos.current_task = current_task;
 
             /* Break here, after running the task. Necessary because a higher
              * priority task might have become ready while this was running.
@@ -109,7 +119,7 @@ void librertos_sched(void)
  *
  * Must be called periodically by the interrupt of a timer.
  */
-void tick_interrupt(void)
+void librertos_tick_interrupt(void)
 {
     CRITICAL_VAL();
 
@@ -138,6 +148,66 @@ tick_t get_tick(void)
     CRITICAL_EXIT();
 
     return tick;
+}
+
+/*
+ * Get the currently running task, NULL if no task is running.
+ */
+task_t *get_current_task(void)
+{
+    task_t *task;
+
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        task = librertos.current_task;
+    }
+    CRITICAL_EXIT();
+
+    return task;
+}
+
+/*
+ * Suspend task.
+ *
+ * If the task is currently running, it will run until it returns.
+ *
+ * Pass a NULL pointer to suspend the current task.
+ */
+void task_suspend(task_t *task)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        if (task == NULL)
+            task = librertos.current_task;
+
+        list_remove(&task->sched_node);
+        list_insert_first(&librertos.tasks_suspended, &task->sched_node);
+    }
+    CRITICAL_EXIT();
+}
+
+/*
+ * Resume task.
+ */
+void task_resume(task_t *task)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        struct list_t *list_ready = &librertos.tasks_ready[task->priority];
+
+        if (task->sched_node.list != list_ready)
+        {
+            list_remove(&task->sched_node);
+            list_insert_last(list_ready, &task->sched_node);
+        }
+    }
+    CRITICAL_EXIT();
 }
 
 /* Unsafe. */

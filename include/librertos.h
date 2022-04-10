@@ -113,7 +113,7 @@ uint8_t queue_numitems(queue_t *que);
 uint8_t queue_itemsize(queue_t *que);
 
 void librertos_init(void);
-void tick_interrupt(void);
+void librertos_tick_interrupt(void);
 void librertos_create_task(
     int8_t priority,
     task_t *task,
@@ -122,6 +122,9 @@ void librertos_create_task(
 void librertos_sched(void);
 
 tick_t get_tick(void);
+task_t *get_current_task(void);
+void task_suspend(task_t *task);
+void task_resume(task_t *task);
 
 #ifdef __cplusplus
 }

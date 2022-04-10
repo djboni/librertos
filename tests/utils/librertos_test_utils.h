@@ -11,6 +11,7 @@ extern "C" {
 
 void time_travel(tick_t ticks_to_the_future);
 void set_tick(tick_t tick);
+void set_current_task(task_t *task);
 
 #ifdef __cplusplus
 }

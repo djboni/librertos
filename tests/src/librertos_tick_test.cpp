@@ -27,14 +27,14 @@ TEST(TimeKeeper, InitialTickIsZero)
 
 TEST(TimeKeeper, InterruptIncrementsTick)
 {
-    tick_interrupt();
+    librertos_tick_interrupt();
     LONGS_EQUAL(1, get_tick());
 }
 
 TEST(TimeKeeper, InterruptIncrementsTick_2)
 {
-    tick_interrupt();
-    tick_interrupt();
+    librertos_tick_interrupt();
+    librertos_tick_interrupt();
     LONGS_EQUAL(2, get_tick());
 }
 
@@ -46,7 +46,7 @@ TEST(TimeKeeper, TimeTravelAddsToTick)
 
 TEST(TimeKeeper, TimeTravelAddsToTick_2)
 {
-    tick_interrupt();
+    librertos_tick_interrupt();
     time_travel(100);
     LONGS_EQUAL(101, get_tick());
 }
@@ -59,7 +59,7 @@ TEST(TimeKeeper, SetTick)
 
 TEST(TimeKeeper, SetTick_2)
 {
-    tick_interrupt();
+    librertos_tick_interrupt();
     set_tick(100);
     LONGS_EQUAL(100, get_tick());
 }
