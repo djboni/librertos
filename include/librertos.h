@@ -39,6 +39,23 @@ typedef struct
     uint8_t *buff;
 } queue_t;
 
+struct node_t;
+
+struct list_t
+{
+    struct node_t *head;
+    struct node_t *tail;
+    uint8_t length;
+};
+
+struct node_t
+{
+    struct node_t *next;
+    struct node_t *prev;
+    struct list_t *list;
+    void *owner;
+};
+
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
 void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count);

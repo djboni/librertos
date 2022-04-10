@@ -16,6 +16,20 @@ typedef struct
 
 extern librertos_t librertos;
 
+#define LIST_HEAD(list) ((struct node_t *)list)
+
+void list_init(struct list_t *list);
+void node_init(struct node_t *node, void *owner);
+void list_insert_first(struct list_t *list, struct node_t *node);
+void list_insert_last(struct list_t *list, struct node_t *node);
+void list_insert_after(
+    struct list_t *list, struct node_t *pos, struct node_t *node);
+void list_insert_before(
+    struct list_t *list, struct node_t *pos, struct node_t *node);
+void list_remove(struct node_t *node);
+struct node_t *list_get_first(struct list_t *list);
+struct node_t *list_get_last(struct list_t *list);
+
 #ifdef __cplusplus
 }
 #endif
