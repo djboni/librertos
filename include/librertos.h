@@ -11,6 +11,22 @@ extern "C" {
 #include "librertos_proj.h"
 #include <stdint.h>
 
+#define PERIODIC(delay_ticks, code) \
+    do \
+    { \
+        const difftick_t __delay = (delay_ticks); \
+        static tick_t __last = -__delay; \
+        tick_t __now = get_tick(); \
+        difftick_t __diff = __now - __last; \
+        if (__diff >= __delay) \
+        { \
+            __last += __delay; \
+            { \
+                code; \
+            } \
+        } \
+    } while (0)
+
 typedef enum
 {
     FAIL = 0,

@@ -62,3 +62,102 @@ TEST(TimeKeeper, SetTick_2)
     set_tick(100);
     LONGS_EQUAL(100, get_tick());
 }
+
+TEST_GROUP (PeriodicMacro)
+{
+    void setup() { librertos_init(); }
+    void teardown() {}
+};
+
+TEST(PeriodicMacro, ShouldRunOnTick0)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(1, var);
+}
+
+TEST(PeriodicMacro, ShouldRunOnceOnTick0)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(1, var);
+}
+
+TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+
+    time_travel(9);
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(1, var);
+}
+
+TEST(PeriodicMacro, ShouldRunAfterPeriod)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+    time_travel(10);
+
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(2, var);
+}
+
+TEST(PeriodicMacro, ShouldHaveStrictPeriod)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    time_travel(1);
+    increment_periodically_10ticks(var);
+
+    time_travel(9);
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(2, var);
+}
+
+TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+
+    time_travel(10);
+    increment_periodically_10ticks(var);
+
+    time_travel(9);
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(2, var);
+}
+
+TEST(PeriodicMacro, ShouldRunAfterPeriod_2)
+{
+    int var = 0;
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+
+    increment_periodically_10ticks(var);
+
+    time_travel(10);
+    increment_periodically_10ticks(var);
+
+    time_travel(10);
+    increment_periodically_10ticks(var);
+
+    LONGS_EQUAL(3, var);
+}

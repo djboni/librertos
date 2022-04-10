@@ -10,6 +10,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef uint16_t tick_t;
+typedef int16_t difftick_t;
 
 #ifdef __cplusplus
 }

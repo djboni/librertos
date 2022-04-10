@@ -154,7 +154,7 @@ DoRunTest() {
         CFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
         CFLAGS="$CFLAGS -include misc/teststuff/MemoryLeakDetector.h"
         CXX="g++"
-        CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
+        CXXFLAGS="-g -O0 -std=c++11 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
         CXXFLAGS="$CXXFLAGS -include misc/teststuff/MemoryLeakDetector.h"
         CPPFLAGS="-I include -I $PortDir/test_linux -I . -I $CPPUTEST_DIR/include"
         LD="g++"
