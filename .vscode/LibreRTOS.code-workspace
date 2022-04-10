@@ -6,7 +6,8 @@
     ],
     "settings": {
         "cSpell.words": [
-            "LIBRERTOS"
+            "isFull",
+            "LibreRTOS"
         ]
     }
 }
