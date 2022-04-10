@@ -12,6 +12,7 @@ extern "C" {
 typedef struct
 {
     tick_t tick;
+    struct list_t tasks[NUM_PRIORITIES];
 } librertos_t;
 
 extern librertos_t librertos;
@@ -29,6 +30,7 @@ void list_insert_before(
 void list_remove(struct node_t *node);
 struct node_t *list_get_first(struct list_t *list);
 struct node_t *list_get_last(struct list_t *list);
+uint8_t list_empty(struct list_t *list);
 
 #ifdef __cplusplus
 }

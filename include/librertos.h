@@ -33,6 +33,12 @@ typedef enum
     SUCCESS = 1
 } result_t;
 
+typedef enum
+{
+    LOW_PRIORITY = 0,
+    HIGH_PRIORITY = NUM_PRIORITIES - 1
+} priority_t;
+
 typedef struct
 {
     uint8_t count;
@@ -72,6 +78,17 @@ struct node_t
     void *owner;
 };
 
+typedef void *task_parameter_t;
+typedef void (*task_function_t)(task_parameter_t param);
+
+typedef struct
+{
+    task_function_t func;
+    task_parameter_t param;
+    priority_t priority;
+    struct node_t sched_node;
+} task_t;
+
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
 void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count);
@@ -97,6 +114,13 @@ uint8_t queue_itemsize(queue_t *que);
 
 void librertos_init(void);
 void tick_interrupt(void);
+void librertos_create_task(
+    int8_t priority,
+    task_t *task,
+    task_function_t func,
+    task_parameter_t param);
+void librertos_sched(void);
+
 tick_t get_tick(void);
 
 #ifdef __cplusplus

@@ -9,6 +9,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#define NUM_PRIORITIES 2
+
 typedef uint16_t tick_t;
 typedef int16_t difftick_t;
 

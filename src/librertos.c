@@ -28,11 +28,74 @@ void librertos_init(void)
 
     CRITICAL_ENTER();
     {
+        int8_t i;
+
         /* Make non-zero, to be easy to spot uninitialized fields. */
         memset(&librertos, 0x5A, sizeof(librertos));
 
         librertos.tick = 0;
+
+        for (i = 0; i < NUM_PRIORITIES; i++)
+            list_init(&librertos.tasks[i]);
     }
+    CRITICAL_EXIT();
+}
+
+void librertos_create_task(
+    int8_t priority, task_t *task, task_function_t func, task_parameter_t param)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        /* Make non-zero, to be easy to spot uninitialized fields. */
+        memset(task, 0x5A, sizeof(*task));
+
+        task->func = func;
+        task->param = param;
+        task->priority = (priority_t)priority;
+        node_init(&task->sched_node, task);
+
+        list_insert_last(&librertos.tasks[priority], &task->sched_node);
+    }
+    CRITICAL_EXIT();
+}
+
+/*
+ * Run one scheduled task.
+ */
+void librertos_sched(void)
+{
+    int8_t i;
+    CRITICAL_VAL();
+
+    /* Disable interrupts to determine the highest priority task that is ready
+     * to run.
+     */
+    CRITICAL_ENTER();
+
+    for (i = HIGH_PRIORITY; i >= LOW_PRIORITY; i--)
+    {
+        if (!list_empty(&librertos.tasks[i]))
+        {
+            struct node_t *node = list_get_first(&librertos.tasks[i]);
+            task_t *task = (task_t *)node->owner;
+
+            list_remove(node);
+            list_insert_last(&librertos.tasks[i], node);
+
+            /* Enable interrupts while running the task. */
+            CRITICAL_EXIT();
+            task->func(task->param);
+            CRITICAL_ENTER();
+
+            /* Break here, after running the task. Necessary because a higher
+             * priority task might have become ready while this was running.
+             */
+            break;
+        }
+    }
+
     CRITICAL_EXIT();
 }
 
@@ -193,4 +256,10 @@ struct node_t *list_get_first(struct list_t *list)
 struct node_t *list_get_last(struct list_t *list)
 {
     return list->tail;
+}
+
+/* Unsafe. */
+uint8_t list_empty(struct list_t *list)
+{
+    return list->length == 0;
 }
