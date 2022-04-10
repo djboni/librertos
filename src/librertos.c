@@ -46,6 +46,11 @@ void librertos_create_task(
 {
     CRITICAL_VAL();
 
+    LIBRERTOS_ASSERT(
+        priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY,
+        priority,
+        "librertos_create_task(): invalid priority.");
+
     CRITICAL_ENTER();
     {
         /* Make non-zero, to be easy to spot uninitialized fields. */

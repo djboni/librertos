@@ -4,6 +4,7 @@
 
 /*
  * Main file: src/semaphore.c
+ * Also compile: tests/mocks/librertos_assert.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -140,4 +141,14 @@ TEST(Sempahore, Counting_GetCount_GetMax)
     semaphore_unlock(&sem);
     LONGS_EQUAL(2, semaphore_count(&sem));
     LONGS_EQUAL(2, semaphore_max(&sem));
+}
+
+TEST(Sempahore, InvalidInitCount_CallsAssertFunction)
+{
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", 2)
+        .withParameter("msg", "semaphore_init(): invalid init_count.");
+
+    CHECK_THROWS(AssertionError, semaphore_init(&sem, 2, 1));
 }

@@ -6,6 +6,11 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
 {
     CRITICAL_VAL();
 
+    LIBRERTOS_ASSERT(
+        init_count <= max_count,
+        init_count,
+        "semaphore_init(): invalid init_count.");
+
     CRITICAL_ENTER();
     {
         sem->count = init_count;

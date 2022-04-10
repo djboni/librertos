@@ -5,9 +5,8 @@
 
 /*
  * Main file: src/librertos.c
+ * Also compile: tests/mocks/librertos_assert.cpp
  */
-
-#include "tests/utils/librertos_test_utils.h"
 
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
