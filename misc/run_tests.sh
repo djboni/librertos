@@ -14,6 +14,8 @@ TestsEnd="_test.[cC]*"
 TestsObjDir="$BuildDir/obj_tests"
 ObjDir="$BuildDir/obj"
 
+OptionRunTest=1
+
 # Variables
 TestTotal=0
 TestError=0
@@ -187,47 +189,63 @@ DoRunTest() {
             return
         fi
 
-        # Run test
-        "$Exec"
-        TestResult=$?
+        if [ ! -z $OptionRunTest ]; then
+            # Run test
 
-        # Update results
-        DoUpdateResults $TestResult 0
+            "$Exec"
+            TestResult=$?
 
-        # Update results and return if testing fails
-        if [ $TestResult -ne 0 ]; then
+            # Update results
             DoUpdateResults $TestResult 0
+
+            # Return if testing fails
+            if [ $TestResult -ne 0 ]; then
+                return
+            fi
+        else
+            # Do not run test and do not build file
             return
         fi
     fi
 
     # Build file
-
-    CC="gcc"
-    CFLAGS="-g -O0 -std=c90 -pedantic -Wall -Wextra -Werror -Wno-long-long"
-    CXX="g++"
-    CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Werror -Wno-long-long"
-    CPPFLAGS="-I include -I $PortDir/test_linux"
-    LD="gcc"
-    LDFLAGS=""
-
-    make -f $BuildScript \
-        OBJ_DIR="$ObjDir" \
-        INPUTS="$MainFile" \
-        CC="$CC" \
-        CFLAGS="$CFLAGS" \
-        CXX="$CXX" \
-        CXXFLAGS="$CXXFLAGS" \
-        CPPFLAGS="$CPPFLAGS" \
-        LD="$LD" \
-        LDFLAGS="$LDFLAGS" \
-        "$MainObject"
-    BuildResult=$?
-
-    # Update results and return if building fails
-    if [ $BuildResult -ne 0 ]; then
-        DoUpdateResults $BuildResult 0
+    if [ -z $MainFile ]; then
+        # No main file to be build for the test
         return
+    elif [ ! -f "$MainFile" ]; then
+        # Main file does not exist
+        echo "Error: Main file '$MailFile' does not exist"
+        DoUpdateResults 1 0
+        return
+    else
+        # Main file exists
+
+        CC="gcc"
+        CFLAGS="-g -O0 -std=c90 -pedantic -Wall -Wextra -Werror -Wno-long-long"
+        CXX="g++"
+        CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Werror -Wno-long-long"
+        CPPFLAGS="-I include -I $PortDir/test_linux"
+        LD="gcc"
+        LDFLAGS=""
+
+        make -f $BuildScript \
+            OBJ_DIR="$ObjDir" \
+            INPUTS="$MainFile" \
+            CC="$CC" \
+            CFLAGS="$CFLAGS" \
+            CXX="$CXX" \
+            CXXFLAGS="$CXXFLAGS" \
+            CPPFLAGS="$CPPFLAGS" \
+            LD="$LD" \
+            LDFLAGS="$LDFLAGS" \
+            "$MainObject"
+        BuildResult=$?
+
+        # Update results and return if building fails
+        if [ $BuildResult -ne 0 ]; then
+            DoUpdateResults $BuildResult 0
+            return
+        fi
     fi
 }
 
@@ -272,6 +290,9 @@ DoProcessCommandLineArguments() {
         -e|--error)
             # Set error flag to stop on first error
             set -e
+            ;;
+        --only-build)
+            OptionRunTest=
             ;;
         -c|--clean)
             rm -fr "$BuildDir"
