@@ -232,6 +232,11 @@ void task_resume(task_t *task)
         }
     }
     CRITICAL_EXIT();
+
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
+    {
+        librertos_sched();
+    }
 }
 
 /* Unsafe. */

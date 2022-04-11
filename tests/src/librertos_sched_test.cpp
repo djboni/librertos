@@ -358,7 +358,7 @@ TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
 
     librertos_sched();
 
-    STRCMP_EQUAL("ABefghCD", buff);
+    STRCMP_EQUAL("AefghBCD", buff);
 }
 
 TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
@@ -388,5 +388,5 @@ TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
 
     librertos_sched();
 
-    STRCMP_EQUAL("ABefgh1234CD", buff);
+    STRCMP_EQUAL("Aefgh1234BCD", buff);
 }
