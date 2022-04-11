@@ -20,7 +20,7 @@
 struct Param
 {
     char *buff;
-    const char *start, *resume, *sched, *end;
+    const char *start, *resume, *end;
     task_t *task_to_resume;
     int suspend_after_n_runs;
 };
@@ -41,12 +41,6 @@ static void task_sequencing(void *param)
 
     // Concat resume
     strcat(p->buff, p->resume);
-
-    // Run scheduler
-    librertos_sched();
-
-    // Concat scheduler
-    strcat(p->buff, p->sched);
 
     // Suspend itself
     if (--(p->suspend_after_n_runs) <= 0)
@@ -72,51 +66,51 @@ TEST(Scheduler, NoTask_DoNothing)
 TEST(Scheduler, OneTask_RunTask)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDABCD", buff);
+    STRCMP_EQUAL("ABCABC", buff);
 }
 
 TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDefghABCDefgh", buff);
+    STRCMP_EQUAL("ABCefgABCefg", buff);
 }
 
 TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively_2)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
     librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDefghABCDefgh", buff);
+    STRCMP_EQUAL("ABCefgABCefg", buff);
 }
 
 TEST(Scheduler, TwoTasks_HigherPriorityHasPrecedence)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
     librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDABCDefghefgh", buff);
+    STRCMP_EQUAL("ABCABCefgefg", buff);
 }
 
 TEST(Scheduler, InvalidPriority_CallsAssertFunction)
@@ -148,8 +142,8 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction_2)
 TEST(Scheduler, Suspend_SuspendOneTask)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
     librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -157,14 +151,14 @@ TEST(Scheduler, Suspend_SuspendOneTask)
     task_suspend(&task1);
 
     librertos_sched();
-    STRCMP_EQUAL("efghefgh", buff);
+    STRCMP_EQUAL("efgefg", buff);
 }
 
 TEST(Scheduler, Suspend_SuspendTwoTasks)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 2};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 2};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
     librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -188,8 +182,8 @@ TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNull)
 TEST(Scheduler, Resume_HigherPriority_GoesFirst)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -198,14 +192,14 @@ TEST(Scheduler, Resume_HigherPriority_GoesFirst)
     task_resume(&task1);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDefgh", buff);
+    STRCMP_EQUAL("ABCefg", buff);
 }
 
 TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -214,14 +208,14 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList)
     task_resume(&task1);
 
     librertos_sched();
-    STRCMP_EQUAL("efghABCD", buff);
+    STRCMP_EQUAL("efgABC", buff);
 }
 
 TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -232,14 +226,14 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
     task_resume(&task2);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDefgh", buff);
+    STRCMP_EQUAL("ABCefg", buff);
 }
 
 TEST(Scheduler, Resume_ReadyTask_DoesNothing)
 {
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", NULL, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -247,7 +241,7 @@ TEST(Scheduler, Resume_ReadyTask_DoesNothing)
     task_resume(&task1);
 
     librertos_sched();
-    STRCMP_EQUAL("ABCDefgh", buff);
+    STRCMP_EQUAL("ABCefg", buff);
 }
 
 TEST(Scheduler, GetCurrentTask_NoTask_ReturnNULL)
@@ -298,8 +292,8 @@ TEST(SchedulerMode, Cooperative_OtherTaskRunning_DoNotRunHigherPriority)
     kernel_mode = LIBRERTOS_COOPERATIVE;
 
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", &task2, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
@@ -308,7 +302,7 @@ TEST(SchedulerMode, Cooperative_OtherTaskRunning_DoNotRunHigherPriority)
 
     librertos_sched();
 
-    STRCMP_EQUAL("ABCDefgh", buff);
+    STRCMP_EQUAL("ABCefg", buff);
 }
 
 TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask)
@@ -323,8 +317,8 @@ TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask)
     kernel_mode = LIBRERTOS_PREEMPTIVE;
 
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", &task2, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
@@ -333,7 +327,7 @@ TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask)
 
     librertos_sched();
 
-    STRCMP_EQUAL("ABCDefgh", buff);
+    STRCMP_EQUAL("ABCefg", buff);
 }
 
 TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
@@ -348,8 +342,8 @@ TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
     kernel_mode = LIBRERTOS_PREEMPTIVE;
 
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", &task2, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
+    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
@@ -358,7 +352,7 @@ TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
 
     librertos_sched();
 
-    STRCMP_EQUAL("AefghBCD", buff);
+    STRCMP_EQUAL("AefgBC", buff);
 }
 
 TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
@@ -375,9 +369,9 @@ TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
     kernel_mode = LIBRERTOS_PREEMPTIVE;
 
     char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", "D", &task2, 1};
-    Param param2 = {&buff[0], "e", "f", "g", "h", &task3, 1};
-    Param param3 = {&buff[0], "1", "2", "3", "4", NULL, 1};
+    Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
+    Param param2 = {&buff[0], "e", "f", "g", &task3, 1};
+    Param param3 = {&buff[0], "1", "2", "3", NULL, 1};
 
     librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
     librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
@@ -388,5 +382,5 @@ TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
 
     librertos_sched();
 
-    STRCMP_EQUAL("Aefgh1234BCD", buff);
+    STRCMP_EQUAL("Aefg123BC", buff);
 }

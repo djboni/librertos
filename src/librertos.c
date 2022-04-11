@@ -89,15 +89,6 @@ void librertos_sched(void)
     current_task = librertos.current_task;
     current_priority = (current_task == NULL) ? -1 : current_task->priority;
 
-    if (KERNEL_MODE == LIBRERTOS_COOPERATIVE && current_priority >= 0)
-    {
-        /* A task is already running. On cooperative mode we do not schedule
-         * another task.
-         */
-        CRITICAL_EXIT();
-        return;
-    }
-
     do
     {
         int8_t i;
