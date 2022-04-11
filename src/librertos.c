@@ -108,8 +108,7 @@ void librertos_sched(void)
         node = list_get_first(&librertos.tasks_ready[i]);
         task = (task_t *)node->owner;
 
-        list_remove(node);
-        list_insert_last(&librertos.tasks_ready[i], node);
+        list_move_first_to_last(&librertos.tasks_ready[i]);
 
         librertos.current_task = task;
 
@@ -354,4 +353,44 @@ struct node_t *list_get_last(struct list_t *list)
 uint8_t list_empty(struct list_t *list)
 {
     return list->length == 0;
+}
+
+/* Unsafe. */
+void list_move_first_to_last(struct list_t *list)
+{
+    struct node_t *head = list_get_first(list);
+    struct node_t *tail = list_get_last(list);
+
+    if (list->length < 2)
+    {
+        /* Nothing to do. */
+        return;
+    }
+
+    /*
+     * L <--> H <--> A <--> T <--> L
+     */
+
+    list->head = head->next;
+    head->next->prev = LIST_HEAD(list);
+
+    /*
+     * L <--- H ---> A <--> T <--> L
+     * L <---------> A
+     */
+
+    head->next = LIST_HEAD(list);
+    head->prev = tail;
+
+    /*
+     * L <--> A <--> T <---------> L
+     *               T <--- H ---> L
+     */
+
+    tail->next = head;
+    list->tail = head;
+
+    /*
+     * L <--> A <--> T <--> H <--> L
+     */
 }

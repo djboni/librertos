@@ -426,3 +426,82 @@ TEST(List, Empty_False_2)
     list_insert_last(&list, &node2);
     LONGS_EQUAL(0, list_empty(&list));
 }
+
+TEST(List, MoveFirstToLast_NoNode)
+{
+    list_move_first_to_last(&list);
+
+    // List head
+    POINTERS_EQUAL(&list, list.head);
+    POINTERS_EQUAL(&list, list.tail);
+    LONGS_EQUAL(0, list.length);
+}
+
+TEST(List, MoveFirstToLast_OneNode)
+{
+    list_insert_last(&list, &node1);
+
+    list_move_first_to_last(&list);
+
+    // List head
+    POINTERS_EQUAL(&node1, list.head);
+    POINTERS_EQUAL(&node1, list.tail);
+    LONGS_EQUAL(1, list.length);
+
+    // Node 1
+    POINTERS_EQUAL(&list, node1.next);
+    POINTERS_EQUAL(&list, node1.prev);
+    POINTERS_EQUAL(&list, node1.list);
+}
+
+TEST(List, MoveFirstToLast_TwoNodes)
+{
+    list_insert_last(&list, &node1);
+    list_insert_last(&list, &node2);
+
+    list_move_first_to_last(&list);
+
+    // List head
+    POINTERS_EQUAL(&node2, list.head);
+    POINTERS_EQUAL(&node1, list.tail);
+    LONGS_EQUAL(2, list.length);
+
+    // Node 1
+    POINTERS_EQUAL(&list, node1.next);
+    POINTERS_EQUAL(&node2, node1.prev);
+    POINTERS_EQUAL(&list, node1.list);
+
+    // Node 2
+    POINTERS_EQUAL(&node1, node2.next);
+    POINTERS_EQUAL(&list, node2.prev);
+    POINTERS_EQUAL(&list, node2.list);
+}
+
+TEST(List, MoveFirstToLast_ThreeNodes)
+{
+    list_insert_last(&list, &node1);
+    list_insert_last(&list, &node2);
+    list_insert_last(&list, &node3);
+
+    list_move_first_to_last(&list);
+
+    // List head
+    POINTERS_EQUAL(&node2, list.head);
+    POINTERS_EQUAL(&node1, list.tail);
+    LONGS_EQUAL(3, list.length);
+
+    // Node 1
+    POINTERS_EQUAL(&list, node1.next);
+    POINTERS_EQUAL(&node3, node1.prev);
+    POINTERS_EQUAL(&list, node1.list);
+
+    // Node 2
+    POINTERS_EQUAL(&node3, node2.next);
+    POINTERS_EQUAL(&list, node2.prev);
+    POINTERS_EQUAL(&list, node2.list);
+
+    // Node 3
+    POINTERS_EQUAL(&node1, node3.next);
+    POINTERS_EQUAL(&node2, node3.prev);
+    POINTERS_EQUAL(&list, node3.list);
+}

@@ -33,6 +33,7 @@ void list_remove(struct node_t *node);
 struct node_t *list_get_first(struct list_t *list);
 struct node_t *list_get_last(struct list_t *list);
 uint8_t list_empty(struct list_t *list);
+void list_move_first_to_last(struct list_t *list);
 
 #ifdef __cplusplus
 }
