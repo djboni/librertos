@@ -77,7 +77,8 @@ void librertos_sched(void)
 {
     task_t *current_task;
     int8_t current_priority;
-    int8_t i;
+    int8_t some_task_ran;
+
     CRITICAL_VAL();
 
     /* Disable interrupts to determine the highest priority task that is ready
@@ -97,35 +98,42 @@ void librertos_sched(void)
         return;
     }
 
-    for (i = HIGH_PRIORITY; i > current_priority; i--)
+    do
     {
-        struct node_t *node;
-        task_t *task;
+        int8_t i;
 
-        if (list_empty(&librertos.tasks_ready[i]))
-            continue;
+        some_task_ran = 0;
 
-        node = list_get_first(&librertos.tasks_ready[i]);
-        task = (task_t *)node->owner;
+        for (i = HIGH_PRIORITY; i > current_priority; i--)
+        {
+            struct node_t *node;
+            task_t *task;
 
-        list_move_first_to_last(&librertos.tasks_ready[i]);
+            if (list_empty(&librertos.tasks_ready[i]))
+                continue;
 
-        librertos.current_task = task;
+            some_task_ran = 1;
+            node = list_get_first(&librertos.tasks_ready[i]);
+            task = (task_t *)node->owner;
 
-        /* Enable interrupts while running the task. */
-        CRITICAL_EXIT();
-        task->func(task->param);
-        CRITICAL_ENTER();
+            list_move_first_to_last(&librertos.tasks_ready[i]);
 
-        librertos.current_task = current_task;
+            librertos.current_task = task;
 
-        /* Return here, after running the task. Necessary because a
-         * higher priority task might have become ready while this was
-         * running.
-         */
-        CRITICAL_EXIT();
-        return;
-    }
+            /* Enable interrupts while running the task. */
+            CRITICAL_EXIT();
+            task->func(task->param);
+            CRITICAL_ENTER();
+
+            librertos.current_task = current_task;
+
+            /* Break here, after running the task, and try to find another
+             * higher priority task. It is necessary because a higher priority
+             * task might have become ready while this was running.
+             */
+            break;
+        }
+    } while (some_task_ran != 0);
 
     CRITICAL_EXIT();
 }
