@@ -39,6 +39,12 @@ typedef enum
     HIGH_PRIORITY = NUM_PRIORITIES - 1
 } priority_t;
 
+typedef enum
+{
+    LIBRERTOS_PREEMPTIVE = 0,
+    LIBRERTOS_COOPERATIVE
+} kernel_mode_t;
+
 typedef struct
 {
     uint8_t count;
@@ -85,7 +91,7 @@ typedef struct
 {
     task_function_t func;
     task_parameter_t param;
-    priority_t priority;
+    int8_t priority;
     struct node_t sched_node;
 } task_t;
 

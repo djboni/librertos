@@ -75,8 +75,9 @@ void librertos_create_task(
  */
 void librertos_sched(void)
 {
-    int8_t i;
     task_t *current_task;
+    int8_t current_priority;
+    int8_t i;
     CRITICAL_VAL();
 
     /* Disable interrupts to determine the highest priority task that is ready
@@ -84,31 +85,47 @@ void librertos_sched(void)
      */
     CRITICAL_ENTER();
 
-    for (i = HIGH_PRIORITY; i >= LOW_PRIORITY; i--)
+    current_task = librertos.current_task;
+    current_priority = (current_task == NULL) ? -1 : current_task->priority;
+
+    if (KERNEL_MODE == LIBRERTOS_COOPERATIVE && current_priority >= 0)
     {
-        if (!list_empty(&librertos.tasks_ready[i]))
-        {
-            struct node_t *node = list_get_first(&librertos.tasks_ready[i]);
-            task_t *task = (task_t *)node->owner;
+        /* A task is already running. On cooperative mode we do not schedule
+         * another task.
+         */
+        CRITICAL_EXIT();
+        return;
+    }
 
-            list_remove(node);
-            list_insert_last(&librertos.tasks_ready[i], node);
+    for (i = HIGH_PRIORITY; i > current_priority; i--)
+    {
+        struct node_t *node;
+        task_t *task;
 
-            current_task = librertos.current_task;
-            librertos.current_task = task;
+        if (list_empty(&librertos.tasks_ready[i]))
+            continue;
 
-            /* Enable interrupts while running the task. */
-            CRITICAL_EXIT();
-            task->func(task->param);
-            CRITICAL_ENTER();
+        node = list_get_first(&librertos.tasks_ready[i]);
+        task = (task_t *)node->owner;
 
-            librertos.current_task = current_task;
+        list_remove(node);
+        list_insert_last(&librertos.tasks_ready[i], node);
 
-            /* Break here, after running the task. Necessary because a higher
-             * priority task might have become ready while this was running.
-             */
-            break;
-        }
+        librertos.current_task = task;
+
+        /* Enable interrupts while running the task. */
+        CRITICAL_EXIT();
+        task->func(task->param);
+        CRITICAL_ENTER();
+
+        librertos.current_task = current_task;
+
+        /* Return here, after running the task. Necessary because a
+         * higher priority task might have become ready while this was
+         * running.
+         */
+        CRITICAL_EXIT();
+        return;
     }
 
     CRITICAL_EXIT();
