@@ -35,7 +35,7 @@ struct Param
         Param *p = (Param *)param;
 
         if (p == NULL)
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
 
         // Concat start
         strcat(p->buff, p->start);
@@ -49,7 +49,7 @@ struct Param
 
         // Suspend itself
         if (--(p->suspend_after_n_runs) <= 0)
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
 
         // Concat end
         strcat(p->buff, p->end);
@@ -67,7 +67,7 @@ struct ParamSemaphore
         ParamSemaphore *p = (ParamSemaphore *)param;
 
         if (p == NULL)
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
 
         // Concat start
         strcat(p->buff, p->start);
@@ -76,7 +76,7 @@ struct ParamSemaphore
         {
             // Concat unlocked
             strcat(p->buff, p->unlocked);
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
         }
         else
         {
@@ -101,7 +101,7 @@ struct ParamMutex
         ParamMutex *p = (ParamMutex *)param;
 
         if (p == NULL)
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
 
         // Concat start
         strcat(p->buff, p->start);
@@ -110,7 +110,7 @@ struct ParamMutex
         {
             // Concat unlocked
             strcat(p->buff, p->unlocked);
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
         }
         else
         {
@@ -136,7 +136,7 @@ struct ParamQueue
         int8_t data;
 
         if (p == NULL)
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
 
         // Concat start
         strcat(p->buff, p->start);
@@ -145,7 +145,7 @@ struct ParamQueue
         {
             // Concat not empty
             strcat(p->buff, p->not_empty);
-            task_suspend(NULL);
+            task_suspend(CURRENT_TASK_PTR);
         }
         else
         {

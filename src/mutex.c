@@ -20,7 +20,7 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_ENTER();
     {
         mtx->locked = 0;
-        mtx->task_owner = NULL;
+        mtx->task_owner = NO_TASK_PTR;
         event_init(&mtx->event_unlock);
     }
     CRITICAL_EXIT();

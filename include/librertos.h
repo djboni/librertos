@@ -11,6 +11,11 @@ extern "C" {
 #include "librertos_proj.h"
 #include <stdint.h>
 
+#define NO_TASK_PRIORITY -1
+#define NO_TASK_PTR ((task_t *)0)
+#define CURRENT_TASK_PTR ((task_t *)0)
+#define INTERRUPT_TASK_PTR ((task_t *)1)
+
 #define PERIODIC(delay_ticks, code) \
     do \
     { \

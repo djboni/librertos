@@ -9,6 +9,8 @@ extern "C" {
 
 #include "librertos.h"
 
+#define LIST_HEAD(list) ((struct node_t *)list)
+
 typedef struct
 {
     int8_t scheduler_lock;
@@ -19,8 +21,6 @@ typedef struct
 } librertos_t;
 
 extern librertos_t librertos;
-
-#define LIST_HEAD(list) ((struct node_t *)list)
 
 void set_current_task(task_t *task);
 

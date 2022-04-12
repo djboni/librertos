@@ -35,7 +35,7 @@ void librertos_init(void)
 
         librertos.scheduler_lock = 0;
         librertos.tick = 0;
-        librertos.current_task = NULL;
+        librertos.current_task = NO_TASK_PTR;
 
         for (i = 0; i < NUM_PRIORITIES; i++)
             list_init(&librertos.tasks_ready[i]);
@@ -97,7 +97,8 @@ void librertos_sched(void)
     INTERRUPTS_DISABLE();
 
     current_task = librertos.current_task;
-    current_priority = (current_task == NULL) ? -1 : current_task->priority;
+    current_priority = (current_task == NO_TASK_PTR) ? NO_TASK_PRIORITY
+                                                     : current_task->priority;
 
     do
     {
@@ -184,7 +185,7 @@ task_t *interrupt_lock(void)
     scheduler_lock();
 
     task = get_current_task();
-    set_current_task(NULL);
+    set_current_task(INTERRUPT_TASK_PTR);
 
     return task;
 }
@@ -235,7 +236,8 @@ tick_t get_tick(void)
 }
 
 /*
- * Get the currently running task, NULL if no task is running.
+ * Get the currently running task, NO_TASK_PTR (a.k.a NULL) if no task is
+ * running and INTERRUPT_TASK_PTR if an interrupt is running.
  */
 task_t *get_current_task(void)
 {
@@ -269,29 +271,31 @@ void set_current_task(task_t *task)
 /*
  * Suspend task.
  *
- * If the task is currently running, it will run until it returns.
+ * If the task is currently running, it will keep running until it returns.
  *
- * Pass a NULL pointer to suspend the current task.
+ * Pass CURRENT_TASK_PTR (a.k.a NULL pointer) to suspend the current task.
  */
 void task_suspend(task_t *task)
 {
     CRITICAL_VAL();
 
-    /* To avoid failing a test, this assertion **reads** librertos.current_task
-     * without the protection of a critical section (it does not write).
+    /* To avoid failing a test, these assertions **read** librertos.current_task
+     * without the protection of a critical section.
      * Assertions are supposed to catch bugs on development, they should not be
      * used as run-time checks, and should be removed on production builds.
      * For this reason it is not a problem to leave it out of the critical
      * section.
      */
     LIBRERTOS_ASSERT(
-        task != NULL || librertos.current_task != NULL,
-        (intptr_t)task,
-        "task_suspend(): no task is running.");
+        !(task == CURRENT_TASK_PTR
+          && (librertos.current_task == NO_TASK_PTR
+              || librertos.current_task == INTERRUPT_TASK_PTR)),
+        (intptr_t)librertos.current_task,
+        "task_suspend(): no task or interrupt is running.");
 
     CRITICAL_ENTER();
     {
-        if (task == NULL)
+        if (task == CURRENT_TASK_PTR)
             task = librertos.current_task;
 
         list_remove(&task->sched_node);
@@ -505,7 +509,7 @@ void list_move_first_to_last(struct list_t *list)
 /* Unsafe. */
 void event_init(event_t *event)
 {
-    event->task_to_resume = NULL;
+    event->task_to_resume = NO_TASK_PTR;
 }
 
 /* Unsafe. */
@@ -514,12 +518,12 @@ void event_suspend_task(event_t *event)
     task_t *task = librertos.current_task;
 
     LIBRERTOS_ASSERT(
-        task != NULL,
+        !(task == NO_TASK_PTR || task == INTERRUPT_TASK_PTR),
         (intptr_t)task,
-        "event_suspend_task(): no task is running.");
+        "event_suspend_task(): no task or interrupt is running.");
 
     LIBRERTOS_ASSERT(
-        event->task_to_resume == NULL || event->task_to_resume == task,
+        event->task_to_resume == NO_TASK_PTR || event->task_to_resume == task,
         (intptr_t)task,
         "event_suspend_task(): another task is suspended.");
 
@@ -530,9 +534,11 @@ void event_suspend_task(event_t *event)
 /* Unsafe. */
 void event_resume_task(event_t *event)
 {
-    if (event->task_to_resume != NULL)
+    task_t *task = event->task_to_resume;
+
+    if (task != NO_TASK_PTR)
     {
-        task_resume(event->task_to_resume);
-        event->task_to_resume = NULL;
+        event->task_to_resume = NO_TASK_PTR;
+        task_resume(task);
     }
 }

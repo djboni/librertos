@@ -78,12 +78,26 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_CallsAssertFunction)
     CHECK_THROWS(AssertionError, event_suspend_task(&event));
 }
 
-TEST(Event, CallSuspendWithNoTask_CallsAssertFunction)
+TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction)
 {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)NULL)
-        .withParameter("msg", "event_suspend_task(): no task is running.");
+        .withParameter("val", (intptr_t)NO_TASK_PTR)
+        .withParameter(
+            "msg", "event_suspend_task(): no task or interrupt is running.");
+
+    CHECK_THROWS(AssertionError, event_suspend_task(&event));
+}
+
+TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
+{
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
+        .withParameter(
+            "msg", "event_suspend_task(): no task or interrupt is running.");
+
+    (void)interrupt_lock();
 
     CHECK_THROWS(AssertionError, event_suspend_task(&event));
 }
@@ -99,7 +113,7 @@ TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
     set_current_task(&task1);
     event_suspend_task(&event);
     event_resume_task(&event);
-    set_current_task(NULL);
+    set_current_task(NO_TASK_PTR);
 
     librertos_sched();
     STRCMP_EQUAL("ABC", buff);
@@ -150,7 +164,7 @@ TEST(Semaphore, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
     set_current_task(&task1);
     semaphore_suspend(&sem);
-    set_current_task(NULL);
+    set_current_task(NO_TASK_PTR);
 
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);
@@ -229,7 +243,7 @@ TEST(Mutex, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
     set_current_task(&task1);
     mutex_suspend(&mtx);
-    set_current_task(NULL);
+    set_current_task(NO_TASK_PTR);
 
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);
@@ -318,7 +332,7 @@ TEST(Queue, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
     set_current_task(&task1);
     queue_suspend_read(&que);
-    set_current_task(NULL);
+    set_current_task(NO_TASK_PTR);
 
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);

@@ -144,24 +144,38 @@ TEST(Scheduler, Suspend_SuspendTwoTasks)
     STRCMP_EQUAL("", buff);
 }
 
-TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNull)
+TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNullAkaCurrentTaskPtr)
 {
     /* Dummy test. Nothing to test, because Param::task_sequencing() already
-     * uses the feature of a task suspending itself calling
-     * task_suspend(NULL).
+     * uses the feature which a task suspends itself by calling
+     * task_suspend(CURRENT_TASK_PTR).
      */
     volatile task_function_t func = &Param::task_sequencing;
     CHECK_TRUE(func != NULL);
 }
 
-TEST(Scheduler, Suspend_CallSuspendWithNoTask_CallsAssertFunction)
+TEST(Scheduler, Suspend_CallSuspendWithNoTaskRunning_CallsAssertFunction)
 {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)NULL)
-        .withParameter("msg", "task_suspend(): no task is running.");
+        .withParameter("val", (intptr_t)NO_TASK_PTR)
+        .withParameter(
+            "msg", "task_suspend(): no task or interrupt is running.");
 
-    CHECK_THROWS(AssertionError, task_suspend(NULL));
+    CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
+}
+
+TEST(Scheduler, Suspend_CallSuspendWithInterruptRunning_CallsAssertFunction)
+{
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
+        .withParameter(
+            "msg", "task_suspend(): no task or interrupt is running.");
+
+    (void)interrupt_lock();
+
+    CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
 }
 
 TEST(Scheduler, Resume_HigherPriority_GoesFirst)
@@ -237,21 +251,21 @@ TEST(Scheduler, Resume_ReadyTask_DoesNothing)
     STRCMP_EQUAL("ABCefg", buff);
 }
 
-TEST(Scheduler, GetCurrentTask_NoTask_ReturnNULL)
+TEST(Scheduler, GetCurrentTask_NoTask_ReturnNullAkaNoTaskPtr)
 {
-    POINTERS_EQUAL(NULL, get_current_task());
+    POINTERS_EQUAL(NO_TASK_PTR, get_current_task());
 }
 
 static void check_current_task(void *param)
 {
     task_t **task = (task_t **)param;
     *task = get_current_task();
-    task_suspend(NULL);
+    task_suspend(CURRENT_TASK_PTR);
 }
 
 TEST(Scheduler, GetCurrentTask_RunTask_ReturnsPointer)
 {
-    task_t *task = NULL;
+    task_t *task = NO_TASK_PTR;
 
     librertos_create_task(LOW_PRIORITY, &task1, &check_current_task, &task);
     librertos_sched();
@@ -475,7 +489,9 @@ TEST(SchedulerMode, Cooperative_SchedulerLock_DoesNotChangeCurrentTask)
     POINTERS_EQUAL(&task1, get_current_task());
 }
 
-TEST(SchedulerMode, Preemptive_InterruptLock_ChangesCurrentTaskToNULL)
+TEST(
+    SchedulerMode,
+    Preemptive_InterruptLock_ChangesCurrentTaskToInterruptTaskPtr)
 {
     kernel_mode = LIBRERTOS_PREEMPTIVE;
 
@@ -485,12 +501,14 @@ TEST(SchedulerMode, Preemptive_InterruptLock_ChangesCurrentTaskToNULL)
 
     POINTERS_EQUAL(&task1, get_current_task());
     task_t *task = interrupt_lock();
-    POINTERS_EQUAL(NULL, get_current_task());
+    POINTERS_EQUAL(INTERRUPT_TASK_PTR, get_current_task());
     interrupt_unlock(task);
     POINTERS_EQUAL(&task1, get_current_task());
 }
 
-TEST(SchedulerMode, Cooperative_InterruptLock_ChangesCurrentTaskToNULL)
+TEST(
+    SchedulerMode,
+    Cooperative_InterruptLock_ChangesCurrentTaskToInterruptTaskPtr)
 {
     kernel_mode = LIBRERTOS_COOPERATIVE;
 
@@ -500,7 +518,7 @@ TEST(SchedulerMode, Cooperative_InterruptLock_ChangesCurrentTaskToNULL)
 
     POINTERS_EQUAL(&task1, get_current_task());
     task_t *task = interrupt_lock();
-    POINTERS_EQUAL(NULL, get_current_task());
+    POINTERS_EQUAL(INTERRUPT_TASK_PTR, get_current_task());
     interrupt_unlock(task);
     POINTERS_EQUAL(&task1, get_current_task());
 }
