@@ -79,12 +79,12 @@ void librertos_sched(void)
     int8_t current_priority;
     int8_t some_task_ran;
 
-    CRITICAL_VAL();
+    INTERRUPTS_VAL();
 
     /* Disable interrupts to determine the highest priority task that is ready
      * to run.
      */
-    CRITICAL_ENTER();
+    INTERRUPTS_DISABLE();
 
     current_task = librertos.current_task;
     current_priority = (current_task == NULL) ? -1 : current_task->priority;
@@ -112,9 +112,9 @@ void librertos_sched(void)
             librertos.current_task = task;
 
             /* Enable interrupts while running the task. */
-            CRITICAL_EXIT();
+            INTERRUPTS_ENABLE();
             task->func(task->param);
-            CRITICAL_ENTER();
+            INTERRUPTS_DISABLE();
 
             librertos.current_task = current_task;
 
@@ -126,7 +126,7 @@ void librertos_sched(void)
         }
     } while (some_task_ran != 0);
 
-    CRITICAL_EXIT();
+    INTERRUPTS_ENABLE();
 }
 
 /*
