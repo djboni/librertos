@@ -2,9 +2,15 @@
 	"folders": [
 		{
 			"path": ".."
+		},
+		{
+			"path": "../misc/cpputest"
 		}
     ],
     "settings": {
+        "files.exclude": {
+            "misc/cpputest": true,
+        },
         "cSpell.words": [
             "isFull",
             "LibreRTOS"
