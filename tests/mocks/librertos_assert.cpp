@@ -3,7 +3,7 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-void librertos_assert(int val, const char *msg)
+void librertos_assert(intptr_t val, const char *msg)
 {
     /* Call mock. */
     mock()

@@ -4,6 +4,9 @@
 
 /*
  * Main file: src/mutex.c
+ * Also compile: src/librertos.c
+ * Also compile: tests/mocks/librertos_assert.cpp
+ * Also compile: tests/utils/librertos_test_utils.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -41,8 +44,8 @@ TEST(Mutex, Locked_Unlocks)
 
 TEST(Mutex, IsLocked)
 {
-    LONGS_EQUAL(0, mutex_islocked(&mtx));
+    LONGS_EQUAL(0, mutex_is_locked(&mtx));
 
     mutex_lock(&mtx);
-    LONGS_EQUAL(1, mutex_islocked(&mtx));
+    LONGS_EQUAL(1, mutex_is_locked(&mtx));
 }

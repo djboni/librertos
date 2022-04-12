@@ -404,27 +404,27 @@ TEST(List, Remove_3_Middle)
 
 TEST(List, Empty_True)
 {
-    LONGS_EQUAL(1, list_empty(&list));
+    LONGS_EQUAL(1, list_is_empty(&list));
 }
 
 TEST(List, Empty_True_2)
 {
     list_insert_last(&list, &node1);
     list_remove(&node1);
-    LONGS_EQUAL(1, list_empty(&list));
+    LONGS_EQUAL(1, list_is_empty(&list));
 }
 
 TEST(List, Empty_False)
 {
     list_insert_last(&list, &node1);
-    LONGS_EQUAL(0, list_empty(&list));
+    LONGS_EQUAL(0, list_is_empty(&list));
 }
 
 TEST(List, Empty_False_2)
 {
     list_insert_last(&list, &node1);
     list_insert_last(&list, &node2);
-    LONGS_EQUAL(0, list_empty(&list));
+    LONGS_EQUAL(0, list_is_empty(&list));
 }
 
 TEST(List, MoveFirstToLast_NoNode)

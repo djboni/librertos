@@ -4,8 +4,6 @@
 #include "librertos_impl.h"
 #include "tests/utils/librertos_test_utils.h"
 
-#include <cstring>
-
 /*
  * Main file: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
@@ -14,41 +12,6 @@
 
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
-
-#define BUFF_SIZE 128
-
-struct Param
-{
-    char *buff;
-    const char *start, *resume, *end;
-    task_t *task_to_resume;
-    int suspend_after_n_runs;
-};
-
-static void task_sequencing(void *param)
-{
-    Param *p = (Param *)param;
-
-    if (p == NULL)
-        return;
-
-    // Concat start
-    strcat(p->buff, p->start);
-
-    // Resume task
-    if (p->task_to_resume != NULL)
-        task_resume(p->task_to_resume);
-
-    // Concat resume
-    strcat(p->buff, p->resume);
-
-    // Suspend itself
-    if (--(p->suspend_after_n_runs) <= 0)
-        task_suspend(NULL);
-
-    // Concat end
-    strcat(p->buff, p->end);
-}
 
 TEST_GROUP (Scheduler)
 {
@@ -68,7 +31,8 @@ TEST(Scheduler, OneTask_RunTask)
     char buff[BUFF_SIZE] = "";
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
     librertos_sched();
     STRCMP_EQUAL("ABCABC", buff);
@@ -80,8 +44,10 @@ TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     librertos_sched();
     STRCMP_EQUAL("ABCefgABCefg", buff);
@@ -93,8 +59,10 @@ TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively_2)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
-    librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     librertos_sched();
     STRCMP_EQUAL("ABCefgABCefg", buff);
@@ -106,8 +74,10 @@ TEST(Scheduler, TwoTasks_HigherPriorityHasPrecedence)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
-    librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     librertos_sched();
     STRCMP_EQUAL("ABCABCefgefg", buff);
@@ -123,7 +93,7 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction)
     CHECK_THROWS(
         AssertionError,
         librertos_create_task(
-            LOW_PRIORITY - 1, &task1, &task_sequencing, NULL));
+            LOW_PRIORITY - 1, &task1, &Param::task_sequencing, NULL));
 }
 
 TEST(Scheduler, InvalidPriority_CallsAssertFunction_2)
@@ -136,7 +106,7 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction_2)
     CHECK_THROWS(
         AssertionError,
         librertos_create_task(
-            HIGH_PRIORITY + 1, &task1, &task_sequencing, NULL));
+            HIGH_PRIORITY + 1, &task1, &Param::task_sequencing, NULL));
 }
 
 TEST(Scheduler, Suspend_SuspendOneTask)
@@ -145,8 +115,10 @@ TEST(Scheduler, Suspend_SuspendOneTask)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
-    librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task1);
 
@@ -160,8 +132,10 @@ TEST(Scheduler, Suspend_SuspendTwoTasks)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 2};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 2};
 
-    librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task1);
     task_suspend(&task2);
@@ -172,11 +146,22 @@ TEST(Scheduler, Suspend_SuspendTwoTasks)
 
 TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNull)
 {
-    /* Dummy test. Nothing to test, because task_sequencing() already uses the
-     * feature of a task suspending itself calling task_suspend(NULL).
+    /* Dummy test. Nothing to test, because Param::task_sequencing() already
+     * uses the feature of a task suspending itself calling
+     * task_suspend(NULL).
      */
-    volatile task_function_t func = &task_sequencing;
+    volatile task_function_t func = &Param::task_sequencing;
     CHECK_TRUE(func != NULL);
+}
+
+TEST(Scheduler, Suspend_CallSuspendWithNoTask_CallsAssertFunction)
+{
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", (intptr_t)NULL)
+        .withParameter("msg", "task_suspend(): no task is running.");
+
+    CHECK_THROWS(AssertionError, task_suspend(NULL));
 }
 
 TEST(Scheduler, Resume_HigherPriority_GoesFirst)
@@ -185,8 +170,10 @@ TEST(Scheduler, Resume_HigherPriority_GoesFirst)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(HIGH_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task1);
     task_resume(&task1);
@@ -201,8 +188,10 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task1);
     task_resume(&task1);
@@ -217,8 +206,10 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task1);
     task_suspend(&task2);
@@ -235,8 +226,10 @@ TEST(Scheduler, Resume_ReadyTask_DoesNothing)
     Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_resume(&task1);
 
@@ -295,8 +288,10 @@ TEST(SchedulerMode, Cooperative_OtherTaskRunning_DoNotRunHigherPriority)
     Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 
@@ -320,8 +315,10 @@ TEST(SchedulerMode, Cooperative_DoNotPreemptWithSchedulerLocked)
     Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 
@@ -347,8 +344,10 @@ TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask)
     Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(LOW_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 
@@ -372,8 +371,10 @@ TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
     Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 
@@ -400,9 +401,12 @@ TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
     Param param2 = {&buff[0], "e", "f", "g", &task3, 1};
     Param param3 = {&buff[0], "1", "2", "3", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
-    librertos_create_task(HIGH_PRIORITY, &task3, &task_sequencing, &param3);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
+    librertos_create_task(
+        HIGH_PRIORITY, &task3, &Param::task_sequencing, &param3);
 
     task_suspend(&task2);
     task_suspend(&task3);
@@ -427,8 +431,10 @@ TEST(SchedulerMode, Preemptive_DoNotPreemptWithSchedulerLocked)
     Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
-    librertos_create_task(LOW_PRIORITY, &task1, &task_sequencing, &param1);
-    librertos_create_task(HIGH_PRIORITY, &task2, &task_sequencing, &param2);
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 

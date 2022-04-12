@@ -1,6 +1,9 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "librertos_impl.h"
+
+#include <stddef.h>
 
 enum
 {
@@ -8,6 +11,9 @@ enum
     MUTEX_LOCKED = 1
 };
 
+/*
+ * Initialize mutex.
+ */
 void mutex_init(mutex_t *mtx)
 {
     CRITICAL_VAL();
@@ -15,10 +21,16 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_ENTER();
     {
         mtx->locked = 0;
+        event_init(&mtx->event_unlock);
     }
     CRITICAL_EXIT();
 }
 
+/*
+ * Lock mutex.
+ *
+ * Returns: 1 if success, 0 otherwise.
+ */
 result_t mutex_lock(mutex_t *mtx)
 {
     result_t result = FAIL;
@@ -37,25 +49,36 @@ result_t mutex_lock(mutex_t *mtx)
     return result;
 }
 
+/*
+ * Unlock mutex.
+ *
+ * Returns: 1 if success, 0 otherwise.
+ */
 result_t mutex_unlock(mutex_t *mtx)
 {
     result_t result = FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (mtx->locked != MUTEX_UNLOCKED)
     {
-        if (mtx->locked != MUTEX_UNLOCKED)
-        {
-            mtx->locked = MUTEX_UNLOCKED;
-            result = SUCCESS;
-        }
+        mtx->locked = MUTEX_UNLOCKED;
+        result = SUCCESS;
     }
+
+    scheduler_lock();
+    event_resume_task(&mtx->event_unlock);
     CRITICAL_EXIT();
+    scheduler_unlock();
 
     return result;
 }
 
-uint8_t mutex_islocked(mutex_t *mtx)
+/*
+ * Check if a mutex is locked.
+ */
+uint8_t mutex_is_locked(mutex_t *mtx)
 {
     uint8_t locked;
     CRITICAL_VAL();
@@ -67,4 +90,19 @@ uint8_t mutex_islocked(mutex_t *mtx)
     CRITICAL_EXIT();
 
     return locked;
+}
+
+/*
+ * Suspend task on mutex.
+ */
+void mutex_suspend(mutex_t *mtx)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        if (mtx->locked != MUTEX_UNLOCKED)
+            event_suspend_task(&mtx->event_unlock);
+    }
+    CRITICAL_EXIT();
 }

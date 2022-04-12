@@ -4,6 +4,9 @@
 
 /*
  * Main file: src/queue.c
+ * Also compile: src/librertos.c
+ * Also compile: tests/mocks/librertos_assert.cpp
+ * Also compile: tests/utils/librertos_test_utils.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -104,21 +107,21 @@ TEST(Queue_Size1, WrapsHead_WrapsTail)
 
 TEST(Queue_Size1, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
 {
-    LONGS_EQUAL(1, queue_numfree(&que));
-    LONGS_EQUAL(0, queue_numused(&que));
-    LONGS_EQUAL(1, queue_isempty(&que));
-    LONGS_EQUAL(0, queue_isfull(&que));
-    LONGS_EQUAL(1, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(1, queue_get_num_free(&que));
+    LONGS_EQUAL(0, queue_get_num_used(&que));
+    LONGS_EQUAL(1, queue_is_empty(&que));
+    LONGS_EQUAL(0, queue_is_full(&que));
+    LONGS_EQUAL(1, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 
     queue_write(&que, &que_struct_val_A);
 
-    LONGS_EQUAL(0, queue_numfree(&que));
-    LONGS_EQUAL(1, queue_numused(&que));
-    LONGS_EQUAL(0, queue_isempty(&que));
-    LONGS_EQUAL(1, queue_isfull(&que));
-    LONGS_EQUAL(1, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(0, queue_get_num_free(&que));
+    LONGS_EQUAL(1, queue_get_num_used(&que));
+    LONGS_EQUAL(0, queue_is_empty(&que));
+    LONGS_EQUAL(1, queue_is_full(&que));
+    LONGS_EQUAL(1, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }
 
 TEST_GROUP (Queue_Size2)
@@ -210,30 +213,30 @@ TEST(Queue_Size2, WrapsHead_WrapsTail)
 
 TEST(Queue_Size2, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
 {
-    LONGS_EQUAL(2, queue_numfree(&que));
-    LONGS_EQUAL(0, queue_numused(&que));
-    LONGS_EQUAL(1, queue_isempty(&que));
-    LONGS_EQUAL(0, queue_isfull(&que));
-    LONGS_EQUAL(2, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(2, queue_get_num_free(&que));
+    LONGS_EQUAL(0, queue_get_num_used(&que));
+    LONGS_EQUAL(1, queue_is_empty(&que));
+    LONGS_EQUAL(0, queue_is_full(&que));
+    LONGS_EQUAL(2, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 
     queue_write(&que, &que_struct_val_A);
 
-    LONGS_EQUAL(1, queue_numfree(&que));
-    LONGS_EQUAL(1, queue_numused(&que));
-    LONGS_EQUAL(0, queue_isempty(&que));
-    LONGS_EQUAL(0, queue_isfull(&que));
-    LONGS_EQUAL(2, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(1, queue_get_num_free(&que));
+    LONGS_EQUAL(1, queue_get_num_used(&que));
+    LONGS_EQUAL(0, queue_is_empty(&que));
+    LONGS_EQUAL(0, queue_is_full(&que));
+    LONGS_EQUAL(2, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 
     queue_write(&que, &que_struct_val_B);
 
-    LONGS_EQUAL(0, queue_numfree(&que));
-    LONGS_EQUAL(2, queue_numused(&que));
-    LONGS_EQUAL(0, queue_isempty(&que));
-    LONGS_EQUAL(1, queue_isfull(&que));
-    LONGS_EQUAL(2, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(0, queue_get_num_free(&que));
+    LONGS_EQUAL(2, queue_get_num_used(&que));
+    LONGS_EQUAL(0, queue_is_empty(&que));
+    LONGS_EQUAL(1, queue_is_full(&que));
+    LONGS_EQUAL(2, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }
 
 TEST_GROUP (Queue_Size0)
@@ -266,10 +269,10 @@ TEST(Queue_Size0, Full_CannotWrite)
 
 TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
 {
-    LONGS_EQUAL(0, queue_numfree(&que));
-    LONGS_EQUAL(0, queue_numused(&que));
-    LONGS_EQUAL(1, queue_isempty(&que));
-    LONGS_EQUAL(1, queue_isfull(&que));
-    LONGS_EQUAL(0, queue_numitems(&que));
-    LONGS_EQUAL(sizeof(que_struct), queue_itemsize(&que));
+    LONGS_EQUAL(0, queue_get_num_free(&que));
+    LONGS_EQUAL(0, queue_get_num_used(&que));
+    LONGS_EQUAL(1, queue_is_empty(&que));
+    LONGS_EQUAL(1, queue_is_full(&que));
+    LONGS_EQUAL(0, queue_get_num_items(&que));
+    LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }

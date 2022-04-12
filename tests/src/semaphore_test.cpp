@@ -4,7 +4,9 @@
 
 /*
  * Main file: src/semaphore.c
+ * Also compile: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
+ * Also compile: tests/utils/librertos_test_utils.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -120,27 +122,27 @@ TEST(Sempahore, CountingLocked_CannotUnlockThreeTimes)
 TEST(Sempahore, Binary_GetCount_GetMax)
 {
     semaphore_init_locked(&sem, 1);
-    LONGS_EQUAL(0, semaphore_count(&sem));
-    LONGS_EQUAL(1, semaphore_max(&sem));
+    LONGS_EQUAL(0, semaphore_get_count(&sem));
+    LONGS_EQUAL(1, semaphore_get_max(&sem));
 
     semaphore_unlock(&sem);
-    LONGS_EQUAL(1, semaphore_count(&sem));
-    LONGS_EQUAL(1, semaphore_max(&sem));
+    LONGS_EQUAL(1, semaphore_get_count(&sem));
+    LONGS_EQUAL(1, semaphore_get_max(&sem));
 }
 
 TEST(Sempahore, Counting_GetCount_GetMax)
 {
     semaphore_init_locked(&sem, 2);
-    LONGS_EQUAL(0, semaphore_count(&sem));
-    LONGS_EQUAL(2, semaphore_max(&sem));
+    LONGS_EQUAL(0, semaphore_get_count(&sem));
+    LONGS_EQUAL(2, semaphore_get_max(&sem));
 
     semaphore_unlock(&sem);
-    LONGS_EQUAL(1, semaphore_count(&sem));
-    LONGS_EQUAL(2, semaphore_max(&sem));
+    LONGS_EQUAL(1, semaphore_get_count(&sem));
+    LONGS_EQUAL(2, semaphore_get_max(&sem));
 
     semaphore_unlock(&sem);
-    LONGS_EQUAL(2, semaphore_count(&sem));
-    LONGS_EQUAL(2, semaphore_max(&sem));
+    LONGS_EQUAL(2, semaphore_get_count(&sem));
+    LONGS_EQUAL(2, semaphore_get_max(&sem));
 }
 
 TEST(Sempahore, InvalidInitCount_CallsAssertFunction)

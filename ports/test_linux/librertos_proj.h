@@ -24,7 +24,7 @@ typedef int16_t difftick_t;
 
 extern int8_t kernel_mode;
 
-extern void librertos_assert(int val, const char *msg);
+extern void librertos_assert(intptr_t val, const char *msg);
 
 #ifdef __cplusplus
 }

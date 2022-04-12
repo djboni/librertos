@@ -45,15 +45,24 @@ typedef enum
     LIBRERTOS_COOPERATIVE
 } kernel_mode_t;
 
+struct os_task_t;
+
+typedef struct
+{
+    struct os_task_t *task_to_resume;
+} event_t;
+
 typedef struct
 {
     uint8_t count;
     uint8_t max;
+    event_t event_unlock;
 } semaphore_t;
 
 typedef struct
 {
     uint8_t locked;
+    event_t event_unlock;
 } mutex_t;
 
 typedef struct
@@ -65,6 +74,7 @@ typedef struct
     uint16_t item_size;
     uint16_t end;
     uint8_t *buff;
+    event_t event_write;
 } queue_t;
 
 struct node_t;
@@ -87,7 +97,7 @@ struct node_t
 typedef void *task_parameter_t;
 typedef void (*task_function_t)(task_parameter_t param);
 
-typedef struct
+typedef struct os_task_t
 {
     task_function_t func;
     task_parameter_t param;
@@ -100,23 +110,26 @@ void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
 void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count);
 result_t semaphore_lock(semaphore_t *sem);
 result_t semaphore_unlock(semaphore_t *sem);
-uint8_t semaphore_count(semaphore_t *sem);
-uint8_t semaphore_max(semaphore_t *sem);
+uint8_t semaphore_get_count(semaphore_t *sem);
+uint8_t semaphore_get_max(semaphore_t *sem);
+void semaphore_suspend(semaphore_t *sem);
 
 void mutex_init(mutex_t *mtx);
 result_t mutex_lock(mutex_t *mtx);
 result_t mutex_unlock(mutex_t *mtx);
-uint8_t mutex_islocked(mutex_t *mtx);
+uint8_t mutex_is_locked(mutex_t *mtx);
+void mutex_suspend(mutex_t *mtx);
 
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size);
 result_t queue_read(queue_t *que, void *data);
 result_t queue_write(queue_t *que, const void *data);
-uint8_t queue_numfree(queue_t *que);
-uint8_t queue_numused(queue_t *que);
-uint8_t queue_isempty(queue_t *que);
-uint8_t queue_isfull(queue_t *que);
-uint8_t queue_numitems(queue_t *que);
-uint8_t queue_itemsize(queue_t *que);
+uint8_t queue_get_num_free(queue_t *que);
+uint8_t queue_get_num_used(queue_t *que);
+uint8_t queue_is_empty(queue_t *que);
+uint8_t queue_is_full(queue_t *que);
+uint8_t queue_get_num_items(queue_t *que);
+uint8_t queue_get_item_size(queue_t *que);
+void queue_suspend_read(queue_t *que);
 
 void librertos_init(void);
 void librertos_tick_interrupt(void);

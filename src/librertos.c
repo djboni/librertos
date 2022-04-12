@@ -45,6 +45,16 @@ void librertos_init(void)
     CRITICAL_EXIT();
 }
 
+/*
+ * Create task.
+ *
+ * Parameters:
+ *   - priority: integer in the range from LOW_PRIORITY (0) up to
+ *     HIGH_PRIORITY (NUM_PRIORITIES - 1).
+ *   - task: task information.
+ *   - func: task function with prototype void task_function(void *param).
+ *   - param: task parameter.
+ */
 void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param)
 {
@@ -100,7 +110,7 @@ void librertos_sched(void)
             struct node_t *node;
             task_t *task;
 
-            if (list_empty(&librertos.tasks_ready[i]))
+            if (list_is_empty(&librertos.tasks_ready[i]))
                 continue;
 
             some_task_ran = 1;
@@ -231,6 +241,18 @@ task_t *get_current_task(void)
 void task_suspend(task_t *task)
 {
     CRITICAL_VAL();
+
+    /* To avoid failing a test, this assertion **reads** librertos.current_task
+     * without the protection of a critical section (it does not write).
+     * Assertions are supposed to catch bugs on development, they should not be
+     * used as run-time checks, and should be removed on production builds.
+     * For this reason it is not a problem to leave it out of the critical
+     * section.
+     */
+    LIBRERTOS_ASSERT(
+        task != NULL || librertos.current_task != NULL,
+        (intptr_t)task,
+        "task_suspend(): no task is running.");
 
     CRITICAL_ENTER();
     {
@@ -398,7 +420,7 @@ struct node_t *list_get_last(struct list_t *list)
 }
 
 /* Unsafe. */
-uint8_t list_empty(struct list_t *list)
+uint8_t list_is_empty(struct list_t *list)
 {
     return list->length == 0;
 }
@@ -441,4 +463,39 @@ void list_move_first_to_last(struct list_t *list)
     /*
      * L <--> A <--> T <--> H <--> L
      */
+}
+
+/* Unsafe. */
+void event_init(event_t *event)
+{
+    event->task_to_resume = NULL;
+}
+
+/* Unsafe. */
+void event_suspend_task(event_t *event)
+{
+    task_t *task = librertos.current_task;
+
+    LIBRERTOS_ASSERT(
+        task != NULL,
+        (intptr_t)task,
+        "event_suspend_task(): no task is running.");
+
+    LIBRERTOS_ASSERT(
+        event->task_to_resume == NULL || event->task_to_resume == task,
+        (intptr_t)task,
+        "event_suspend_task(): another task is suspended.");
+
+    task_suspend(task);
+    event->task_to_resume = task;
+}
+
+/* Unsafe. */
+void event_resume_task(event_t *event)
+{
+    if (event->task_to_resume != NULL)
+    {
+        task_resume(event->task_to_resume);
+        event->task_to_resume = NULL;
+    }
 }

@@ -33,8 +33,12 @@ void list_insert_before(
 void list_remove(struct node_t *node);
 struct node_t *list_get_first(struct list_t *list);
 struct node_t *list_get_last(struct list_t *list);
-uint8_t list_empty(struct list_t *list);
+uint8_t list_is_empty(struct list_t *list);
 void list_move_first_to_last(struct list_t *list);
+
+void event_init(event_t *event);
+void event_suspend_task(event_t *event);
+void event_resume_task(event_t *event);
 
 #ifdef __cplusplus
 }
