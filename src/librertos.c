@@ -306,16 +306,18 @@ void task_suspend(task_t *task)
 void task_resume(task_t *task)
 {
     struct list_t *list_ready;
+    struct node_t *node;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
     list_ready = &librertos.tasks_ready[task->priority];
+    node = &task->sched_node;
 
-    if (task->sched_node.list != list_ready)
+    if (node->list != list_ready)
     {
-        list_remove(&task->sched_node);
-        list_insert_last(list_ready, &task->sched_node);
+        list_remove(node);
+        list_insert_last(list_ready, node);
 
         /* The scheduler is locked and unlocked only if a task was actually
          * resumed. When the scheduler unlocks the current task can be preempted

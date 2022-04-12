@@ -7,8 +7,7 @@
 
 enum
 {
-    MUTEX_UNLOCKED = 0,
-    MUTEX_LOCKED = 1
+    MUTEX_UNLOCKED = 0
 };
 
 /*
@@ -21,6 +20,7 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_ENTER();
     {
         mtx->locked = 0;
+        mtx->task_owner = NULL;
         event_init(&mtx->event_unlock);
     }
     CRITICAL_EXIT();
@@ -34,13 +34,17 @@ void mutex_init(mutex_t *mtx)
 result_t mutex_lock(mutex_t *mtx)
 {
     result_t result = FAIL;
+    task_t *current_task;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
     {
-        if (mtx->locked == MUTEX_UNLOCKED)
+        current_task = librertos.current_task;
+
+        if (mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner)
         {
-            mtx->locked = MUTEX_LOCKED;
+            ++(mtx->locked);
+            mtx->task_owner = current_task;
             result = SUCCESS;
         }
     }
@@ -63,7 +67,7 @@ result_t mutex_unlock(mutex_t *mtx)
 
     if (mtx->locked != MUTEX_UNLOCKED)
     {
-        mtx->locked = MUTEX_UNLOCKED;
+        --(mtx->locked);
         result = SUCCESS;
     }
 
