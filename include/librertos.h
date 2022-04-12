@@ -127,6 +127,9 @@ void librertos_create_task(
     task_parameter_t param);
 void librertos_sched(void);
 
+void scheduler_lock(void);
+void scheduler_unlock(void);
+
 tick_t get_tick(void);
 task_t *get_current_task(void);
 void task_suspend(task_t *task);

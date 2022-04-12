@@ -33,8 +33,8 @@ void librertos_init(void)
         /* Make non-zero, to be easy to spot uninitialized fields. */
         memset(&librertos, 0x5A, sizeof(librertos));
 
+        librertos.scheduler_lock = 0;
         librertos.tick = 0;
-
         librertos.current_task = NULL;
 
         for (i = 0; i < NUM_PRIORITIES; i++)
@@ -71,7 +71,7 @@ void librertos_create_task(
 }
 
 /*
- * Run one scheduled task.
+ * Run scheduled tasks.
  */
 void librertos_sched(void)
 {
@@ -127,6 +127,44 @@ void librertos_sched(void)
     } while (some_task_ran != 0);
 
     CRITICAL_EXIT();
+}
+
+/*
+ * Lock scheduler, avoids preemption when using the preemptive kernel.
+ */
+void scheduler_lock(void)
+{
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
+    {
+        CRITICAL_VAL();
+
+        CRITICAL_ENTER();
+        ++librertos.scheduler_lock;
+        CRITICAL_EXIT();
+    }
+}
+
+/*
+ * Unlock scheduler, causes preemption when using the preemptive kernel and a
+ * higher priority tasks is ready.
+ */
+void scheduler_unlock(void)
+{
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
+    {
+        CRITICAL_VAL();
+
+        CRITICAL_ENTER();
+        if (--librertos.scheduler_lock == 0)
+        {
+            CRITICAL_EXIT();
+            librertos_sched();
+        }
+        else
+        {
+            CRITICAL_EXIT();
+        }
+    }
 }
 
 /*
@@ -210,23 +248,29 @@ void task_suspend(task_t *task)
  */
 void task_resume(task_t *task)
 {
+    struct list_t *list_ready;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        struct list_t *list_ready = &librertos.tasks_ready[task->priority];
 
-        if (task->sched_node.list != list_ready)
-        {
-            list_remove(&task->sched_node);
-            list_insert_last(list_ready, &task->sched_node);
-        }
+    list_ready = &librertos.tasks_ready[task->priority];
+
+    if (task->sched_node.list != list_ready)
+    {
+        list_remove(&task->sched_node);
+        list_insert_last(list_ready, &task->sched_node);
+
+        /* The scheduler is locked and unlocked only if a task was actually
+         * resumed. When the scheduler unlocks the current task can be preempted
+         * by a higher priority task.
+         */
+        scheduler_lock();
+        CRITICAL_EXIT();
+        scheduler_unlock();
     }
-    CRITICAL_EXIT();
-
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
+    else
     {
-        librertos_sched();
+        CRITICAL_EXIT();
     }
 }
 
