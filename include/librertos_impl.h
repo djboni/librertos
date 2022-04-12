@@ -22,6 +22,8 @@ extern librertos_t librertos;
 
 #define LIST_HEAD(list) ((struct node_t *)list)
 
+void set_current_task(task_t *task);
+
 void list_init(struct list_t *list);
 void node_init(struct node_t *node, void *owner);
 void list_insert_first(struct list_t *list, struct node_t *node);

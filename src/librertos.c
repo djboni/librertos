@@ -177,6 +177,24 @@ void scheduler_unlock(void)
     }
 }
 
+task_t *interrupt_lock(void)
+{
+    task_t *task;
+
+    scheduler_lock();
+
+    task = get_current_task();
+    set_current_task(NULL);
+
+    return task;
+}
+
+void interrupt_unlock(task_t *task)
+{
+    set_current_task(task);
+    scheduler_unlock();
+}
+
 /*
  * Process a tick timer interrupt.
  *
@@ -184,6 +202,7 @@ void scheduler_unlock(void)
  */
 void librertos_tick_interrupt(void)
 {
+    task_t *task = interrupt_lock();
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -191,6 +210,8 @@ void librertos_tick_interrupt(void)
         librertos.tick++;
     }
     CRITICAL_EXIT();
+
+    interrupt_unlock(task);
 }
 
 /*
@@ -229,6 +250,20 @@ task_t *get_current_task(void)
     CRITICAL_EXIT();
 
     return task;
+}
+
+/*
+ * Set the currently running task.
+ */
+void set_current_task(task_t *task)
+{
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        librertos.current_task = task;
+    }
+    CRITICAL_EXIT();
 }
 
 /*

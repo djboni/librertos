@@ -142,6 +142,8 @@ void librertos_sched(void);
 
 void scheduler_lock(void);
 void scheduler_unlock(void);
+task_t *interrupt_lock(void);
+void interrupt_unlock(task_t *task);
 
 tick_t get_tick(void);
 task_t *get_current_task(void);

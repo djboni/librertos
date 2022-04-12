@@ -444,3 +444,63 @@ TEST(SchedulerMode, Preemptive_DoNotPreemptWithSchedulerLocked)
 
     STRCMP_EQUAL("ABCefg", buff);
 }
+
+TEST(SchedulerMode, Preemptive_SchedulerLock_DoesNotChangeCurrentTask)
+{
+    kernel_mode = LIBRERTOS_PREEMPTIVE;
+
+    librertos_create_task(LOW_PRIORITY, &task1, &Param::task_sequencing, NULL);
+
+    set_current_task(&task1);
+
+    POINTERS_EQUAL(&task1, get_current_task());
+    scheduler_lock();
+    POINTERS_EQUAL(&task1, get_current_task());
+    scheduler_unlock();
+    POINTERS_EQUAL(&task1, get_current_task());
+}
+
+TEST(SchedulerMode, Cooperative_SchedulerLock_DoesNotChangeCurrentTask)
+{
+    kernel_mode = LIBRERTOS_COOPERATIVE;
+
+    librertos_create_task(LOW_PRIORITY, &task1, &Param::task_sequencing, NULL);
+
+    set_current_task(&task1);
+
+    POINTERS_EQUAL(&task1, get_current_task());
+    scheduler_lock();
+    POINTERS_EQUAL(&task1, get_current_task());
+    scheduler_unlock();
+    POINTERS_EQUAL(&task1, get_current_task());
+}
+
+TEST(SchedulerMode, Preemptive_InterruptLock_ChangesCurrentTaskToNULL)
+{
+    kernel_mode = LIBRERTOS_PREEMPTIVE;
+
+    librertos_create_task(LOW_PRIORITY, &task1, &Param::task_sequencing, NULL);
+
+    set_current_task(&task1);
+
+    POINTERS_EQUAL(&task1, get_current_task());
+    task_t *task = interrupt_lock();
+    POINTERS_EQUAL(NULL, get_current_task());
+    interrupt_unlock(task);
+    POINTERS_EQUAL(&task1, get_current_task());
+}
+
+TEST(SchedulerMode, Cooperative_InterruptLock_ChangesCurrentTaskToNULL)
+{
+    kernel_mode = LIBRERTOS_COOPERATIVE;
+
+    librertos_create_task(LOW_PRIORITY, &task1, &Param::task_sequencing, NULL);
+
+    set_current_task(&task1);
+
+    POINTERS_EQUAL(&task1, get_current_task());
+    task_t *task = interrupt_lock();
+    POINTERS_EQUAL(NULL, get_current_task());
+    interrupt_unlock(task);
+    POINTERS_EQUAL(&task1, get_current_task());
+}
