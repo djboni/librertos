@@ -33,7 +33,11 @@ void librertos_init(void)
         /* Make non-zero, to be easy to spot uninitialized fields. */
         memset(&librertos, 0x5A, sizeof(librertos));
 
-        librertos.scheduler_lock = 0;
+        /* Start with scheduler locked, to avoid scheduling tasks in interrupts
+         * that happen while we initialize the hardware.
+         */
+        librertos.scheduler_lock = 1;
+
         librertos.tick = 0;
         librertos.current_task = NO_TASK_PTR;
 
@@ -77,7 +81,18 @@ void librertos_create_task(
 
         list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
     }
+    scheduler_lock();
     CRITICAL_EXIT();
+    scheduler_unlock();
+}
+
+/*
+ * Start LibreRTOS, allows the scheduler to run on interrupts and when resuming
+ * tasks.
+ */
+void librertos_start(void)
+{
+    librertos.scheduler_lock = 0;
 }
 
 /*

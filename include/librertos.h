@@ -144,6 +144,7 @@ void librertos_create_task(
     task_t *task,
     task_function_t func,
     task_parameter_t param);
+void librertos_start(void);
 void librertos_sched(void);
 
 void scheduler_lock(void);

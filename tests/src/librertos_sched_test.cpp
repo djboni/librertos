@@ -392,6 +392,7 @@ TEST(SchedulerMode, Preemptive_OtherTaskRunning_RunHigherPriority)
 
     task_suspend(&task2);
 
+    librertos_start();
     librertos_sched();
 
     STRCMP_EQUAL("AefgBC", buff);
@@ -425,6 +426,7 @@ TEST(SchedulerMode, Preemptive_ResumedHighPrioTask_KeepsLowPrioPreempted)
     task_suspend(&task2);
     task_suspend(&task3);
 
+    librertos_start();
     librertos_sched();
 
     STRCMP_EQUAL("Aefg123BC", buff);
@@ -521,4 +523,51 @@ TEST(
     POINTERS_EQUAL(INTERRUPT_TASK_PTR, get_current_task());
     interrupt_unlock(task);
     POINTERS_EQUAL(&task1, get_current_task());
+}
+
+TEST_GROUP (SchedulerStart)
+{
+    task_t task1, task2, task3;
+
+    void setup() {}
+    void teardown() { kernel_mode = LIBRERTOS_PREEMPTIVE; }
+};
+
+TEST(SchedulerStart, Preemptive_DoNotScheduleBeforeFinishingInitialization)
+{
+    char buff[BUFF_SIZE] = "";
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+
+    kernel_mode = LIBRERTOS_PREEMPTIVE;
+    librertos_init();
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+
+    // There might be some interrupts here while initializing the peripherals
+    interrupt_unlock(interrupt_lock());
+
+    STRCMP_EQUAL("", buff);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("ABC", buff);
+}
+
+TEST(SchedulerStart, Preemptive_IfStarted_ScheduleWhenCreatingTask)
+{
+    char buff[BUFF_SIZE] = "";
+    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
+
+    kernel_mode = LIBRERTOS_PREEMPTIVE;
+    librertos_init();
+
+    librertos_start();
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+
+    STRCMP_EQUAL("ABC", buff);
+
+    librertos_sched();
+    STRCMP_EQUAL("ABC", buff);
 }

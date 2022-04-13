@@ -178,6 +178,7 @@ TEST(Semaphore, TaskResumesOnEvent_ShouldBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -193,6 +194,7 @@ TEST(Semaphore, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
 
     scheduler_lock();
@@ -259,6 +261,7 @@ TEST(Mutex, TaskResumesOnEvent_ShouldBeScheduled)
 
     mutex_lock(&mtx);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -276,6 +279,7 @@ TEST(Mutex, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 
     mutex_lock(&mtx);
 
+    librertos_start();
     librertos_sched();
 
     scheduler_lock();
@@ -347,6 +351,7 @@ TEST(Queue, TaskResumesOnEvent_ShouldBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -363,6 +368,7 @@ TEST(Queue, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
 
     scheduler_lock();
