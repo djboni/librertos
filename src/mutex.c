@@ -110,3 +110,24 @@ void mutex_suspend(mutex_t *mtx)
     }
     CRITICAL_EXIT();
 }
+
+/*
+ * Lock mutex if unlocked, else suspend the task on the mutex.
+ *
+ * Returns: 1 if successfully locked the mutex, 0 otherwise (suspended).
+ */
+result_t mutex_lock_suspend(mutex_t *mtx)
+{
+    result_t result;
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        result = mutex_lock(mtx);
+        if (result == FAIL)
+            mutex_suspend(mtx);
+    }
+    CRITICAL_EXIT();
+
+    return result;
+}

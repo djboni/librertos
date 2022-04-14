@@ -119,12 +119,14 @@ result_t semaphore_unlock(semaphore_t *sem);
 uint8_t semaphore_get_count(semaphore_t *sem);
 uint8_t semaphore_get_max(semaphore_t *sem);
 void semaphore_suspend(semaphore_t *sem);
+result_t semaphore_lock_suspend(semaphore_t *sem);
 
 void mutex_init(mutex_t *mtx);
 result_t mutex_lock(mutex_t *mtx);
 result_t mutex_unlock(mutex_t *mtx);
 uint8_t mutex_is_locked(mutex_t *mtx);
 void mutex_suspend(mutex_t *mtx);
+result_t mutex_lock_suspend(mutex_t *mtx);
 
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size);
 result_t queue_read(queue_t *que, void *data);
@@ -135,7 +137,8 @@ uint8_t queue_is_empty(queue_t *que);
 uint8_t queue_is_full(queue_t *que);
 uint8_t queue_get_num_items(queue_t *que);
 uint8_t queue_get_item_size(queue_t *que);
-void queue_suspend_read(queue_t *que);
+void queue_suspend(queue_t *que);
+result_t queue_read_suspend(queue_t *que, void *data);
 
 void librertos_init(void);
 void librertos_tick_interrupt(void);

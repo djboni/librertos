@@ -209,6 +209,66 @@ TEST(Semaphore, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
+TEST(Semaphore, TaskLockSuspend_UnavailableSemaphore_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(
+    Semaphore,
+    TaskLockSuspend_UnavailableSemaphore_ShouldBeScheduledWhenUnlocked)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+
+    semaphore_unlock(&sem);
+
+    STRCMP_EQUAL(
+        "AL_"  // Suspends (previous)
+        "AU_"  // Locks
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(Semaphore, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    semaphore_unlock(&sem);
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AU_"  // Locks
+        "AL_", // Suspends
+        buff);
+}
+
 TEST_GROUP (Mutex)
 {
     char buff[BUFF_SIZE];
@@ -293,6 +353,64 @@ TEST(Mutex, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
+TEST(Mutex, TaskLockSuspend_UnavailableMutex_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
+    librertos_create_task(
+        LOW_PRIORITY, &task2, &ParamMutex::task_mutex_lock_suspend, NULL);
+
+    librertos_start();
+
+    set_current_task(&task2);
+    mutex_lock(&mtx);
+    set_current_task(NO_TASK_PTR);
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(Mutex, TaskLockSuspend_UnavailableMutex_ShouldBeScheduledWhenUnlocked)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
+
+    librertos_start();
+
+    set_current_task(&task2);
+    mutex_lock(&mtx);
+    set_current_task(NO_TASK_PTR);
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+
+    mutex_unlock(&mtx);
+
+    STRCMP_EQUAL(
+        "AL_"  // Suspends (previous)
+        "AU_", // Locks and suspends
+        buff);
+}
+
+TEST(Mutex, TaskLockSuspend_AvailableMutex_ShouldBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AU_", // Locks and suspends
+        buff);
+}
+
 TEST_GROUP (Queue)
 {
     char buff[BUFF_SIZE];
@@ -344,7 +462,7 @@ TEST(Queue, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
     set_current_task(&task1);
-    queue_suspend_read(&que);
+    queue_suspend(&que);
     set_current_task(NO_TASK_PTR);
 
     librertos_start();
@@ -383,4 +501,60 @@ TEST(Queue, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     scheduler_unlock();
 
     STRCMP_EQUAL("AL_AU_", buff);
+}
+
+TEST(Queue, TaskReadSuspend_EmptyQueue_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    librertos_start();
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(Queue, TaskReadSuspend_EmptyQueue_ShouldBeScheduledWhenWritten)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    librertos_start();
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+
+    queue_write(&que, &data);
+
+    STRCMP_EQUAL(
+        "AL_"  // Suspends (previous)
+        "AU_"  // Reads
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(Queue, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    queue_write(&que, &data);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AU_"  // Reads
+        "AL_", // Suspends
+        buff);
 }

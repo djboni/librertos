@@ -184,7 +184,7 @@ uint8_t queue_get_item_size(queue_t *que)
 /*
  * Suspend task on queue waiting to read.
  */
-void queue_suspend_read(queue_t *que)
+void queue_suspend(queue_t *que)
 {
     CRITICAL_VAL();
 
@@ -194,4 +194,28 @@ void queue_suspend_read(queue_t *que)
             event_suspend_task(&que->event_write);
     }
     CRITICAL_EXIT();
+}
+
+/*
+ * Read an item from queue if not empty, else suspend the task on the queue.
+ *
+ * Parameters:
+ *   - data: pointer to buffer where to write.
+ *
+ * Returns: 1 if successfully read the queue, 0 otherwise (suspended).
+ */
+result_t queue_read_suspend(queue_t *que, void *data)
+{
+    result_t result;
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        result = queue_read(que, data);
+        if (result == FAIL)
+            queue_suspend(que);
+    }
+    CRITICAL_EXIT();
+
+    return result;
 }

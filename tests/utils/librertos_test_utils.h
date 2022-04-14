@@ -35,7 +35,10 @@ struct Param
         Param *p = (Param *)param;
 
         if (p == NULL)
+        {
             task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
 
         // Concat start
         strcat(p->buff, p->start);
@@ -74,7 +77,10 @@ struct ParamSemaphore
         ParamSemaphore *p = (ParamSemaphore *)param;
 
         if (p == NULL)
+        {
             task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
 
         // Concat start
         strcat(p->buff, p->start);
@@ -95,6 +101,34 @@ struct ParamSemaphore
         // Concat end
         strcat(p->buff, p->end);
     }
+
+    static void task_semaphore_lock_suspend(void *param)
+    {
+        ParamSemaphore *p = (ParamSemaphore *)param;
+
+        if (p == NULL)
+        {
+            task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
+
+        // Concat start
+        strcat(p->buff, p->start);
+
+        if (semaphore_lock_suspend(p->sem))
+        {
+            // Concat unlocked
+            strcat(p->buff, p->unlocked);
+        }
+        else
+        {
+            // Concat locked
+            strcat(p->buff, p->locked);
+        }
+
+        // Concat end
+        strcat(p->buff, p->end);
+    }
 };
 
 struct ParamMutex
@@ -108,7 +142,10 @@ struct ParamMutex
         ParamMutex *p = (ParamMutex *)param;
 
         if (p == NULL)
+        {
             task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
 
         // Concat start
         strcat(p->buff, p->start);
@@ -118,12 +155,50 @@ struct ParamMutex
             // Concat unlocked
             strcat(p->buff, p->unlocked);
             task_suspend(CURRENT_TASK_PTR);
+
+            // If the task runs again it can lock again the recursive mutex.
+            // So we just unlock mutex and suspend the task.
+            mutex_unlock(p->mtx);
+            task_suspend(CURRENT_TASK_PTR);
         }
         else
         {
             // Concat locked
             strcat(p->buff, p->locked);
             mutex_suspend(p->mtx);
+        }
+
+        // Concat end
+        strcat(p->buff, p->end);
+    }
+
+    static void task_mutex_lock_suspend(void *param)
+    {
+        ParamMutex *p = (ParamMutex *)param;
+
+        if (p == NULL)
+        {
+            task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
+
+        // Concat start
+        strcat(p->buff, p->start);
+
+        if (mutex_lock_suspend(p->mtx))
+        {
+            // Concat unlocked
+            strcat(p->buff, p->unlocked);
+
+            // If the task runs again it can lock again the recursive mutex.
+            // So we just unlock mutex and suspend the task.
+            mutex_unlock(p->mtx);
+            task_suspend(CURRENT_TASK_PTR);
+        }
+        else
+        {
+            // Concat locked
+            strcat(p->buff, p->locked);
         }
 
         // Concat end
@@ -143,7 +218,10 @@ struct ParamQueue
         int8_t data;
 
         if (p == NULL)
+        {
             task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
 
         // Concat start
         strcat(p->buff, p->start);
@@ -158,7 +236,36 @@ struct ParamQueue
         {
             // Concat empty
             strcat(p->buff, p->empty);
-            queue_suspend_read(p->que);
+            queue_suspend(p->que);
+        }
+
+        // Concat end
+        strcat(p->buff, p->end);
+    }
+
+    static void task_queue_read_suspend(void *param)
+    {
+        ParamQueue *p = (ParamQueue *)param;
+        int8_t data;
+
+        if (p == NULL)
+        {
+            task_suspend(CURRENT_TASK_PTR);
+            return;
+        }
+
+        // Concat start
+        strcat(p->buff, p->start);
+
+        if (queue_read_suspend(p->que, &data))
+        {
+            // Concat not empty
+            strcat(p->buff, p->not_empty);
+        }
+        else
+        {
+            // Concat empty
+            strcat(p->buff, p->empty);
         }
 
         // Concat end

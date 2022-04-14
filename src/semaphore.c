@@ -140,3 +140,24 @@ void semaphore_suspend(semaphore_t *sem)
     }
     CRITICAL_EXIT();
 }
+
+/*
+ * Lock semaphore if unlocked, else suspend the task on the semaphore.
+ *
+ * Returns: 1 if successfully locked the semaphore, 0 otherwise (suspended).
+ */
+result_t semaphore_lock_suspend(semaphore_t *sem)
+{
+    result_t result;
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    {
+        result = semaphore_lock(sem);
+        if (result == FAIL)
+            semaphore_suspend(sem);
+    }
+    CRITICAL_EXIT();
+
+    return result;
+}
