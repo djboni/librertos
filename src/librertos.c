@@ -92,7 +92,7 @@ void librertos_create_task(
  */
 void librertos_start(void)
 {
-    librertos.scheduler_lock = 0;
+    --librertos.scheduler_lock;
 }
 
 /*
@@ -105,6 +105,15 @@ void librertos_sched(void)
     int8_t some_task_ran;
 
     INTERRUPTS_VAL();
+
+    /* To avoid failing a test, this assertion **reads**
+     * librertos.scheduler_lock without the protection of a critical section.
+     * See related comment in the function task_suspend().
+     */
+    LIBRERTOS_ASSERT(
+        librertos.scheduler_lock == 0,
+        librertos.scheduler_lock,
+        "librertos_sched(): must call librertos_start() before the scheduler.");
 
     /* Disable interrupts to determine the highest priority task that is ready
      * to run.
@@ -294,7 +303,7 @@ void task_suspend(task_t *task)
 {
     CRITICAL_VAL();
 
-    /* To avoid failing a test, these assertions **read** librertos.current_task
+    /* To avoid failing a test, this assertion **reads** librertos.current_task
      * without the protection of a critical section.
      * Assertions are supposed to catch bugs on development, they should not be
      * used as run-time checks, and should be removed on production builds.

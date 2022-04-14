@@ -23,6 +23,7 @@ TEST_GROUP (Scheduler)
 
 TEST(Scheduler, NoTask_DoNothing)
 {
+    librertos_start();
     librertos_sched();
 }
 
@@ -34,6 +35,7 @@ TEST(Scheduler, OneTask_RunTask)
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCABC", buff);
 }
@@ -49,6 +51,7 @@ TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively)
     librertos_create_task(
         LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefgABCefg", buff);
 }
@@ -64,6 +67,7 @@ TEST(Scheduler, TwoTasks_SamePriorityRunCooperatively_2)
     librertos_create_task(
         HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefgABCefg", buff);
 }
@@ -79,6 +83,7 @@ TEST(Scheduler, TwoTasks_HigherPriorityHasPrecedence)
     librertos_create_task(
         LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCABCefgefg", buff);
 }
@@ -122,6 +127,7 @@ TEST(Scheduler, Suspend_SuspendOneTask)
 
     task_suspend(&task1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("efgefg", buff);
 }
@@ -140,6 +146,7 @@ TEST(Scheduler, Suspend_SuspendTwoTasks)
     task_suspend(&task1);
     task_suspend(&task2);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("", buff);
 }
@@ -192,6 +199,7 @@ TEST(Scheduler, Resume_HigherPriority_GoesFirst)
     task_suspend(&task1);
     task_resume(&task1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefg", buff);
 }
@@ -210,6 +218,7 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList)
     task_suspend(&task1);
     task_resume(&task1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("efgABC", buff);
 }
@@ -230,6 +239,7 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
     task_resume(&task1);
     task_resume(&task2);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefg", buff);
 }
@@ -247,6 +257,7 @@ TEST(Scheduler, Resume_ReadyTask_DoesNothing)
 
     task_resume(&task1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefg", buff);
 }
@@ -268,6 +279,7 @@ TEST(Scheduler, GetCurrentTask_RunTask_ReturnsPointer)
     task_t *task = NO_TASK_PTR;
 
     librertos_create_task(LOW_PRIORITY, &task1, &check_current_task, &task);
+    librertos_start();
     librertos_sched();
 
     POINTERS_EQUAL(&task1, task);
@@ -309,6 +321,7 @@ TEST(SchedulerMode, Cooperative_OtherTaskRunning_DoNotRunHigherPriority)
 
     task_suspend(&task2);
 
+    librertos_start();
     librertos_sched();
 
     STRCMP_EQUAL("ABCefg", buff);
@@ -336,6 +349,7 @@ TEST(SchedulerMode, Cooperative_DoNotPreemptWithSchedulerLocked)
 
     task_suspend(&task2);
 
+    librertos_start();
     scheduler_lock();
     librertos_sched();
     scheduler_unlock();
@@ -365,6 +379,7 @@ TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask)
 
     task_suspend(&task2);
 
+    librertos_start();
     librertos_sched();
 
     STRCMP_EQUAL("ABCefg", buff);
@@ -448,15 +463,14 @@ TEST(SchedulerMode, Preemptive_DoNotPreemptWithSchedulerLocked)
     Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
 
     librertos_create_task(
-        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+        LOW_PRIORITY, &task1, &Param::task_sequencing_lock_scheduler, &param1);
     librertos_create_task(
         HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
 
     task_suspend(&task2);
 
-    scheduler_lock();
+    librertos_start();
     librertos_sched();
-    scheduler_unlock();
 
     STRCMP_EQUAL("ABCefg", buff);
 }
@@ -529,7 +543,7 @@ TEST_GROUP (SchedulerStart)
 {
     task_t task1, task2, task3;
 
-    void setup() {}
+    void setup() { librertos_init(); }
     void teardown() { kernel_mode = LIBRERTOS_PREEMPTIVE; }
 };
 
@@ -570,4 +584,34 @@ TEST(SchedulerStart, Preemptive_IfStarted_ScheduleWhenCreatingTask)
 
     librertos_sched();
     STRCMP_EQUAL("ABC", buff);
+}
+
+TEST(SchedulerStart, Preemptive_IfNotStarted_ScheulerCallsAssertFunction)
+{
+    kernel_mode = LIBRERTOS_PREEMPTIVE;
+
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", 1)
+        .withParameter(
+            "msg",
+            "librertos_sched(): must call librertos_start() before the "
+            "scheduler.");
+
+    CHECK_THROWS(AssertionError, librertos_sched());
+}
+
+TEST(SchedulerStart, Cooperative_IfNotStarted_ScheulerCallsAssertFunction)
+{
+    kernel_mode = LIBRERTOS_COOPERATIVE;
+
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", 1)
+        .withParameter(
+            "msg",
+            "librertos_sched(): must call librertos_start() before the "
+            "scheduler.");
+
+    CHECK_THROWS(AssertionError, librertos_sched());
 }

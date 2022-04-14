@@ -54,6 +54,13 @@ struct Param
         // Concat end
         strcat(p->buff, p->end);
     }
+
+    static void task_sequencing_lock_scheduler(void *param)
+    {
+        scheduler_lock();
+        task_sequencing(param);
+        scheduler_unlock();
+    }
 };
 
 struct ParamSemaphore

@@ -47,6 +47,7 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     set_current_task(&task1);
     event_suspend_task(&event);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("", buff);
 }
@@ -60,6 +61,7 @@ TEST(Event, TaskSuspendsTwiceOnEvent_ShouldNotBeScheduled)
     event_suspend_task(&event);
     event_suspend_task(&event);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("", buff);
 }
@@ -116,6 +118,7 @@ TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
     event_resume_task(&event);
     set_current_task(NO_TASK_PTR);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABC", buff);
 }
@@ -153,6 +156,7 @@ TEST(Semaphore, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -171,6 +175,7 @@ TEST(Semaphore, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     semaphore_suspend(&sem);
     set_current_task(NO_TASK_PTR);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);
 }
@@ -233,6 +238,7 @@ TEST(Mutex, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 
     mutex_lock(&mtx);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -249,6 +255,7 @@ TEST(Mutex, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     mutex_suspend(&mtx);
     set_current_task(NO_TASK_PTR);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);
 }
@@ -319,6 +326,7 @@ TEST(Queue, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AL_", buff);
 
@@ -339,6 +347,7 @@ TEST(Queue, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     queue_suspend_read(&que);
     set_current_task(NO_TASK_PTR);
 
+    librertos_start();
     librertos_sched();
     STRCMP_EQUAL("AU_", buff);
 }
