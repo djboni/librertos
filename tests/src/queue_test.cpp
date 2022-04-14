@@ -1,6 +1,7 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "tests/utils/librertos_test_utils.h"
 
 /*
  * Main file: src/queue.c
@@ -275,4 +276,152 @@ TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
     LONGS_EQUAL(1, queue_is_full(&que));
     LONGS_EQUAL(0, queue_get_num_items(&que));
     LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
+}
+
+TEST_GROUP (QueueEvent)
+{
+    char buff[BUFF_SIZE];
+
+    queue_t que;
+    int8_t que_buff[1];
+    task_t task1, task2;
+    ParamQueue param1;
+
+    void setup()
+    {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = ParamQueue{&buff[0], &que, "A", "L", "U", "_"};
+
+        // Initialize
+        librertos_init();
+        queue_init(
+            &que,
+            &que_buff[0],
+            sizeof(que_buff) / sizeof(que_buff[0]),
+            sizeof(que_buff[0]));
+    }
+    void teardown() {}
+};
+
+TEST(QueueEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+}
+
+TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
+{
+    int8_t data = 0;
+
+    queue_write(&que, &data);
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
+
+    set_current_task(&task1);
+    queue_suspend(&que);
+    set_current_task(NO_TASK_PTR);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AU_", buff);
+}
+
+TEST(QueueEvent, TaskResumesOnEvent_ShouldBeScheduled)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+
+    queue_write(&que, &data);
+    STRCMP_EQUAL("AL_AU_", buff);
+}
+
+TEST(QueueEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    scheduler_lock();
+    queue_write(&que, &data);
+    STRCMP_EQUAL("AL_", buff);
+    scheduler_unlock();
+
+    STRCMP_EQUAL("AL_AU_", buff);
+}
+
+TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    librertos_start();
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldBeScheduledWhenWritten)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    librertos_start();
+
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+
+    queue_write(&que, &data);
+
+    STRCMP_EQUAL(
+        "AL_"  // Suspends (previous)
+        "AU_"  // Reads
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(QueueEvent, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled)
+{
+    int8_t data = 0;
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
+
+    queue_write(&que, &data);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AU_"  // Reads
+        "AL_", // Suspends
+        buff);
 }

@@ -1,6 +1,7 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "tests/utils/librertos_test_utils.h"
 
 /*
  * Main file: src/semaphore.c
@@ -153,4 +154,145 @@ TEST(Sempahore, InvalidInitCount_CallsAssertFunction)
         .withParameter("msg", "semaphore_init(): invalid init_count.");
 
     CHECK_THROWS(AssertionError, semaphore_init(&sem, 2, 1));
+}
+
+TEST_GROUP (SemaphoreEvent)
+{
+    char buff[BUFF_SIZE];
+
+    semaphore_t sem;
+    task_t task1, task2;
+    ParamSemaphore param1;
+
+    void setup()
+    {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = ParamSemaphore{&buff[0], &sem, "A", "L", "U", "_"};
+
+        // Initialize
+        librertos_init();
+        semaphore_init_locked(&sem, 1);
+    }
+    void teardown() {}
+};
+
+TEST(SemaphoreEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+}
+
+TEST(SemaphoreEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
+{
+    semaphore_unlock(&sem);
+
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
+
+    set_current_task(&task1);
+    semaphore_suspend(&sem);
+    set_current_task(NO_TASK_PTR);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AU_", buff);
+}
+
+TEST(SemaphoreEvent, TaskResumesOnEvent_ShouldBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+    STRCMP_EQUAL("AL_", buff);
+
+    semaphore_unlock(&sem);
+    STRCMP_EQUAL("AL_AU_", buff);
+}
+
+TEST(SemaphoreEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    scheduler_lock();
+    semaphore_unlock(&sem);
+    STRCMP_EQUAL("AL_", buff);
+    scheduler_unlock();
+
+    STRCMP_EQUAL("AL_AU_", buff);
+}
+
+TEST(SemaphoreEvent, TaskLockSuspend_UnavailableSemaphore_ShouldNotBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(
+    SemaphoreEvent,
+    TaskLockSuspend_UnavailableSemaphore_ShouldBeScheduledWhenUnlocked)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AL_", // Suspends
+        buff);
+
+    semaphore_unlock(&sem);
+
+    STRCMP_EQUAL(
+        "AL_"  // Suspends (previous)
+        "AU_"  // Locks
+        "AL_", // Suspends
+        buff);
+}
+
+TEST(SemaphoreEvent, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled)
+{
+    librertos_create_task(
+        LOW_PRIORITY,
+        &task1,
+        &ParamSemaphore::task_semaphore_lock_suspend,
+        &param1);
+
+    semaphore_unlock(&sem);
+    librertos_start();
+    librertos_sched();
+
+    STRCMP_EQUAL(
+        "AU_"  // Locks
+        "AL_", // Suspends
+        buff);
 }
