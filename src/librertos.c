@@ -549,10 +549,30 @@ void event_init(event_t *event)
     list_init(&event->suspended_tasks);
 }
 
-/* Unsafe. */
+static struct node_t *
+event_find_priority_position(struct list_t *list, int8_t priority)
+{
+    struct node_t *head = LIST_HEAD(list), *pos = list->head;
+    task_t *task;
+
+    while (pos != head)
+    {
+        task = (task_t *)pos->owner;
+
+        if (priority > task->priority)
+            break;
+
+        pos = pos->next;
+    }
+
+    return pos->prev;
+}
+
+/* Unsafe. TODO Non-deterministic. */
 void event_suspend_task(event_t *event)
 {
     task_t *task = librertos.current_task;
+    struct node_t *pos;
 
     LIBRERTOS_ASSERT(
         !(task == NO_TASK_PTR || task == INTERRUPT_TASK_PTR),
@@ -564,12 +584,8 @@ void event_suspend_task(event_t *event)
         (intptr_t)task,
         "event_suspend_task(): this task is already suspended.");
 
-    LIBRERTOS_ASSERT(
-        event->suspended_tasks.length == 0,
-        (intptr_t)task,
-        "event_suspend_task(): another task is suspended.");
-
-    list_insert_last(&event->suspended_tasks, &task->event_node);
+    pos = event_find_priority_position(&event->suspended_tasks, task->priority);
+    list_insert_after(&event->suspended_tasks, pos, &task->event_node);
     task_suspend(task);
 }
 
