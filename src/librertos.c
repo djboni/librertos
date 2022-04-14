@@ -80,6 +80,7 @@ void librertos_create_task(
         task->param = param;
         task->priority = (priority_t)priority;
         node_init(&task->sched_node, task);
+        node_init(&task->event_node, task);
 
         list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
     }
@@ -336,18 +337,22 @@ void task_suspend(task_t *task)
 void task_resume(task_t *task)
 {
     struct list_t *list_ready;
-    struct node_t *node;
+    struct node_t *node_sched, *node_event;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
     list_ready = &librertos.tasks_ready[task->priority];
-    node = &task->sched_node;
+    node_sched = &task->sched_node;
+    node_event = &task->event_node;
 
-    if (node->list != list_ready)
+    if (node_sched->list != list_ready)
     {
-        list_remove(node);
-        list_insert_last(list_ready, node);
+        list_remove(node_sched);
+        list_insert_last(list_ready, node_sched);
+
+        if (node_in_list(node_event))
+            list_remove(node_event);
 
         /* The scheduler is locked and unlocked only if a task was actually
          * resumed. When the scheduler unlocks the current task can be preempted
@@ -378,6 +383,12 @@ void node_init(struct node_t *node, void *owner)
     node->prev = NULL;
     node->list = NULL;
     node->owner = owner;
+}
+
+/* Unsafe. */
+uint8_t node_in_list(struct node_t *node)
+{
+    return node->list != NULL;
 }
 
 /* Unsafe. */
@@ -535,7 +546,7 @@ void list_move_first_to_last(struct list_t *list)
 /* Unsafe. */
 void event_init(event_t *event)
 {
-    event->task_to_resume = NO_TASK_PTR;
+    list_init(&event->suspended_tasks);
 }
 
 /* Unsafe. */
@@ -549,22 +560,25 @@ void event_suspend_task(event_t *event)
         "event_suspend_task(): no task or interrupt is running.");
 
     LIBRERTOS_ASSERT(
-        event->task_to_resume == NO_TASK_PTR || event->task_to_resume == task,
+        !node_in_list(&task->event_node),
+        (intptr_t)task,
+        "event_suspend_task(): this task is already suspended.");
+
+    LIBRERTOS_ASSERT(
+        event->suspended_tasks.length == 0,
         (intptr_t)task,
         "event_suspend_task(): another task is suspended.");
 
+    list_insert_last(&event->suspended_tasks, &task->event_node);
     task_suspend(task);
-    event->task_to_resume = task;
 }
 
 /* Unsafe. */
 void event_resume_task(event_t *event)
 {
-    task_t *task = event->task_to_resume;
-
-    if (task != NO_TASK_PTR)
+    if (event->suspended_tasks.length != 0)
     {
-        event->task_to_resume = NO_TASK_PTR;
+        task_t *task = (task_t *)list_get_first(&event->suspended_tasks)->owner;
         task_resume(task);
     }
 }

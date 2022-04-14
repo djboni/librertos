@@ -49,18 +49,21 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     STRCMP_EQUAL("", buff);
 }
 
-TEST(Event, TaskSuspendsTwiceOnEvent_ShouldNotBeScheduled)
+TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction)
 {
+    mock()
+        .expectOneCall("librertos_assert")
+        .withParameter("val", (intptr_t)&task1)
+        .withParameter(
+            "msg", "event_suspend_task(): this task is already suspended.");
+
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
     set_current_task(&task1);
     event_suspend_task(&event);
-    event_suspend_task(&event);
 
-    librertos_start();
-    librertos_sched();
-    STRCMP_EQUAL("", buff);
+    CHECK_THROWS(AssertionError, event_suspend_task(&event));
 }
 
 TEST(Event, TwoTasksSuspendOnTheSameEvent_CallsAssertFunction)

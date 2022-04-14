@@ -245,3 +245,14 @@ TEST(List, MoveFirstToLast_ThreeNodes)
 
     list_tester(&list, std::vector<node_t *>{&node2, &node3, &node1});
 }
+
+TEST(List, NodeInList)
+{
+    LONGS_EQUAL(0, node_in_list(&node1));
+
+    list_insert_last(&list, &node1);
+    LONGS_EQUAL(1, node_in_list(&node1));
+
+    list_remove(&node1);
+    LONGS_EQUAL(0, node_in_list(&node1));
+}

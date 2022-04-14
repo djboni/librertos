@@ -26,6 +26,7 @@ void set_current_task(task_t *task);
 
 void list_init(struct list_t *list);
 void node_init(struct node_t *node, void *owner);
+uint8_t node_in_list(struct node_t *node);
 void list_insert_first(struct list_t *list, struct node_t *node);
 void list_insert_last(struct list_t *list, struct node_t *node);
 void list_insert_after(

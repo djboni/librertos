@@ -31,6 +31,9 @@ extern "C" {
         } \
     } while (0)
 
+struct os_task_t;
+struct node_t;
+
 typedef enum
 {
     FAIL = 0,
@@ -49,11 +52,24 @@ typedef enum
     LIBRERTOS_COOPERATIVE
 } kernel_mode_t;
 
-struct os_task_t;
+struct list_t
+{
+    struct node_t *head;
+    struct node_t *tail;
+    uint8_t length;
+};
+
+struct node_t
+{
+    struct node_t *next;
+    struct node_t *prev;
+    struct list_t *list;
+    void *owner;
+};
 
 typedef struct
 {
-    struct os_task_t *task_to_resume;
+    struct list_t suspended_tasks;
 } event_t;
 
 typedef struct
@@ -82,23 +98,6 @@ typedef struct
     event_t event_write;
 } queue_t;
 
-struct node_t;
-
-struct list_t
-{
-    struct node_t *head;
-    struct node_t *tail;
-    uint8_t length;
-};
-
-struct node_t
-{
-    struct node_t *next;
-    struct node_t *prev;
-    struct list_t *list;
-    void *owner;
-};
-
 typedef void *task_parameter_t;
 typedef void (*task_function_t)(task_parameter_t param);
 
@@ -108,6 +107,7 @@ typedef struct os_task_t
     task_parameter_t param;
     int8_t priority;
     struct node_t sched_node;
+    struct node_t event_node;
 } task_t;
 
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
