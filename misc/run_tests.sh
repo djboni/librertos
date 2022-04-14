@@ -61,7 +61,12 @@ DoBuildCppUTestIfNecessary() {
 
     # Build CppUTest if necessary
     if [ ! -f "$CPPUTEST_DIR/cpputest_build/lib/libCppUTest.a" ]; then
+        echo "Building CppUTest in the directory '$CPPUTEST_DIR'..."
         (
+            # Show commands and exit on any error
+            set -xe
+
+            # Build CppUTest
             cd "$CPPUTEST_DIR/cpputest_build"
             autoreconf .. -i
             ../configure
