@@ -18,11 +18,21 @@
 
 TEST_GROUP (Event)
 {
+    char buff[BUFF_SIZE];
+
     event_t event;
     task_t task1, task2;
+    Param param1;
 
     void setup()
     {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = Param{&buff[0], "A", "B", "C", NULL, 1};
+
+        // Initialize
         librertos_init();
         event_init(&event);
     }
@@ -31,9 +41,6 @@ TEST_GROUP (Event)
 
 TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
@@ -46,9 +53,6 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 
 TEST(Event, TaskSuspendsTwiceOnEvent_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
@@ -104,9 +108,6 @@ TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
 
 TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
@@ -126,11 +127,21 @@ TEST(Event, NoTaskToResume_OK)
 
 TEST_GROUP (Semaphore)
 {
+    char buff[BUFF_SIZE];
+
     semaphore_t sem;
     task_t task1, task2;
+    ParamSemaphore param1;
 
     void setup()
     {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = ParamSemaphore{&buff[0], &sem, "A", "L", "U", "_"};
+
+        // Initialize
         librertos_init();
         semaphore_init_locked(&sem, 1);
     }
@@ -139,9 +150,6 @@ TEST_GROUP (Semaphore)
 
 TEST(Semaphore, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamSemaphore param1 = {&buff[0], &sem, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -154,9 +162,6 @@ TEST(Semaphore, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 
 TEST(Semaphore, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamSemaphore param1 = {&buff[0], &sem, "A", "L", "U", "_"};
-
     semaphore_unlock(&sem);
 
     librertos_create_task(
@@ -172,9 +177,6 @@ TEST(Semaphore, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
 TEST(Semaphore, TaskResumesOnEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamSemaphore param1 = {&buff[0], &sem, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -188,9 +190,6 @@ TEST(Semaphore, TaskResumesOnEvent_ShouldBeScheduled)
 
 TEST(Semaphore, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamSemaphore param1 = {&buff[0], &sem, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -207,11 +206,20 @@ TEST(Semaphore, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 
 TEST_GROUP (Mutex)
 {
+    char buff[BUFF_SIZE];
+
     mutex_t mtx;
     task_t task1, task2;
+    ParamMutex param1;
 
     void setup()
     {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = ParamMutex{&buff[0], &mtx, "A", "L", "U", "_"};
+
         librertos_init();
         mutex_init(&mtx);
     }
@@ -220,9 +228,6 @@ TEST_GROUP (Mutex)
 
 TEST(Mutex, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamMutex param1 = {&buff[0], &mtx, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -237,9 +242,6 @@ TEST(Mutex, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 
 TEST(Mutex, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamMutex param1 = {&buff[0], &mtx, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -253,9 +255,6 @@ TEST(Mutex, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
 TEST(Mutex, TaskResumesOnEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamMutex param1 = {&buff[0], &mtx, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -271,9 +270,6 @@ TEST(Mutex, TaskResumesOnEvent_ShouldBeScheduled)
 
 TEST(Mutex, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamMutex param1 = {&buff[0], &mtx, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -292,12 +288,22 @@ TEST(Mutex, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 
 TEST_GROUP (Queue)
 {
+    char buff[BUFF_SIZE];
+
     queue_t que;
     int8_t que_buff[1];
     task_t task1, task2;
+    ParamQueue param1;
 
     void setup()
     {
+        // Task sequencing buffer
+        strcpy(buff, "");
+
+        // Task parameters
+        param1 = ParamQueue{&buff[0], &que, "A", "L", "U", "_"};
+
+        // Initialize
         librertos_init();
         queue_init(
             &que,
@@ -310,9 +316,6 @@ TEST_GROUP (Queue)
 
 TEST(Queue, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamQueue param1 = {&buff[0], &que, "A", "L", "U", "_"};
-
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
@@ -325,8 +328,6 @@ TEST(Queue, TaskSuspendsOnEvent_ShouldNotBeScheduled)
 
 TEST(Queue, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamQueue param1 = {&buff[0], &que, "A", "L", "U", "_"};
     int8_t data = 0;
 
     queue_write(&que, &data);
@@ -344,8 +345,6 @@ TEST(Queue, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
 
 TEST(Queue, TaskResumesOnEvent_ShouldBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamQueue param1 = {&buff[0], &que, "A", "L", "U", "_"};
     int8_t data = 0;
 
     librertos_create_task(
@@ -361,8 +360,6 @@ TEST(Queue, TaskResumesOnEvent_ShouldBeScheduled)
 
 TEST(Queue, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
 {
-    char buff[BUFF_SIZE] = "";
-    ParamQueue param1 = {&buff[0], &que, "A", "L", "U", "_"};
     int8_t data = 0;
 
     librertos_create_task(
