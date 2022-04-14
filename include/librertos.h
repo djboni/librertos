@@ -11,7 +11,6 @@ extern "C" {
 #include "librertos_proj.h"
 #include <stdint.h>
 
-#define NO_TASK_PRIORITY -1
 #define NO_TASK_PTR ((task_t *)0)
 #define CURRENT_TASK_PTR ((task_t *)0)
 #define INTERRUPT_TASK_PTR ((task_t *)1)
@@ -123,7 +122,7 @@ result_t semaphore_lock_suspend(semaphore_t *sem);
 
 void mutex_init(mutex_t *mtx);
 result_t mutex_lock(mutex_t *mtx);
-result_t mutex_unlock(mutex_t *mtx);
+void mutex_unlock(mutex_t *mtx);
 uint8_t mutex_is_locked(mutex_t *mtx);
 void mutex_suspend(mutex_t *mtx);
 result_t mutex_lock_suspend(mutex_t *mtx);

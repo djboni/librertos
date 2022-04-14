@@ -26,6 +26,12 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_EXIT();
 }
 
+/* Unsafe. */
+static int8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task)
+{
+    return mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner;
+}
+
 /*
  * Lock mutex.
  *
@@ -41,7 +47,7 @@ result_t mutex_lock(mutex_t *mtx)
     {
         current_task = librertos.current_task;
 
-        if (mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner)
+        if (mutex_can_be_locked(mtx, current_task))
         {
             ++(mtx->locked);
             mtx->task_owner = current_task;
@@ -55,28 +61,31 @@ result_t mutex_lock(mutex_t *mtx)
 
 /*
  * Unlock mutex.
- *
- * Returns: 1 if success, 0 otherwise.
  */
-result_t mutex_unlock(mutex_t *mtx)
+void mutex_unlock(mutex_t *mtx)
 {
-    result_t result = FAIL;
     CRITICAL_VAL();
+
+    /* To avoid failing a test, this assertion **reads** mtx->locked without the
+     * protection of a critical section. See related comment in the function
+     * task_suspend().
+     */
+    LIBRERTOS_ASSERT(
+        mtx->locked != MUTEX_UNLOCKED,
+        mtx->locked,
+        "mutex_unlock(): mutex already unlocked.");
 
     CRITICAL_ENTER();
 
     if (mtx->locked != MUTEX_UNLOCKED)
     {
         --(mtx->locked);
-        result = SUCCESS;
     }
 
     scheduler_lock();
     event_resume_task(&mtx->event_unlock);
     CRITICAL_EXIT();
     scheduler_unlock();
-
-    return result;
 }
 
 /*
@@ -89,7 +98,7 @@ uint8_t mutex_is_locked(mutex_t *mtx)
 
     CRITICAL_ENTER();
     {
-        locked = mtx->locked;
+        locked = !mutex_can_be_locked(mtx, librertos.current_task);
     }
     CRITICAL_EXIT();
 

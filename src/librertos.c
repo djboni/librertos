@@ -12,6 +12,8 @@
  * These functions are commented as "Unsafe" and should be used caution.
  */
 
+#define NO_TASK_PRIORITY -1
+
 /*
  * LibreRTOS state.
  */
