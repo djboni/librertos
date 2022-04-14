@@ -10,7 +10,7 @@ extern "C" {
 #include "librertos.h"
 #include "librertos_impl.h"
 
-#include <cstring>
+#include <string.h>
 
 void time_travel(tick_t ticks_to_the_future);
 void set_tick(tick_t tick);

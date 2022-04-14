@@ -250,14 +250,16 @@ DoRunTest() {
 }
 
 DoCoverageIfRequested() {
-    gcovr --filter="$SrcDir/" --filter="$PortDir/" --xml cov.xml \
+    FilterXML="--root=."
+    FilterTXT="--filter=$SrcDir/"
+    gcovr $FilterXML --xml cov.xml \
             --exclude-unreachable-branches \
             --exclude-throw-branches
     if [ ! -z $FlagCoverage ]; then
-        gcovr --filter="$SrcDir/" --filter="$PortDir/" --branch \
+        gcovr $FilterTXT  --branch \
             --exclude-unreachable-branches \
             --exclude-throw-branches
-        gcovr --filter="$SrcDir/" --filter="$PortDir/" | sed '1,4d'
+        gcovr $FilterTXT  | sed '1,4d'
     fi
 }
 
