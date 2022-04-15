@@ -2,6 +2,7 @@
 
 #include "librertos.h"
 #include "librertos_impl.h"
+#include "tests/utils/librertos_custom_tests.h"
 #include "tests/utils/librertos_test_utils.h"
 
 /*
@@ -10,6 +11,8 @@
  * Also compile: tests/mocks/librertos_assert.cpp
  * Also compile: tests/utils/librertos_test_utils.cpp
  */
+
+#include <vector>
 
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
@@ -305,4 +308,162 @@ TEST(MutexEvent, TaskLockSuspend_AvailableMutex_ShouldBeScheduled)
     STRCMP_EQUAL(
         "AU_", // Locks and suspends
         buff);
+}
+
+TEST_GROUP (MutexPriorityInversion)
+{
+    mutex_t mtx;
+    mutex_t helper;
+    task_t task[3];
+    uint8_t tasks_used;
+
+    void setup() {}
+    void teardown() {}
+};
+
+static void func(void *param)
+{
+    std::vector<task_t *> *sequence = (std::vector<task_t *> *)param;
+    sequence->push_back(get_current_task());
+    task_suspend(CURRENT_TASK_PTR);
+}
+
+TEST(
+    MutexPriorityInversion,
+    LowerPrioritySuspends_TaskReady_NoChangeInPriorities)
+{
+    std::vector<task_t *> actual_sequence;
+
+    // Given A high priority task locks the mutex
+    initialize_os(this);
+    initialize_mutex(this);
+    create_N_tasks_with_different_priorities(this, 3, &func, &actual_sequence);
+    taskX_is_scheduled_and_locks_mutex(this, 2);
+
+    // When A low priority task suspends on the mutex
+    // And The scheduler is called
+    taskX_is_scheduled_and_suspends_on_mutex(this, 0);
+    call_the_scheduler(this);
+
+    // Then The higher priority task should be scheduled
+    // And The middle priority task should be scheduled
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[2], &task[1]}, actual_sequence);
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_TaskReady_IncreasePriorityOfOwner)
+{
+    std::vector<task_t *> actual_sequence;
+
+    // Given A low priority task locks the mutex
+    initialize_os(this);
+    initialize_mutex(this);
+    create_N_tasks_with_different_priorities(this, 3, &func, &actual_sequence);
+    taskX_is_scheduled_and_locks_mutex(this, 0);
+
+    // When A high priority task suspends on the mutex
+    // And The scheduler is called
+    taskX_is_scheduled_and_suspends_on_mutex(this, 2);
+    call_the_scheduler(this);
+
+    // Then The lower priority task should be scheduled
+    // And The middle priority task should be scheduled
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[0], &task[1]}, actual_sequence);
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_TaskUnlocksMutex_OriginalPriorityReturns)
+{
+    std::vector<task_t *> actual_sequence;
+
+    // Given A low priority task locks the mutex
+    // And A high priority task suspends on the mutex
+    initialize_os(this);
+    initialize_mutex(this);
+    create_N_tasks_with_different_priorities(this, 3, &func, &actual_sequence);
+    taskX_is_scheduled_and_locks_mutex(this, 0);
+    taskX_is_scheduled_and_suspends_on_mutex(this, 2);
+
+    // When The mutex is unlocked
+    // And The scheduler is called
+    mutex_is_unlocked(this);
+    call_the_scheduler(this);
+
+    // Then The higher priority task should be scheduled
+    // And The middle priority task should be scheduled
+    // And The lower priority task should be scheduled
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[2], &task[1], &task[0]}, actual_sequence);
+}
+
+TEST(
+    MutexPriorityInversion,
+    LowerPrioritySuspends_TaskSuspendedOnEvent_NoChangeInPriorities)
+{
+    std::vector<task_t *> actual_sequence;
+
+    // Given
+    initialize_os(this);
+    initialize_mutex(this);
+    initialize_helper_mutex(this);
+    create_N_tasks_with_different_priorities(this, 3, &func, &actual_sequence);
+    taskX_is_scheduled_and_locks_mutex(this, 2);
+    interrupt_locks_helper_mutex(this);
+    taskX_is_scheduled_and_suspends_helper_on_mutex(this, 2);
+    taskX_is_scheduled_and_suspends_helper_on_mutex(this, 1);
+
+    // When
+    taskX_is_scheduled_and_suspends_on_mutex(this, 0);
+    helper_mutex_is_unlocked(this);
+    call_the_scheduler(this);
+
+    // Then
+    tasks_should_be_scheduled_in_the_order(this, {&task[2]}, actual_sequence);
+
+    // When
+    interrupt_locks_helper_mutex(this);
+    helper_mutex_is_unlocked(this);
+    call_the_scheduler(this);
+
+    // Then
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[2], &task[1]}, actual_sequence);
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_TaskSuspendedOnEvent_IncreasePriorityOfOwner)
+{
+    std::vector<task_t *> actual_sequence;
+
+    // Given
+    initialize_os(this);
+    initialize_mutex(this);
+    initialize_helper_mutex(this);
+    create_N_tasks_with_different_priorities(this, 3, &func, &actual_sequence);
+    taskX_is_scheduled_and_locks_mutex(this, 0);
+    interrupt_locks_helper_mutex(this);
+    taskX_is_scheduled_and_suspends_helper_on_mutex(this, 0);
+    taskX_is_scheduled_and_suspends_helper_on_mutex(this, 1);
+
+    // When
+    taskX_is_scheduled_and_suspends_on_mutex(this, 2);
+    helper_mutex_is_unlocked(this);
+    call_the_scheduler(this);
+
+    // Then
+    tasks_should_be_scheduled_in_the_order(this, {&task[0]}, actual_sequence);
+
+    // When
+    interrupt_locks_helper_mutex(this);
+    helper_mutex_is_unlocked(this);
+    call_the_scheduler(this);
+
+    // Then
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[0], &task[1]}, actual_sequence);
 }

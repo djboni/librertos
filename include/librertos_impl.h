@@ -9,16 +9,8 @@ extern "C" {
 
 #include "librertos.h"
 
+#define NO_TASK_PRIORITY -1
 #define LIST_HEAD(list) ((struct node_t *)list)
-
-typedef struct
-{
-    int8_t scheduler_lock;
-    tick_t tick;
-    task_t *current_task;
-    struct list_t tasks_ready[NUM_PRIORITIES];
-    struct list_t tasks_suspended;
-} librertos_t;
 
 extern librertos_t librertos;
 

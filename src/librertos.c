@@ -19,8 +19,6 @@
  * must be enabled).
  */
 
-#define NO_TASK_PRIORITY -1
-
 /*
  * LibreRTOS state.
  */
@@ -85,7 +83,8 @@ void librertos_create_task(
 
         task->func = func;
         task->param = param;
-        task->priority = (priority_t)priority;
+        task->priority = priority;
+        task->original_priority = priority;
         node_init(&task->sched_node, task);
         node_init(&task->event_node, task);
 

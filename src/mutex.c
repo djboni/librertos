@@ -62,6 +62,33 @@ result_t mutex_lock(mutex_t *mtx)
     return result;
 }
 
+/* Unsafe. */
+void task_set_priority(task_t *task, int8_t priority)
+{
+    struct list_t *ready_list = &librertos.tasks_ready[task->priority];
+    struct list_t *event_list = task->event_node.list;
+
+    task->priority = priority;
+
+    if (task->sched_node.list == ready_list)
+    {
+        list_remove(&task->sched_node);
+        list_insert_first(&librertos.tasks_ready[priority], &task->sched_node);
+    }
+
+    if (event_list != NULL)
+    {
+        task_t *current_task;
+
+        list_remove(&task->event_node);
+
+        current_task = librertos.current_task;
+        librertos.current_task = task;
+        event_suspend_task((event_t *)event_list);
+        librertos.current_task = current_task;
+    }
+}
+
 /*
  * Unlock mutex.
  */
@@ -85,10 +112,33 @@ void mutex_unlock(mutex_t *mtx)
         --(mtx->locked);
     }
 
-    scheduler_lock();
-    event_resume_task(&mtx->event_unlock);
-    CRITICAL_EXIT();
-    scheduler_unlock();
+    if (mtx->locked == MUTEX_UNLOCKED)
+    {
+        task_t *owner;
+
+        scheduler_lock();
+
+        owner = (task_t *)mtx->task_owner;
+
+        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR)
+        {
+            /* Cannot change priority of no task or interrupt. */
+        }
+        else
+        {
+            if (owner->priority != owner->original_priority)
+                task_set_priority(owner, owner->original_priority);
+            mtx->task_owner = NO_TASK_PTR;
+        }
+
+        event_resume_task(&mtx->event_unlock);
+        CRITICAL_EXIT();
+        scheduler_unlock();
+    }
+    else
+    {
+        CRITICAL_EXIT();
+    }
 }
 
 /*
@@ -119,7 +169,21 @@ void mutex_suspend(mutex_t *mtx)
 
     if (mtx->locked != MUTEX_UNLOCKED)
     {
+        task_t *owner = (task_t *)mtx->task_owner;
+        int8_t current_priority = librertos.current_task->priority;
+
         scheduler_lock();
+
+        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR)
+        {
+            /* Cannot change priority of no task or interrupt. */
+        }
+        else
+        {
+            if (owner->priority < current_priority)
+                task_set_priority(owner, current_priority);
+        }
+
         event_suspend_task(&mtx->event_unlock);
         CRITICAL_EXIT();
         scheduler_unlock();

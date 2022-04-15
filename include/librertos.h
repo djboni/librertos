@@ -106,9 +106,19 @@ typedef struct os_task_t
     task_function_t func;
     task_parameter_t param;
     int8_t priority;
+    int8_t original_priority;
     struct node_t sched_node;
     struct node_t event_node;
 } task_t;
+
+typedef struct
+{
+    int8_t scheduler_lock;
+    tick_t tick;
+    task_t *current_task;
+    struct list_t tasks_ready[NUM_PRIORITIES];
+    struct list_t tasks_suspended;
+} librertos_t;
 
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
