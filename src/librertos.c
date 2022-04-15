@@ -52,6 +52,7 @@ void librertos_init(void)
         for (i = 0; i < NUM_PRIORITIES; i++)
             list_init(&librertos.tasks_ready[i]);
 
+        list_init(&librertos.tasks_running);
         list_init(&librertos.tasks_suspended);
     }
     CRITICAL_EXIT();
@@ -154,7 +155,8 @@ void librertos_sched(void)
             node = list_get_first(&librertos.tasks_ready[i]);
             task = (task_t *)node->owner;
 
-            list_move_first_to_last(&librertos.tasks_ready[i]);
+            list_remove(node);
+            list_insert_first(&librertos.tasks_running, node);
 
             librertos.current_task = task;
 
@@ -164,6 +166,12 @@ void librertos_sched(void)
             INTERRUPTS_DISABLE();
 
             librertos.current_task = current_task;
+
+            if (node->list == &librertos.tasks_running)
+            {
+                list_remove(node);
+                list_insert_last(&librertos.tasks_ready[task->priority], node);
+            }
 
             /* Break here, after running the task, and try to find another
              * higher priority task. It is necessary because a higher priority
@@ -356,26 +364,19 @@ void task_resume(task_t *task)
     node_sched = &task->sched_node;
     node_event = &task->event_node;
 
-    if (node_sched->list != list_ready)
-    {
-        list_remove(node_sched);
-        list_insert_last(list_ready, node_sched);
+    list_remove(node_sched);
+    list_insert_last(list_ready, node_sched);
 
-        if (node_in_list(node_event))
-            list_remove(node_event);
+    if (node_in_list(node_event))
+        list_remove(node_event);
 
-        /* The scheduler is locked and unlocked only if a task was actually
-         * resumed. When the scheduler unlocks the current task can be preempted
-         * by a higher priority task.
-         */
-        scheduler_lock();
-        CRITICAL_EXIT();
-        scheduler_unlock();
-    }
-    else
-    {
-        CRITICAL_EXIT();
-    }
+    /* The scheduler is locked and unlocked only if a task was actually
+     * resumed. When the scheduler unlocks the current task can be preempted
+     * by a higher priority task.
+     */
+    scheduler_lock();
+    CRITICAL_EXIT();
+    scheduler_unlock();
 }
 
 /* Unsafe. */

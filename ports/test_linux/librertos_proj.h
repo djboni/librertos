@@ -16,7 +16,7 @@ extern "C" {
             librertos_assert((val), (msg)); \
     } while (0)
 
-#define NUM_PRIORITIES 3
+#define NUM_PRIORITIES 4
 #define KERNEL_MODE kernel_mode
 
 typedef uint16_t tick_t;

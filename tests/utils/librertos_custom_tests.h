@@ -74,19 +74,19 @@ void tasks_should_be_scheduled_in_the_order(
     std::vector<task_t *> &&expected,
     std::vector<task_t *> &actual_sequence)
 {
-    LONGS_EQUAL(expected.size(), actual_sequence.size());
-
-    for (unsigned i = 0; i < expected.size(); i++)
+    for (unsigned i = 0; i < expected.size() && i < actual_sequence.size(); i++)
     {
         char buff[64];
         snprintf(
             &buff[0],
             sizeof(buff),
-            "Position %u. Distance %u items.",
+            "Position %u: (%+d item).",
             i,
-            (unsigned)(expected[i] - actual_sequence[i]));
+            (int)(actual_sequence[i] - expected[i]));
         POINTERS_EQUAL_TEXT(expected[i], actual_sequence[i], buff);
     }
+
+    LONGS_EQUAL(expected.size(), actual_sequence.size());
 }
 
 /*******************************************************************************

@@ -314,7 +314,7 @@ TEST_GROUP (MutexPriorityInversion)
 {
     mutex_t mtx;
     mutex_t helper;
-    task_t task[3];
+    task_t task[4];
     uint8_t tasks_used;
 
     void setup() {}
@@ -468,7 +468,25 @@ TEST(
         this, {&task[0], &task[1]}, actual_sequence);
 }
 
-static void func_resume_task(void *param)
+static void func_lock_mutex_and_resume_1task(void *param)
+{
+    void **p = (void **)param;
+    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
+    mutex_t *mutex = (mutex_t *)p[1];
+    task_t *task1 = (task_t *)p[2];
+
+    // Lock mutex
+    mutex_lock(mutex);
+
+    // Resume can preempt.
+    task_resume(task1);
+
+    // Sequence after possible preemption.
+    sequence->push_back(get_current_task());
+    task_suspend(CURRENT_TASK_PTR);
+}
+
+static void func_lock_mutex_and_resume_2tasks(void *param)
 {
     void **p = (void **)param;
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
@@ -480,15 +498,31 @@ static void func_resume_task(void *param)
     mutex_lock(mutex);
 
     // Resume can preempt.
-    task_resume(task2);
     task_resume(task1);
+    task_resume(task2);
 
     // Sequence after possible preemption.
     sequence->push_back(get_current_task());
     task_suspend(CURRENT_TASK_PTR);
 }
 
-static void func_suspend(void *param)
+static void func_resume_2tasks(void *param)
+{
+    void **p = (void **)param;
+    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
+    task_t *task1 = (task_t *)p[1];
+    task_t *task2 = (task_t *)p[2];
+
+    // Resume can preempt.
+    task_resume(task1);
+    task_resume(task2);
+
+    // Sequence after possible preemption.
+    sequence->push_back(get_current_task());
+    task_suspend(CURRENT_TASK_PTR);
+}
+
+static void func_suspend_on_mutex(void *param)
 {
     void **p = (void **)param;
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
@@ -504,7 +538,7 @@ static void func_suspend(void *param)
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_CurrentTaskRunning_IncreasePriorityOfOwner)
+    HigherPrioritySuspends_OwnerRunning_IncreasePriorityOfOwner)
 {
     std::vector<task_t *> actual_sequence;
 
@@ -519,19 +553,19 @@ TEST(
     // - [4] Resumes middle priority task
     //   - Not preempted because of increased priority
     // - [5] Suspends and registers sequence
-    void *param1[] = {&actual_sequence, &mtx, &task[1], &task[2]};
-    create_one_task(this, 0, &func_resume_task, &param1[0]);
+    void *param1[] = {&actual_sequence, &mtx, &task[2], &task[1]};
+    create_one_task(this, 0, &func_lock_mutex_and_resume_2tasks, &param1[0]);
 
     // Middle priority task:
     // - [6] Suspends and registers sequence
     create_one_task(this, 1, &func, &actual_sequence);
-    void *param3[] = {&actual_sequence, &mtx};
 
     // Middle priority task:
     // - [2] Suspends on mutex
     //   - Increase mutex owner priority
     // - [3] Suspends and registers sequence
-    create_one_task(this, 2, &func_suspend, &param3);
+    void *param3[] = {&actual_sequence, &mtx};
+    create_one_task(this, 2, &func_suspend_on_mutex, &param3);
 
     // Given The middle priority task is suspended
     taskX_is_suspended(this, 1);
@@ -546,4 +580,129 @@ TEST(
     // And The middle priority task should be scheduled
     tasks_should_be_scheduled_in_the_order(
         this, {&task[2], &task[0], &task[1]}, actual_sequence);
+}
+
+IGNORE_TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner)
+{
+    std::vector<task_t *> actual_sequence;
+
+    initialize_os(this);
+    initialize_mutex(this);
+
+    void *param0[] = {&actual_sequence, &mtx, &task[1]};
+    create_one_task(this, 0, &func_lock_mutex_and_resume_1task, &param0[0]);
+
+    void *param1[] = {&actual_sequence, &task[3], &task[2]};
+    create_one_task(this, 1, &func_resume_2tasks, &param1[0]);
+
+    create_one_task(this, 2, &func, &actual_sequence);
+
+    void *param3[] = {&actual_sequence, &mtx};
+    create_one_task(this, 3, &func_suspend_on_mutex, &param3);
+
+    // Given Task1 is suspended
+    taskX_is_suspended(this, 1);
+    // And Task2 is suspended
+    taskX_is_suspended(this, 2);
+    // And Task3 is suspended
+    taskX_is_suspended(this, 3);
+
+    // When The scheduler is called
+    call_the_scheduler(this);
+
+#if 1
+    // Desired
+
+    // Then ...
+    // - Task1-3 are suspended
+    // - Task0
+    //   - Locks mutex
+    //   - Resumes Task1
+    // - Task1
+    //   - Resumes Task3
+    // - Task3
+    //   - Suspends on mutex
+    //   - Registers, suspends and returns
+    // - Task1
+    //   - Resumes Task2
+    //   - Registers, suspends and returns
+    // - Task0
+    //   - Registers, suspends and returns
+    // - Task2
+    //   - Registers, suspends and returns
+
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[3], &task[1], &task[0], &task[2]}, actual_sequence);
+#else
+    // Actual
+    // When Task0 Gets its priority increased, the scheduler cannot see it,
+    // because Task1 has preempted.
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[3], &task[2], &task[1], &task[0]}, actual_sequence);
+#endif
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_OwnerPreempted_RemoveTaskFromReadyList_TODO)
+{
+    /* While the test
+     * HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner cannot be
+     * solved, keep
+     * HigherPrioritySuspends_OwnerPreempted_RemoveTaskFromReadyList_TODO.
+     * It revealed a bug, which made necessary to create the list of
+     * running tasks.
+     */
+    std::vector<task_t *> actual_sequence;
+
+    initialize_os(this);
+    initialize_mutex(this);
+
+    void *param0[] = {&actual_sequence, &mtx, &task[1]};
+    create_one_task(this, 0, &func_lock_mutex_and_resume_1task, &param0[0]);
+
+    void *param1[] = {&actual_sequence, &task[3], &task[2]};
+    create_one_task(this, 1, &func_resume_2tasks, &param1[0]);
+
+    create_one_task(this, 2, &func, &actual_sequence);
+
+    void *param3[] = {&actual_sequence, &mtx};
+    create_one_task(this, 3, &func_suspend_on_mutex, &param3);
+
+    // Given Task1 is suspended
+    taskX_is_suspended(this, 1);
+    // And Task2 is suspended
+    taskX_is_suspended(this, 2);
+    // And Task3 is suspended
+    taskX_is_suspended(this, 3);
+
+    // When The scheduler is called
+    call_the_scheduler(this);
+
+    // Actual
+    // When Task0 Gets its priority increased, the scheduler cannot see it,
+    // because Task1 has preempted it.
+
+    // Then ...
+    // - Task1-3 are suspended
+    // - Task0
+    //   - Locks mutex
+    //   - Resumes Task1
+    // - Task1
+    //   - Resumes Task3
+    // - Task3
+    //   - Suspends on mutex
+    //   - Registers, suspends and returns
+    // - Task1
+    //   - Resumes Task2
+    // - Task2
+    //   - Registers, suspends and returns
+    // - Task1
+    //   - Registers, suspends and returns
+    // - Task0
+    //   - Registers, suspends and returns
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[3], &task[2], &task[1], &task[0]}, actual_sequence);
 }

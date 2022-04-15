@@ -244,24 +244,6 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
     STRCMP_EQUAL("ABCefg", buff);
 }
 
-TEST(Scheduler, Resume_ReadyTask_DoesNothing)
-{
-    char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", NULL, 1};
-    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
-
-    librertos_create_task(
-        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
-    librertos_create_task(
-        LOW_PRIORITY, &task2, &Param::task_sequencing, &param2);
-
-    task_resume(&task1);
-
-    librertos_start();
-    librertos_sched();
-    STRCMP_EQUAL("ABCefg", buff);
-}
-
 TEST(Scheduler, GetCurrentTask_NoTask_ReturnNullAkaNoTaskPtr)
 {
     POINTERS_EQUAL(NO_TASK_PTR, get_current_task());
