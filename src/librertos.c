@@ -44,6 +44,7 @@ void librertos_init(void)
          * that happen while we initialize the hardware.
          */
         librertos.scheduler_lock = 1;
+        librertos.scheduler_depth = 0;
 
         librertos.tick = 0;
         librertos.current_task = NO_TASK_PTR;
@@ -129,6 +130,7 @@ void librertos_sched(void)
      */
     INTERRUPTS_DISABLE();
 
+    librertos.scheduler_depth++;
     current_task = librertos.current_task;
 
     do
@@ -171,6 +173,7 @@ void librertos_sched(void)
         }
     } while (some_task_ran != 0);
 
+    librertos.scheduler_depth--;
     INTERRUPTS_ENABLE();
 }
 
