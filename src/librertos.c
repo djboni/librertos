@@ -9,7 +9,14 @@
  * "Unsafe" functions:
  * Some implementation functions read and change data without the protection of
  * a critical section, therefore they do not disable interrupts by themselves.
- * These functions are commented as "Unsafe" and should be used caution.
+ * These functions are commented as "Unsafe" and should be used with caution,
+ * only inside critical sections (interrupts must be disabled).
+ *
+ * "Non-deterministic" functions:
+ * Some implementation functions take variable time to execute, such as O(n).
+ * These functions are commented as "Non-deterministic" and should be used with
+ * caution, only with scheduler locked and outside critical section (interrupts
+ * must be enabled).
  */
 
 #define NO_TASK_PRIORITY -1
@@ -549,44 +556,95 @@ void event_init(event_t *event)
     list_init(&event->suspended_tasks);
 }
 
+/* Non-deterministic: O(n) tasks on the list. */
 static struct node_t *
 event_find_priority_position(struct list_t *list, int8_t priority)
 {
-    struct node_t *head = LIST_HEAD(list), *pos = list->head;
-    task_t *task;
+    struct node_t *head = LIST_HEAD(list);
+    struct node_t *pos;
+    INTERRUPTS_VAL();
+
+    pos = list->head;
 
     while (pos != head)
     {
-        task = (task_t *)pos->owner;
+        task_t *task = (task_t *)pos->owner;
+        int8_t task_priority = task->priority;
 
-        if (priority > task->priority)
+        INTERRUPTS_ENABLE();
+
+        /* Compare outside of critical section. */
+        if (priority > task_priority)
+        {
+            /* Found the position: before pos. Stop. */
+            INTERRUPTS_DISABLE();
             break;
+        }
 
+        INTERRUPTS_DISABLE();
+
+        if (pos->list != list)
+        {
+            /* pos was removed from the list during the comparison. Restart. */
+            pos = list->head;
+            continue;
+        }
+
+        /* This is not the correct position. Continue. */
         pos = pos->next;
     }
 
-    return pos->prev;
+    pos = pos->prev;
+
+    return pos;
 }
 
-/* Unsafe. TODO Non-deterministic. */
+/* Non-deterministic: O(n) tasks waiting for the event.
+ * Call with interrupts disabled and scheduler locked.
+ * */
 void event_suspend_task(event_t *event)
 {
-    task_t *task = librertos.current_task;
+    task_t *task;
     struct node_t *pos;
+    int8_t task_priority;
+    CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
-        !(task == NO_TASK_PTR || task == INTERRUPT_TASK_PTR),
-        (intptr_t)task,
+        !(librertos.current_task == NO_TASK_PTR
+          || librertos.current_task == INTERRUPT_TASK_PTR),
+        (intptr_t)librertos.current_task,
         "event_suspend_task(): no task or interrupt is running.");
 
     LIBRERTOS_ASSERT(
-        !node_in_list(&task->event_node),
-        (intptr_t)task,
+        !node_in_list(&librertos.current_task->event_node),
+        (intptr_t)librertos.current_task,
         "event_suspend_task(): this task is already suspended.");
 
-    pos = event_find_priority_position(&event->suspended_tasks, task->priority);
-    list_insert_after(&event->suspended_tasks, pos, &task->event_node);
-    task_suspend(task);
+    CRITICAL_ENTER();
+
+    task_suspend(CURRENT_TASK_PTR);
+
+    task = librertos.current_task;
+    task_priority = task->priority;
+
+    do
+    {
+        /* Non-deterministic: O(n). Calling with interrupts disabled and
+         * scheduler locked.
+         */
+        pos = event_find_priority_position(
+            &event->suspended_tasks, task_priority);
+
+        /* Check if pos was removed from the list during the comparison or
+         * return. Restart. */
+    } while (pos != LIST_HEAD(&event->suspended_tasks)
+             && pos->list != &event->suspended_tasks);
+
+    /* Check if current task was not resumed. */
+    if (task->sched_node.list == &librertos.tasks_suspended)
+        list_insert_after(&event->suspended_tasks, pos, &task->event_node);
+
+    CRITICAL_EXIT();
 }
 
 /* Unsafe. */

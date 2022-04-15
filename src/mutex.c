@@ -3,7 +3,7 @@
 #include "librertos.h"
 #include "librertos_impl.h"
 
-#include <stddef.h>
+#include <string.h>
 
 enum
 {
@@ -19,6 +19,9 @@ void mutex_init(mutex_t *mtx)
 
     CRITICAL_ENTER();
     {
+        /* Make non-zero, to be easy to spot uninitialized fields. */
+        memset(mtx, 0x5A, sizeof(*mtx));
+
         mtx->locked = 0;
         mtx->task_owner = NO_TASK_PTR;
         event_init(&mtx->event_unlock);
@@ -113,11 +116,18 @@ void mutex_suspend(mutex_t *mtx)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (mtx->locked != MUTEX_UNLOCKED)
     {
-        if (mtx->locked != MUTEX_UNLOCKED)
-            event_suspend_task(&mtx->event_unlock);
+        scheduler_lock();
+        event_suspend_task(&mtx->event_unlock);
+        CRITICAL_EXIT();
+        scheduler_unlock();
     }
-    CRITICAL_EXIT();
+    else
+    {
+        CRITICAL_EXIT();
+    }
 }
 
 /*
@@ -128,15 +138,10 @@ void mutex_suspend(mutex_t *mtx)
 result_t mutex_lock_suspend(mutex_t *mtx)
 {
     result_t result;
-    CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        result = mutex_lock(mtx);
-        if (result == FAIL)
-            mutex_suspend(mtx);
-    }
-    CRITICAL_EXIT();
+    result = mutex_lock(mtx);
+    if (result == FAIL)
+        mutex_suspend(mtx);
 
     return result;
 }

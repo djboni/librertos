@@ -3,7 +3,7 @@
 #include "librertos.h"
 #include "librertos_impl.h"
 
-#include <stddef.h>
+#include <string.h>
 
 /*
  * Initialize semaphore with a custom initial value.
@@ -26,6 +26,9 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
 
     CRITICAL_ENTER();
     {
+        /* Make non-zero, to be easy to spot uninitialized fields. */
+        memset(sem, 0x5A, sizeof(*sem));
+
         sem->count = init_count;
         sem->max = max_count;
         event_init(&sem->event_unlock);
@@ -134,11 +137,18 @@ void semaphore_suspend(semaphore_t *sem)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (sem->count == 0)
     {
-        if (sem->count == 0)
-            event_suspend_task(&sem->event_unlock);
+        scheduler_lock();
+        event_suspend_task(&sem->event_unlock);
+        CRITICAL_EXIT();
+        scheduler_unlock();
     }
-    CRITICAL_EXIT();
+    else
+    {
+        CRITICAL_EXIT();
+    }
 }
 
 /*
@@ -149,15 +159,10 @@ void semaphore_suspend(semaphore_t *sem)
 result_t semaphore_lock_suspend(semaphore_t *sem)
 {
     result_t result;
-    CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        result = semaphore_lock(sem);
-        if (result == FAIL)
-            semaphore_suspend(sem);
-    }
-    CRITICAL_EXIT();
+    result = semaphore_lock(sem);
+    if (result == FAIL)
+        semaphore_suspend(sem);
 
     return result;
 }

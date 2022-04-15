@@ -42,20 +42,25 @@ public:
     {
     };
 
-    InterruptsBalanced() : balance(0), already_thrown(false) {}
+    InterruptsBalanced(bool strict_order = true)
+        : balance(0), already_thrown(false), strict_order(strict_order)
+    {
+    }
 
     ~InterruptsBalanced() NOEXCEPT_FALSE { throw_if_unbalanced(); }
 
     void operator++()
     {
-        throw_if_unbalanced();
+        if (strict_order)
+            throw_if_unbalanced();
         ++balance;
     }
 
     void operator--()
     {
         --balance;
-        throw_if_unbalanced();
+        if (strict_order)
+            throw_if_unbalanced();
     }
 
 private:
@@ -70,20 +75,21 @@ private:
 
     int balance;
     bool already_thrown;
+    bool strict_order;
 };
 
     /*
-     * On C++ we have destructors or exceptions, allowing us to automatically
+     * On C++ we have destructors and exceptions, allowing us to automatically
      * test the balance of the critical sections.
      *
      * An exception is thrown if there is an imbalance.
      */
 
-    #define INTERRUPTS_VAL() InterruptsBalanced __balanced_interrupts;
+    #define INTERRUPTS_VAL() InterruptsBalanced __balanced_interrupts(false);
     #define INTERRUPTS_DISABLE() ++__balanced_interrupts
     #define INTERRUPTS_ENABLE() --__balanced_interrupts
 
-    #define CRITICAL_VAL() InterruptsBalanced __balanced_critical;
+    #define CRITICAL_VAL() InterruptsBalanced __balanced_critical(true);
     #define CRITICAL_ENTER() ++__balanced_critical
     #define CRITICAL_EXIT() --__balanced_critical
 

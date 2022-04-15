@@ -19,6 +19,9 @@ void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size)
 
     CRITICAL_ENTER();
     {
+        /* Make non-zero, to be easy to spot uninitialized fields. */
+        memset(que, 0x5A, sizeof(*que));
+
         que->free = que_size;
         que->used = 0;
         que->head = 0;
@@ -189,11 +192,18 @@ void queue_suspend(queue_t *que)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (que->used == 0)
     {
-        if (que->used == 0)
-            event_suspend_task(&que->event_write);
+        scheduler_lock();
+        event_suspend_task(&que->event_write);
+        CRITICAL_EXIT();
+        scheduler_unlock();
     }
-    CRITICAL_EXIT();
+    else
+    {
+        CRITICAL_EXIT();
+    }
 }
 
 /*
@@ -207,15 +217,10 @@ void queue_suspend(queue_t *que)
 result_t queue_read_suspend(queue_t *que, void *data)
 {
     result_t result;
-    CRITICAL_VAL();
 
-    CRITICAL_ENTER();
-    {
-        result = queue_read(que, data);
-        if (result == FAIL)
-            queue_suspend(que);
-    }
-    CRITICAL_EXIT();
+    result = queue_read(que, data);
+    if (result == FAIL)
+        queue_suspend(que);
 
     return result;
 }
