@@ -130,20 +130,21 @@ void librertos_sched(void)
     INTERRUPTS_DISABLE();
 
     current_task = librertos.current_task;
-    current_priority = (current_task == NO_TASK_PTR) ? NO_TASK_PRIORITY
-                                                     : current_task->priority;
 
     do
     {
         int8_t i;
+        struct node_t *node;
+        task_t *task;
+
+        current_priority = (current_task == NO_TASK_PTR)
+                             ? NO_TASK_PRIORITY
+                             : current_task->priority;
 
         some_task_ran = 0;
 
         for (i = HIGH_PRIORITY; i > current_priority; i--)
         {
-            struct node_t *node;
-            task_t *task;
-
             if (list_is_empty(&librertos.tasks_ready[i]))
                 continue;
 

@@ -467,3 +467,83 @@ TEST(
     tasks_should_be_scheduled_in_the_order(
         this, {&task[0], &task[1]}, actual_sequence);
 }
+
+static void func_resume_task(void *param)
+{
+    void **p = (void **)param;
+    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
+    mutex_t *mutex = (mutex_t *)p[1];
+    task_t *task1 = (task_t *)p[2];
+    task_t *task2 = (task_t *)p[3];
+
+    // Lock mutex
+    mutex_lock(mutex);
+
+    // Resume can preempt.
+    task_resume(task2);
+    task_resume(task1);
+
+    // Sequence after possible preemption.
+    sequence->push_back(get_current_task());
+    task_suspend(CURRENT_TASK_PTR);
+}
+
+static void func_suspend(void *param)
+{
+    void **p = (void **)param;
+    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
+    mutex_t *mutex = (mutex_t *)p[1];
+
+    // Resume can preempt.
+    mutex_suspend(mutex);
+
+    // Sequence after possible preemption.
+    sequence->push_back(get_current_task());
+    task_suspend(CURRENT_TASK_PTR);
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_CurrentTaskRunning_IncreasePriorityOfOwner)
+{
+    std::vector<task_t *> actual_sequence;
+
+    initialize_os(this);
+    initialize_mutex(this);
+
+    // Lower priority task:
+    // - [0] Locks mutex
+    // - [1] Resumes higher priority task
+    //   - Preemption
+    //   - Priority increased
+    // - [4] Resumes middle priority task
+    //   - Not preempted because of increased priority
+    // - [5] Suspends and registers sequence
+    void *param1[] = {&actual_sequence, &mtx, &task[1], &task[2]};
+    create_one_task(this, 0, &func_resume_task, &param1[0]);
+
+    // Middle priority task:
+    // - [6] Suspends and registers sequence
+    create_one_task(this, 1, &func, &actual_sequence);
+    void *param3[] = {&actual_sequence, &mtx};
+
+    // Middle priority task:
+    // - [2] Suspends on mutex
+    //   - Increase mutex owner priority
+    // - [3] Suspends and registers sequence
+    create_one_task(this, 2, &func_suspend, &param3);
+
+    // Given The middle priority task is suspended
+    taskX_is_suspended(this, 1);
+    // And The higher priority task is suspended
+    taskX_is_suspended(this, 2);
+
+    // When The scheduler is called
+    call_the_scheduler(this);
+
+    // Then The higher priority task should be scheduled
+    // And The lower priority task should be scheduled
+    // And The middle priority task should be scheduled
+    tasks_should_be_scheduled_in_the_order(
+        this, {&task[2], &task[0], &task[1]}, actual_sequence);
+}
