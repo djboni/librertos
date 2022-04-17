@@ -2,12 +2,14 @@
 
 #include "librertos.h"
 #include "librertos_impl.h"
+#include "tests/utils/librertos_custom_tests.h"
 #include "tests/utils/librertos_test_utils.h"
 
 /*
  * Main file: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
  * Also compile: tests/utils/librertos_test_utils.cpp
+ * Also compile: tests/utils/librertos_custom_tests.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -16,6 +18,8 @@
 TEST_GROUP (Scheduler)
 {
     task_t task1, task2;
+
+    task_t task[2];
 
     void setup() { librertos_init(); }
     void teardown() {}
@@ -242,6 +246,49 @@ TEST(Scheduler, Resume_SamePriority_GoesToEndOfReadyList_2)
     librertos_start();
     librertos_sched();
     STRCMP_EQUAL("ABCefg", buff);
+}
+
+TEST(Scheduler, ResumeAll_OneSuspendedTask)
+{
+    librertos_init();
+
+    librertos_create_task(LOW_PRIORITY, &task[0], NULL, NULL);
+
+    task_suspend(&task[0]);
+
+    LONGS_EQUAL(1, librertos.tasks_suspended.length);
+
+    task_resume_all();
+
+    LONGS_EQUAL(0, librertos.tasks_suspended.length);
+}
+
+TEST(Scheduler, ResumeAll_TwoSuspendedTasks)
+{
+    librertos_init();
+
+    librertos_create_task(LOW_PRIORITY, &task[0], NULL, NULL);
+    librertos_create_task(LOW_PRIORITY, &task[1], NULL, NULL);
+
+    task_suspend(&task[0]);
+    task_suspend(&task[1]);
+
+    LONGS_EQUAL(2, librertos.tasks_suspended.length);
+
+    task_resume_all();
+
+    LONGS_EQUAL(0, librertos.tasks_suspended.length);
+}
+
+TEST(Scheduler, ResumeAll_NoSuspendedTasks)
+{
+    librertos_init();
+
+    LONGS_EQUAL(0, librertos.tasks_suspended.length);
+
+    task_resume_all();
+
+    LONGS_EQUAL(0, librertos.tasks_suspended.length);
 }
 
 TEST(Scheduler, GetCurrentTask_NoTask_ReturnNullAkaNoTaskPtr)

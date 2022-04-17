@@ -379,6 +379,32 @@ void task_resume(task_t *task)
     scheduler_unlock();
 }
 
+/*
+ * Resume all suspended tasks.
+ */
+void task_resume_all(void)
+{
+    INTERRUPTS_VAL();
+    CRITICAL_VAL();
+
+    scheduler_lock();
+    CRITICAL_ENTER();
+
+    while (librertos.tasks_suspended.length != 0)
+    {
+        struct node_t *node = list_get_first(&librertos.tasks_suspended);
+        task_t *task = (task_t *)node->owner;
+        INTERRUPTS_ENABLE();
+
+        task_resume(task);
+
+        INTERRUPTS_DISABLE();
+    }
+
+    CRITICAL_EXIT();
+    scheduler_unlock();
+}
+
 /* Unsafe. */
 void list_init(struct list_t *list)
 {

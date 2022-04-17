@@ -170,6 +170,7 @@ tick_t get_tick(void);
 task_t *get_current_task(void);
 void task_suspend(task_t *task);
 void task_resume(task_t *task);
+void task_resume_all(void);
 
 #ifdef __cplusplus
 }
