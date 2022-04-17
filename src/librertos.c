@@ -652,10 +652,14 @@ void event_suspend_task(event_t *event)
 
     CRITICAL_ENTER();
 
-    task_suspend(CURRENT_TASK_PTR);
-
     task = librertos.current_task;
     task_priority = task->priority;
+
+    /* Suspend the task and insert in the end of the list so that the event
+     * can resume the task.
+     */
+    task_suspend(CURRENT_TASK_PTR);
+    list_insert_last(&event->suspended_tasks, &task->event_node);
 
     do
     {
@@ -672,7 +676,18 @@ void event_suspend_task(event_t *event)
 
     /* Check if current task was not resumed. */
     if (task->sched_node.list == &librertos.tasks_suspended)
-        list_insert_after(&event->suspended_tasks, pos, &task->event_node);
+    {
+        if (pos == &task->event_node)
+        {
+            /* Already in the correct position. */
+        }
+        else
+        {
+            /* Update the position. */
+            list_remove(&task->event_node);
+            list_insert_after(&event->suspended_tasks, pos, &task->event_node);
+        }
+    }
 
     CRITICAL_EXIT();
 }
