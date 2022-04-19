@@ -13,6 +13,7 @@ CPPFLAGS =
 LD = gcc
 LDFLAGS =
 LDLIBS =
+DEPFLAGS = -MT $@ -MMD -MP -MF $(OBJ_DIR)/$*.d
 
 AR = ar
 ARFLAGS = -cq
@@ -20,21 +21,25 @@ ARFLAGS = -cq
 INPUTS_NO_PARENT = $(subst ../,,$(INPUTS))
 OBJECTS_STEP = $(patsubst %.c,$(OBJ_DIR)/%.o,$(INPUTS_NO_PARENT))
 OBJECTS = $(patsubst %.cpp,$(OBJ_DIR)/%.o,$(OBJECTS_STEP))
+DEPFILES := $(OBJECTS:%.o=%.d)
 
 all: $(EXEC)
 
-$(OBJ_DIR)/%.o: %.c
+$(OBJ_DIR)/%.o: %.c $(OBJ_DIR)/%.d
 	@X="$@"; if [ "$${X%/*}" != "$$X" ]; then mkdir -p "$${X%/*}"; fi
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(OBJ_DIR)/%.o: %.cpp
+$(OBJ_DIR)/%.o: %.cpp $(OBJ_DIR)/%.d
 	@X="$@"; if [ "$${X%/*}" != "$$X" ]; then mkdir -p "$${X%/*}"; fi
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(EXEC): $(OBJECTS)
 	@X="$@"; if [ "$${X%/*}" != "$$X" ]; then mkdir -p "$${X%/*}"; fi
-	$(LD) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+	$(LD) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
 $(ARCHIVE): $(OBJECTS)
 	@X="$@"; if [ "$${X%/*}" != "$$X" ]; then mkdir -p "$${X%/*}"; fi
 	$(AR) $(ARFLAGS) $@ $^
+
+$(DEPFILES):
+include $(wildcard $(DEPFILES))
