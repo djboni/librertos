@@ -92,15 +92,6 @@ TEST(List, InsertAfter_3_AfterPos)
     list_tester(&list, std::vector<node_t *>{&node1, &node3, &node2});
 }
 
-TEST(List, InsertBefore_3_BeforePos)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-    list_insert_before(&list, &node2, &node3);
-
-    list_tester(&list, std::vector<node_t *>{&node1, &node3, &node2});
-}
-
 TEST(List, GetFirstNode)
 {
     list_insert_last(&list, &node1);
@@ -108,15 +99,6 @@ TEST(List, GetFirstNode)
     list_insert_last(&list, &node3);
 
     POINTERS_EQUAL(&node1, list_get_first(&list));
-}
-
-TEST(List, GetLastNode)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-    list_insert_last(&list, &node3);
-
-    POINTERS_EQUAL(&node3, list_get_last(&list));
 }
 
 TEST(List, Remove_1_First)
@@ -138,16 +120,6 @@ TEST(List, Remove_2_First)
     list_tester(&list, std::vector<node_t *>{&node2});
 }
 
-TEST(List, Remove_2_Last)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-
-    list_remove(list_get_last(&list));
-
-    list_tester(&list, std::vector<node_t *>{&node1});
-}
-
 TEST(List, Remove_3_First)
 {
     list_insert_last(&list, &node1);
@@ -157,17 +129,6 @@ TEST(List, Remove_3_First)
     list_remove(list_get_first(&list));
 
     list_tester(&list, std::vector<node_t *>{&node2, &node3});
-}
-
-TEST(List, Remove_3_Last)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-    list_insert_last(&list, &node3);
-
-    list_remove(list_get_last(&list));
-
-    list_tester(&list, std::vector<node_t *>{&node1, &node2});
 }
 
 TEST(List, Remove_3_Middle)
@@ -204,46 +165,6 @@ TEST(List, Empty_False_2)
     list_insert_last(&list, &node1);
     list_insert_last(&list, &node2);
     LONGS_EQUAL(0, list_is_empty(&list));
-}
-
-TEST(List, MoveFirstToLast_NoNode)
-{
-    list_move_first_to_last(&list);
-
-    // List head
-    POINTERS_EQUAL(&list, list.head);
-    POINTERS_EQUAL(&list, list.tail);
-    LONGS_EQUAL(0, list.length);
-}
-
-TEST(List, MoveFirstToLast_OneNode)
-{
-    list_insert_last(&list, &node1);
-
-    list_move_first_to_last(&list);
-
-    list_tester(&list, std::vector<node_t *>{&node1});
-}
-
-TEST(List, MoveFirstToLast_TwoNodes)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-
-    list_move_first_to_last(&list);
-
-    list_tester(&list, std::vector<node_t *>{&node2, &node1});
-}
-
-TEST(List, MoveFirstToLast_ThreeNodes)
-{
-    list_insert_last(&list, &node1);
-    list_insert_last(&list, &node2);
-    list_insert_last(&list, &node3);
-
-    list_move_first_to_last(&list);
-
-    list_tester(&list, std::vector<node_t *>{&node2, &node3, &node1});
 }
 
 TEST(List, NodeInList)

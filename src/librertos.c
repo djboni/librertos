@@ -616,13 +616,6 @@ void list_insert_after(
 }
 
 /* Call with interrupts disabled. */
-void list_insert_before(
-    struct list_t *list, struct node_t *pos, struct node_t *node)
-{
-    list_insert_after(list, pos->prev, node);
-}
-
-/* Call with interrupts disabled. */
 void list_insert_first(struct list_t *list, struct node_t *node)
 {
     list_insert_after(list, LIST_HEAD(list), node);
@@ -679,55 +672,9 @@ struct node_t *list_get_first(struct list_t *list)
 }
 
 /* Call with interrupts disabled. */
-struct node_t *list_get_last(struct list_t *list)
-{
-    return list->tail;
-}
-
-/* Call with interrupts disabled. */
 uint8_t list_is_empty(struct list_t *list)
 {
     return list->length == 0;
-}
-
-/* Call with interrupts disabled. */
-void list_move_first_to_last(struct list_t *list)
-{
-    struct node_t *head = list_get_first(list);
-    struct node_t *tail = list_get_last(list);
-
-    if (list->length < 2)
-    {
-        /* Nothing to do. */
-        return;
-    }
-
-    /*
-     * L <--> H <--> A <--> T <--> L
-     */
-
-    list->head = head->next;
-    head->next->prev = LIST_HEAD(list);
-
-    /*
-     * L <--- H ---> A <--> T <--> L
-     * L <---------> A
-     */
-
-    head->next = LIST_HEAD(list);
-    head->prev = tail;
-
-    /*
-     * L <--> A <--> T <---------> L
-     *               T <--- H ---> L
-     */
-
-    tail->next = head;
-    list->tail = head;
-
-    /*
-     * L <--> A <--> T <--> H <--> L
-     */
 }
 
 /* Call with interrupts disabled. */
