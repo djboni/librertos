@@ -1,15 +1,15 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "librertos_impl.h"
 #include "tests/utils/librertos_custom_tests.h"
 #include "tests/utils/librertos_test_utils.h"
 
 /*
- * Main file: src/semaphore.c
- * Also compile: src/librertos.c
+ * Main file: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
- * Also compile: tests/utils/librertos_test_utils.cpp
  * Also compile: tests/utils/librertos_custom_tests.cpp
+ * Also compile: tests/utils/librertos_test_utils.cpp
  */
 
 #include "CppUTest/TestHarness.h"
