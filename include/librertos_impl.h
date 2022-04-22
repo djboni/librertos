@@ -9,8 +9,9 @@ extern "C" {
 
 #include "librertos.h"
 
-#define NO_TASK_PRIORITY -1
-#define LIST_HEAD(list) ((struct node_t *)list)
+#define NONZERO_INITVAL 0x5A
+#define NO_TASK_PRIORITY (-1)
+#define LIST_HEAD(list) ((struct node_t *)(list))
 
 extern librertos_t librertos;
 

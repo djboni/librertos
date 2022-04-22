@@ -44,7 +44,7 @@ void librertos_init(void)
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
-    memset(&librertos, 0x5A, sizeof(librertos));
+    memset(&librertos, NONZERO_INITVAL, sizeof(librertos));
 
     /* Start with scheduler locked, to avoid scheduling tasks in interrupts
      * while initializing the hardware and when creating the tasks on
@@ -93,7 +93,7 @@ void librertos_create_task(
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
-    memset(task, 0x5A, sizeof(*task));
+    memset(task, NONZERO_INITVAL, sizeof(*task));
 
     task->func = func;
     task->param = param;
@@ -435,7 +435,8 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
 static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
 {
     task_t *task;
-    struct node_t *node, *pos;
+    struct node_t *node;
+    struct node_t *pos;
     struct list_t *delay_list;
     CRITICAL_VAL();
 
@@ -522,7 +523,8 @@ void task_suspend(task_t *task)
 void task_resume(task_t *task)
 {
     struct list_t *list_ready;
-    struct node_t *node_sched, *node_event;
+    struct node_t *node_sched;
+    struct node_t *node_event;
     CRITICAL_VAL();
 
     scheduler_lock();
@@ -831,7 +833,7 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
-    memset(sem, 0x5A, sizeof(*sem));
+    memset(sem, NONZERO_INITVAL, sizeof(*sem));
 
     sem->count = init_count;
     sem->max = max_count;
@@ -1016,7 +1018,7 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
-    memset(mtx, 0x5A, sizeof(*mtx));
+    memset(mtx, NONZERO_INITVAL, sizeof(*mtx));
 
     mtx->locked = 0;
     mtx->task_owner = NO_TASK_PTR;
@@ -1232,7 +1234,7 @@ void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size)
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
-    memset(que, 0x5A, sizeof(*que));
+    memset(que, NONZERO_INITVAL, sizeof(*que));
 
     que->free = que_size;
     que->used = 0;
