@@ -1,6 +1,7 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "tests/utils/librertos_custom_tests.h"
 #include "tests/utils/librertos_test_utils.h"
 
 /*
@@ -8,6 +9,7 @@
  * Also compile: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
  * Also compile: tests/utils/librertos_test_utils.cpp
+ * Also compile: tests/utils/librertos_custom_tests.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -329,7 +331,7 @@ TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
     set_current_task(&task1);
-    queue_suspend(&que);
+    queue_suspend(&que, MAX_DELAY);
     set_current_task(NO_TASK_PTR);
 
     librertos_start();
@@ -424,4 +426,136 @@ TEST(QueueEvent, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled)
         "AU_"  // Reads
         "AL_", // Suspends
         buff);
+}
+
+TEST_GROUP (QueueEventNewTest)
+{
+    uint8_t que_buff[2];
+    queue_t que;
+
+    void setup()
+    {
+        test_init();
+        queue_init(
+            &que,
+            &que_buff[0],
+            sizeof(que_buff) / sizeof(que_buff[0]),
+            sizeof(que_buff[0]));
+    }
+    void teardown() {}
+};
+
+TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    queue_suspend(&que, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
+{
+    uint8_t data = 0;
+
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    queue_suspend(&que, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    queue_write(&que, &data);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    queue_suspend(&que, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
+{
+    uint8_t data = 0;
+
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    queue_suspend(&que, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    queue_write(&que, &data);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    queue_suspend(&que, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Success)
+{
+    uint8_t data_w = 0x5A;
+    uint8_t data_r = 0xA5;
+
+    test_create_tasks({0}, NULL, {NULL});
+    queue_write(&que, &data_w);
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(1, queue_read_suspend(&que, &data_r, MAX_DELAY));
+    LONGS_EQUAL(0x5A, data_r);
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Fail)
+{
+    uint8_t data_r = 0xA5;
+
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, queue_read_suspend(&que, &data_r, MAX_DELAY));
+    LONGS_EQUAL(0xA5, data_r);
+    test_task_is_suspended(&test.task[0]);
+}
+
+TEST(QueueEventNewTest, TaskReadDelaysOnEvent_Fail)
+{
+    uint8_t data_r = 0xA5;
+
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, queue_read_suspend(&que, &data_r, 1));
+    LONGS_EQUAL(0xA5, data_r);
+    test_task_is_delayed_current(&test.task[0]);
 }

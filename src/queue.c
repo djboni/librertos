@@ -187,7 +187,7 @@ uint8_t queue_get_item_size(queue_t *que)
 /*
  * Suspend task on queue waiting to read.
  */
-void queue_suspend(queue_t *que)
+void queue_suspend(queue_t *que, tick_t ticks_to_delay)
 {
     CRITICAL_VAL();
 
@@ -196,7 +196,7 @@ void queue_suspend(queue_t *que)
     if (que->used == 0)
     {
         scheduler_lock();
-        event_suspend_task(&que->event_write);
+        event_delay_task(&que->event_write, ticks_to_delay);
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -214,13 +214,13 @@ void queue_suspend(queue_t *que)
  *
  * Returns: 1 if successfully read the queue, 0 otherwise (suspended).
  */
-result_t queue_read_suspend(queue_t *que, void *data)
+result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay)
 {
     result_t result;
 
     result = queue_read(que, data);
     if (result == FAIL)
-        queue_suspend(que);
+        queue_suspend(que, ticks_to_delay);
 
     return result;
 }

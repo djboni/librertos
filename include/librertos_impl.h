@@ -32,7 +32,8 @@ uint8_t list_is_empty(struct list_t *list);
 void list_move_first_to_last(struct list_t *list);
 
 void event_init(event_t *event);
-void event_suspend_task(event_t *event);
+void event_add_task_to_event(event_t *event);
+void event_delay_task(event_t *event, tick_t ticks_to_delay);
 void event_resume_task(event_t *event);
 
 #ifdef __cplusplus

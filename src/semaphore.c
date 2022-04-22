@@ -132,7 +132,7 @@ uint8_t semaphore_get_max(semaphore_t *sem)
 /*
  * Suspend task on semaphore.
  */
-void semaphore_suspend(semaphore_t *sem)
+void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 {
     CRITICAL_VAL();
 
@@ -141,7 +141,7 @@ void semaphore_suspend(semaphore_t *sem)
     if (sem->count == 0)
     {
         scheduler_lock();
-        event_suspend_task(&sem->event_unlock);
+        event_delay_task(&sem->event_unlock, ticks_to_delay);
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -156,13 +156,13 @@ void semaphore_suspend(semaphore_t *sem)
  *
  * Returns: 1 if successfully locked the semaphore, 0 otherwise (suspended).
  */
-result_t semaphore_lock_suspend(semaphore_t *sem)
+result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 {
     result_t result;
 
     result = semaphore_lock(sem);
     if (result == FAIL)
-        semaphore_suspend(sem);
+        semaphore_suspend(sem, ticks_to_delay);
 
     return result;
 }

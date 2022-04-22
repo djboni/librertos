@@ -2,14 +2,13 @@
 
 #include "librertos.h"
 #include "librertos_impl.h"
+#include "tests/utils/librertos_test_utils.h"
 
 /*
  * Main file: src/librertos.c
  * Also compile: tests/utils/librertos_test_utils.cpp
  * Also compile: tests/mocks/librertos_assert.cpp
  */
-
-#include "tests/utils/librertos_test_utils.h"
 
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"

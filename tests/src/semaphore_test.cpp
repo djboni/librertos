@@ -1,6 +1,7 @@
 /* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #include "librertos.h"
+#include "tests/utils/librertos_custom_tests.h"
 #include "tests/utils/librertos_test_utils.h"
 
 /*
@@ -8,6 +9,7 @@
  * Also compile: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
  * Also compile: tests/utils/librertos_test_utils.cpp
+ * Also compile: tests/utils/librertos_custom_tests.cpp
  */
 
 #include "CppUTest/TestHarness.h"
@@ -200,7 +202,7 @@ TEST(SemaphoreEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
     set_current_task(&task1);
-    semaphore_suspend(&sem);
+    semaphore_suspend(&sem, MAX_DELAY);
     set_current_task(NO_TASK_PTR);
 
     librertos_start();
@@ -295,4 +297,117 @@ TEST(SemaphoreEvent, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled)
         "AU_"  // Locks
         "AL_", // Suspends
         buff);
+}
+
+TEST_GROUP (SemaphoreEventNewTest)
+{
+    semaphore_t sem;
+
+    void setup()
+    {
+        test_init();
+        semaphore_init_locked(&sem, 1);
+    }
+    void teardown() {}
+};
+
+TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    semaphore_suspend(&sem, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    semaphore_suspend(&sem, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    semaphore_unlock(&sem);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    semaphore_suspend(&sem, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    semaphore_suspend(&sem, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    semaphore_unlock(&sem);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    semaphore_suspend(&sem, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Success)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    semaphore_unlock(&sem);
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(1, semaphore_lock_suspend(&sem, MAX_DELAY));
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Fail)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, semaphore_lock_suspend(&sem, MAX_DELAY));
+    test_task_is_suspended(&test.task[0]);
+}
+
+TEST(SemaphoreEventNewTest, TaskLockDelaysOnEvent_Fail)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, semaphore_lock_suspend(&sem, 1));
+    test_task_is_delayed_current(&test.task[0]);
 }

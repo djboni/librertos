@@ -46,7 +46,7 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     librertos_start();
     librertos_sched();
@@ -59,15 +59,15 @@ TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction)
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)&task1)
         .withParameter(
-            "msg", "event_suspend_task(): this task is already suspended.");
+            "msg", "event_delay_task(): this task is already suspended.");
 
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
-    CHECK_THROWS(AssertionError, event_suspend_task(&event));
+    CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
 TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction)
@@ -76,9 +76,9 @@ TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction)
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)NO_TASK_PTR)
         .withParameter(
-            "msg", "event_suspend_task(): no task or interrupt is running.");
+            "msg", "event_delay_task(): no task or interrupt is running.");
 
-    CHECK_THROWS(AssertionError, event_suspend_task(&event));
+    CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
 TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
@@ -87,11 +87,11 @@ TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
         .withParameter(
-            "msg", "event_suspend_task(): no task or interrupt is running.");
+            "msg", "event_delay_task(): no task or interrupt is running.");
 
     (void)interrupt_lock();
 
-    CHECK_THROWS(AssertionError, event_suspend_task(&event));
+    CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
 TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
@@ -100,7 +100,7 @@ TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
     event_resume_task(&event);
     set_current_task(NO_TASK_PTR);
 
@@ -124,10 +124,10 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_BothSuspend)
     librertos_start();
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -149,10 +149,10 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
     librertos_start();
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -187,10 +187,10 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
     librertos_start();
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -227,13 +227,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
     librertos_start();
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -270,13 +270,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
     librertos_start();
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -313,13 +313,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_3)
     librertos_start();
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -356,13 +356,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_4)
     librertos_start();
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -399,13 +399,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_5)
     librertos_start();
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -442,13 +442,13 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6)
     librertos_start();
 
     set_current_task(&task1);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task2);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task3);
-    event_suspend_task(&event);
+    event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
 
@@ -471,4 +471,128 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6)
     event_resume_task(&event);
     librertos_sched();
     STRCMP_EQUAL("123abcABC", buff);
+}
+
+TEST_GROUP (EventNewTest)
+{
+    event_t event;
+
+    void setup()
+    {
+        test_init();
+        event_init(&event);
+    }
+    void teardown() {}
+};
+
+TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    event_resume_task(&event);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    event_resume_task(&event);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_2)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, 2);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_3)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_tick(3);
+    set_current_task(&test.task[0]);
+    event_delay_task(&event, MAX_DELAY - 1);
+
+    test_task_is_delayed_overflow(&test.task[0]);
+
+    set_tick(MAX_DELAY - 1);
+    librertos_tick_interrupt();
+
+    test_task_is_delayed_overflow(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
 }

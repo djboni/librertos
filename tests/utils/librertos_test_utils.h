@@ -95,7 +95,7 @@ struct ParamSemaphore
         {
             // Concat locked
             strcat(p->buff, p->locked);
-            semaphore_suspend(p->sem);
+            semaphore_suspend(p->sem, MAX_DELAY);
         }
 
         // Concat end
@@ -115,7 +115,7 @@ struct ParamSemaphore
         // Concat start
         strcat(p->buff, p->start);
 
-        if (semaphore_lock_suspend(p->sem))
+        if (semaphore_lock_suspend(p->sem, MAX_DELAY))
         {
             // Concat unlocked
             strcat(p->buff, p->unlocked);
@@ -165,7 +165,7 @@ struct ParamMutex
         {
             // Concat locked
             strcat(p->buff, p->locked);
-            mutex_suspend(p->mtx);
+            mutex_suspend(p->mtx, MAX_DELAY);
         }
 
         // Concat end
@@ -185,7 +185,7 @@ struct ParamMutex
         // Concat start
         strcat(p->buff, p->start);
 
-        if (mutex_lock_suspend(p->mtx))
+        if (mutex_lock_suspend(p->mtx, MAX_DELAY))
         {
             // Concat unlocked
             strcat(p->buff, p->unlocked);
@@ -236,7 +236,7 @@ struct ParamQueue
         {
             // Concat empty
             strcat(p->buff, p->empty);
-            queue_suspend(p->que);
+            queue_suspend(p->que, MAX_DELAY);
         }
 
         // Concat end
@@ -257,7 +257,7 @@ struct ParamQueue
         // Concat start
         strcat(p->buff, p->start);
 
-        if (queue_read_suspend(p->que, &data))
+        if (queue_read_suspend(p->que, &data, MAX_DELAY))
         {
             // Concat not empty
             strcat(p->buff, p->not_empty);

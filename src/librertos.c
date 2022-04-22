@@ -33,6 +33,19 @@ void librertos_init(void)
 {
     CRITICAL_VAL();
 
+    LIBRERTOS_ASSERT(
+        (tick_t)-1 > 0, (tick_t)-1, "tick_t must be an unsigned integer.");
+
+    LIBRERTOS_ASSERT(
+        (difftick_t)-1 == -1,
+        (difftick_t)-1,
+        "difftick_t must be a signed integer.");
+
+    LIBRERTOS_ASSERT(
+        sizeof(difftick_t) == sizeof(tick_t),
+        sizeof(difftick_t),
+        "difftick_t must be the same size as tick_t.");
+
     CRITICAL_ENTER();
     {
         int8_t i;
@@ -54,6 +67,10 @@ void librertos_init(void)
 
         list_init(&librertos.tasks_running);
         list_init(&librertos.tasks_suspended);
+        librertos.tasks_delayed_current = &librertos.tasks_delayed[0];
+        librertos.tasks_delayed_overflow = &librertos.tasks_delayed[1];
+        list_init(&librertos.tasks_delayed[0]);
+        list_init(&librertos.tasks_delayed[1]);
     }
     CRITICAL_EXIT();
 }
@@ -241,6 +258,8 @@ void interrupt_unlock(task_t *task)
     scheduler_unlock();
 }
 
+static void resume_delayed_tasks(tick_t now);
+
 /*
  * Process a tick timer interrupt.
  *
@@ -249,12 +268,14 @@ void interrupt_unlock(task_t *task)
 void librertos_tick_interrupt(void)
 {
     task_t *task = interrupt_lock();
+    tick_t now;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        librertos.tick++;
-    }
+
+    now = ++librertos.tick;
+    resume_delayed_tasks(now);
+
     CRITICAL_EXIT();
 
     interrupt_unlock(task);
@@ -313,6 +334,142 @@ void set_current_task(task_t *task)
     CRITICAL_EXIT();
 }
 
+static void swap_lists_of_delayed_tasks(void)
+{
+    struct list_t *temp = librertos.tasks_delayed_overflow;
+    librertos.tasks_delayed_overflow = librertos.tasks_delayed_current;
+    librertos.tasks_delayed_current = temp;
+}
+
+static void resume_list_of_tasks(struct list_t *list, tick_t now)
+{
+    INTERRUPTS_VAL();
+
+    while (list->length != 0)
+    {
+        struct node_t *node = list_get_first(list);
+        task_t *task = (task_t *)node->owner;
+
+        if (now < task->delay_until)
+            break;
+
+        /* Check if the task is not already resumed. */
+        INTERRUPTS_ENABLE();
+        task_resume(task);
+        INTERRUPTS_DISABLE();
+    }
+}
+
+/* Non-deterministic: O(n) tasks on the list. */
+static void resume_delayed_tasks(tick_t now)
+{
+    if (now == 0)
+    {
+        /* Tick overflow. */
+        swap_lists_of_delayed_tasks();
+        resume_list_of_tasks(librertos.tasks_delayed_overflow, MAX_DELAY);
+    }
+
+    resume_list_of_tasks(librertos.tasks_delayed_current, now);
+}
+
+/* Non-deterministic: O(n) tasks on the list. */
+static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
+{
+    struct node_t *head = LIST_HEAD(list);
+    struct node_t *pos;
+    INTERRUPTS_VAL();
+
+    pos = list->head;
+
+    while (pos != head)
+    {
+        task_t *task = (task_t *)pos->owner;
+        tick_t pos_tick = task->delay_until;
+
+        INTERRUPTS_ENABLE();
+
+        /* Compare outside of critical section. */
+        if (tick < pos_tick)
+        {
+            /* Found the position: before pos. Stop. */
+            INTERRUPTS_DISABLE();
+            break;
+        }
+
+        INTERRUPTS_DISABLE();
+
+        if (pos->list != list)
+        {
+            /* pos was removed from the list during the comparison. Restart. */
+            pos = list->head;
+            continue;
+        }
+
+        /* This is not the correct position. Continue. */
+        pos = pos->next;
+    }
+
+    pos = pos->prev;
+
+    return pos;
+}
+
+/* Non-deterministic: O(n) tasks on the list. */
+static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
+{
+    task_t *task;
+    struct node_t *node, *pos;
+    struct list_t *delay_list;
+    CRITICAL_VAL();
+
+    (void)tick_to_wakeup;
+
+    scheduler_lock();
+    CRITICAL_ENTER();
+
+    task = get_current_task();
+    node = &task->sched_node;
+    task->delay_until = tick_to_wakeup;
+    delay_list = (now < tick_to_wakeup) ? librertos.tasks_delayed_current
+                                        : librertos.tasks_delayed_overflow;
+
+    /* Suspend the task so that it can be resumed. */
+    task_suspend(task);
+
+    do
+    {
+        /* Non-deterministic: O(n). Calling with interrupts disabled and
+         * scheduler locked.
+         */
+        pos = delay_find_tick_position(delay_list, tick_to_wakeup);
+
+        /* Check if pos was removed from the list during the comparison or
+         * return. Restart. */
+    } while (pos != LIST_HEAD(delay_list) && pos->list != delay_list);
+
+    /* Check if current task was not resumed. */
+    if (node->list == &librertos.tasks_suspended)
+    {
+        /* Update the position. */
+        list_remove(node);
+        list_insert_after(delay_list, pos, node);
+    }
+
+    CRITICAL_EXIT();
+    scheduler_unlock();
+}
+
+/*
+ * Delay task for a certain amount of ticks.
+ */
+void task_delay(tick_t ticks_to_delay)
+{
+    tick_t now = get_tick();
+    tick_t tick_to_wakeup = now + ticks_to_delay;
+    task_delay_now_until(now, tick_to_wakeup);
+}
+
 /*
  * Suspend task.
  *
@@ -358,6 +515,7 @@ void task_resume(task_t *task)
     struct node_t *node_sched, *node_event;
     CRITICAL_VAL();
 
+    scheduler_lock();
     CRITICAL_ENTER();
 
     list_ready = &librertos.tasks_ready[task->priority];
@@ -374,32 +532,23 @@ void task_resume(task_t *task)
      * resumed. When the scheduler unlocks the current task can be preempted
      * by a higher priority task.
      */
-    scheduler_lock();
     CRITICAL_EXIT();
     scheduler_unlock();
 }
 
 /*
- * Resume all suspended tasks.
+ * Resume all tasks.
  */
 void task_resume_all(void)
 {
-    INTERRUPTS_VAL();
     CRITICAL_VAL();
 
     scheduler_lock();
     CRITICAL_ENTER();
 
-    while (librertos.tasks_suspended.length != 0)
-    {
-        struct node_t *node = list_get_first(&librertos.tasks_suspended);
-        task_t *task = (task_t *)node->owner;
-        INTERRUPTS_ENABLE();
-
-        task_resume(task);
-
-        INTERRUPTS_DISABLE();
-    }
+    resume_list_of_tasks(&librertos.tasks_suspended, MAX_DELAY);
+    resume_list_of_tasks(&librertos.tasks_delayed[0], MAX_DELAY);
+    resume_list_of_tasks(&librertos.tasks_delayed[1], MAX_DELAY);
 
     CRITICAL_EXIT();
     scheduler_unlock();
@@ -599,12 +748,12 @@ event_find_priority_position(struct list_t *list, int8_t priority)
     while (pos != head)
     {
         task_t *task = (task_t *)pos->owner;
-        int8_t task_priority = task->priority;
+        int8_t pos_priority = task->priority;
 
         INTERRUPTS_ENABLE();
 
         /* Compare outside of critical section. */
-        if (priority > task_priority)
+        if (priority > pos_priority)
         {
             /* Found the position: before pos. Stop. */
             INTERRUPTS_DISABLE();
@@ -631,34 +780,13 @@ event_find_priority_position(struct list_t *list, int8_t priority)
 
 /* Non-deterministic: O(n) tasks waiting for the event.
  * Call with interrupts disabled and scheduler locked.
- * */
-void event_suspend_task(event_t *event)
+ */
+void event_add_task_to_event(event_t *event)
 {
-    task_t *task;
+    task_t *task = librertos.current_task;
+    int8_t task_priority = task->priority;
     struct node_t *pos;
-    int8_t task_priority;
-    CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        !(librertos.current_task == NO_TASK_PTR
-          || librertos.current_task == INTERRUPT_TASK_PTR),
-        (intptr_t)librertos.current_task,
-        "event_suspend_task(): no task or interrupt is running.");
-
-    LIBRERTOS_ASSERT(
-        !node_in_list(&librertos.current_task->event_node),
-        (intptr_t)librertos.current_task,
-        "event_suspend_task(): this task is already suspended.");
-
-    CRITICAL_ENTER();
-
-    task = librertos.current_task;
-    task_priority = task->priority;
-
-    /* Suspend the task and insert in the end of the list so that the event
-     * can resume the task.
-     */
-    task_suspend(CURRENT_TASK_PTR);
     list_insert_last(&event->suspended_tasks, &task->event_node);
 
     do
@@ -688,8 +816,37 @@ void event_suspend_task(event_t *event)
             list_insert_after(&event->suspended_tasks, pos, &task->event_node);
         }
     }
+}
 
-    CRITICAL_EXIT();
+/* Non-deterministic: O(n) tasks waiting for the event.
+ * Call with interrupts disabled and scheduler locked.
+ */
+void event_delay_task(event_t *event, tick_t ticks_to_delay)
+{
+    LIBRERTOS_ASSERT(
+        !(librertos.current_task == NO_TASK_PTR
+          || librertos.current_task == INTERRUPT_TASK_PTR),
+        (intptr_t)librertos.current_task,
+        "event_delay_task(): no task or interrupt is running.");
+
+    LIBRERTOS_ASSERT(
+        !node_in_list(&librertos.current_task->event_node),
+        (intptr_t)librertos.current_task,
+        "event_delay_task(): this task is already suspended.");
+
+    /* Suspend the task and insert in the end of the list so that the event
+     * can resume the task.
+     */
+    task_suspend(CURRENT_TASK_PTR);
+
+    event_add_task_to_event(event);
+
+    if (ticks_to_delay != MAX_DELAY)
+    {
+        tick_t now = get_tick();
+        tick_t tick_to_wakeup = now + ticks_to_delay;
+        task_delay_now_until(now, tick_to_wakeup);
+    }
 }
 
 /* Unsafe. */

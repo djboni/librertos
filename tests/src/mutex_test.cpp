@@ -10,6 +10,7 @@
  * Also compile: src/librertos.c
  * Also compile: tests/mocks/librertos_assert.cpp
  * Also compile: tests/utils/librertos_test_utils.cpp
+ * Also compile: tests/utils/librertos_custom_tests.cpp
  */
 
 #include <vector>
@@ -211,7 +212,7 @@ TEST(MutexEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
     set_current_task(&task1);
-    mutex_suspend(&mtx);
+    mutex_suspend(&mtx, MAX_DELAY);
     set_current_task(NO_TASK_PTR);
 
     librertos_start();
@@ -529,7 +530,7 @@ static void func_suspend_on_mutex(void *param)
     mutex_t *mutex = (mutex_t *)p[1];
 
     // Resume can preempt.
-    mutex_suspend(mutex);
+    mutex_suspend(mutex, MAX_DELAY);
 
     // Sequence after possible preemption.
     sequence->push_back(get_current_task());
@@ -705,4 +706,123 @@ TEST(
     //   - Registers, suspends and returns
     tasks_should_be_scheduled_in_the_order(
         this, {&task[3], &task[2], &task[1], &task[0]}, actual_sequence);
+}
+
+TEST_GROUP (MutexEventNewTest)
+{
+    mutex_t mtx;
+
+    void setup()
+    {
+        test_init();
+        mutex_init(&mtx);
+    }
+    void teardown() {}
+};
+
+TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+    mutex_suspend(&mtx, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+    mutex_suspend(&mtx, MAX_DELAY);
+
+    test_task_is_suspended(&test.task[0]);
+
+    mutex_unlock(&mtx);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+    mutex_suspend(&mtx, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    task_resume(&test.task[0]);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+    mutex_suspend(&mtx, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    mutex_unlock(&mtx);
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+    mutex_suspend(&mtx, 1);
+
+    test_task_is_delayed_current(&test.task[0]);
+
+    librertos_tick_interrupt();
+
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Success)
+{
+    test_create_tasks({0}, NULL, {NULL});
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(1, mutex_lock_suspend(&mtx, MAX_DELAY));
+    test_task_is_ready(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Fail)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, mutex_lock_suspend(&mtx, MAX_DELAY));
+    test_task_is_suspended(&test.task[0]);
+}
+
+TEST(MutexEventNewTest, TaskLockDelaysOnEvent_Fail)
+{
+    test_create_tasks({0}, NULL, {NULL});
+    mutex_lock(&mtx);
+
+    set_current_task(&test.task[0]);
+
+    LONGS_EQUAL(0, mutex_lock_suspend(&mtx, 1));
+    test_task_is_delayed_current(&test.task[0]);
 }

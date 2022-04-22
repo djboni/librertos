@@ -15,6 +15,8 @@ extern "C" {
 #define CURRENT_TASK_PTR ((task_t *)0)
 #define INTERRUPT_TASK_PTR ((task_t *)1)
 
+#define MAX_DELAY ((tick_t)-1)
+
 #define PERIODIC(delay_ticks, code) \
     do \
     { \
@@ -109,6 +111,7 @@ typedef struct os_task_t
     int8_t original_priority;
     struct node_t sched_node;
     struct node_t event_node;
+    tick_t delay_until;
 } task_t;
 
 typedef struct
@@ -120,6 +123,9 @@ typedef struct
     struct list_t tasks_ready[NUM_PRIORITIES];
     struct list_t tasks_running;
     struct list_t tasks_suspended;
+    struct list_t *tasks_delayed_current;
+    struct list_t *tasks_delayed_overflow;
+    struct list_t tasks_delayed[2];
 } librertos_t;
 
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
@@ -129,15 +135,15 @@ result_t semaphore_lock(semaphore_t *sem);
 result_t semaphore_unlock(semaphore_t *sem);
 uint8_t semaphore_get_count(semaphore_t *sem);
 uint8_t semaphore_get_max(semaphore_t *sem);
-void semaphore_suspend(semaphore_t *sem);
-result_t semaphore_lock_suspend(semaphore_t *sem);
+void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay);
+result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay);
 
 void mutex_init(mutex_t *mtx);
 result_t mutex_lock(mutex_t *mtx);
 void mutex_unlock(mutex_t *mtx);
 uint8_t mutex_is_locked(mutex_t *mtx);
-void mutex_suspend(mutex_t *mtx);
-result_t mutex_lock_suspend(mutex_t *mtx);
+void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay);
+result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay);
 
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size);
 result_t queue_read(queue_t *que, void *data);
@@ -148,8 +154,8 @@ uint8_t queue_is_empty(queue_t *que);
 uint8_t queue_is_full(queue_t *que);
 uint8_t queue_get_num_items(queue_t *que);
 uint8_t queue_get_item_size(queue_t *que);
-void queue_suspend(queue_t *que);
-result_t queue_read_suspend(queue_t *que, void *data);
+void queue_suspend(queue_t *que, tick_t ticks_to_delay);
+result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
 void librertos_init(void);
 void librertos_tick_interrupt(void);
@@ -168,6 +174,7 @@ void interrupt_unlock(task_t *task);
 
 tick_t get_tick(void);
 task_t *get_current_task(void);
+void task_delay(tick_t ticks_to_delay);
 void task_suspend(task_t *task);
 void task_resume(task_t *task);
 void task_resume_all(void);

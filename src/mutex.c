@@ -66,25 +66,29 @@ result_t mutex_lock(mutex_t *mtx)
 void task_set_priority(task_t *task, int8_t priority)
 {
     struct list_t *ready_list = &librertos.tasks_ready[task->priority];
-    struct list_t *event_list = task->event_node.list;
+    event_t *event_list = (event_t *)task->event_node.list;
 
     task->priority = priority;
 
     if (task->sched_node.list == ready_list)
     {
+        /* Put in the correct ready list. */
         list_remove(&task->sched_node);
         list_insert_first(&librertos.tasks_ready[priority], &task->sched_node);
     }
 
     if (event_list != NULL)
     {
-        task_t *current_task;
+        /* Put the task in the correct place in the event list. Keep it
+         * suspended or delayed.
+         */
+
+        task_t *current_task = librertos.current_task;
+        librertos.current_task = task;
 
         list_remove(&task->event_node);
+        event_add_task_to_event(event_list);
 
-        current_task = librertos.current_task;
-        librertos.current_task = task;
-        event_suspend_task((event_t *)event_list);
         librertos.current_task = current_task;
     }
 }
@@ -161,7 +165,7 @@ uint8_t mutex_is_locked(mutex_t *mtx)
 /*
  * Suspend task on mutex.
  */
-void mutex_suspend(mutex_t *mtx)
+void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 {
     CRITICAL_VAL();
 
@@ -184,7 +188,7 @@ void mutex_suspend(mutex_t *mtx)
                 task_set_priority(owner, current_priority);
         }
 
-        event_suspend_task(&mtx->event_unlock);
+        event_delay_task(&mtx->event_unlock, ticks_to_delay);
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -199,13 +203,13 @@ void mutex_suspend(mutex_t *mtx)
  *
  * Returns: 1 if successfully locked the mutex, 0 otherwise (suspended).
  */
-result_t mutex_lock_suspend(mutex_t *mtx)
+result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 {
     result_t result;
 
     result = mutex_lock(mtx);
     if (result == FAIL)
-        mutex_suspend(mtx);
+        mutex_suspend(mtx, ticks_to_delay);
 
     return result;
 }

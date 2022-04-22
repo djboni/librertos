@@ -117,7 +117,7 @@ template <class T>
 void taskX_is_scheduled_and_suspends_on_mutex(T *test, int i)
 {
     set_current_task(&test->task[i]);
-    mutex_suspend(&test->mtx);
+    mutex_suspend(&test->mtx, MAX_DELAY);
     set_current_task(NO_TASK_PTR);
 }
 
@@ -149,9 +149,35 @@ template <class T>
 void taskX_is_scheduled_and_suspends_helper_on_mutex(T *test, int i)
 {
     set_current_task(&test->task[i]);
-    mutex_suspend(&test->helper);
+    mutex_suspend(&test->helper, MAX_DELAY);
     set_current_task(NO_TASK_PTR);
 }
+
+    #define NUM_TASKS 3
+
+struct test_t
+{
+    uint8_t used_tasks;
+    task_t task[NUM_TASKS];
+};
+
+extern test_t test;
+
+void test_init();
+
+std::vector<task_t *> test_create_tasks(
+    std::vector<uint8_t> prio, task_function_t func, std::vector<void *> param);
+
+    #define test_task_is_ready(task) \
+        POINTERS_EQUAL( \
+            &librertos.tasks_ready[(task)->priority], (task)->sched_node.list)
+    #define test_task_is_suspended(task) \
+        POINTERS_EQUAL(&librertos.tasks_suspended, (task)->sched_node.list)
+    #define test_task_is_delayed_current(task) \
+        POINTERS_EQUAL(librertos.tasks_delayed_current, (task)->sched_node.list)
+    #define test_task_is_delayed_overflow(task) \
+        POINTERS_EQUAL( \
+            librertos.tasks_delayed_overflow, (task)->sched_node.list)
 
 #endif /* __cplusplus */
 
