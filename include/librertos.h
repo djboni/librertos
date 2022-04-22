@@ -109,15 +109,15 @@ typedef struct os_task_t
     task_parameter_t param;
     int8_t priority;
     int8_t original_priority;
+    tick_t delay_until;
     struct node_t sched_node;
     struct node_t event_node;
-    tick_t delay_until;
 } task_t;
 
 typedef struct
 {
     int8_t scheduler_lock;
-    uint8_t scheduler_depth;
+    int8_t scheduler_depth;
     tick_t tick;
     task_t *current_task;
     struct list_t tasks_ready[NUM_PRIORITIES];
@@ -148,10 +148,10 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay);
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size);
 result_t queue_read(queue_t *que, void *data);
 result_t queue_write(queue_t *que, const void *data);
-uint8_t queue_get_num_free(queue_t *que);
-uint8_t queue_get_num_used(queue_t *que);
 uint8_t queue_is_empty(queue_t *que);
 uint8_t queue_is_full(queue_t *que);
+uint8_t queue_get_num_free(queue_t *que);
+uint8_t queue_get_num_used(queue_t *que);
 uint8_t queue_get_num_items(queue_t *que);
 uint8_t queue_get_item_size(queue_t *que);
 void queue_suspend(queue_t *que, tick_t ticks_to_delay);
@@ -173,7 +173,6 @@ task_t *interrupt_lock(void);
 void interrupt_unlock(task_t *task);
 
 tick_t get_tick(void);
-task_t *get_current_task(void);
 void task_delay(tick_t ticks_to_delay);
 void task_suspend(task_t *task);
 void task_resume(task_t *task);

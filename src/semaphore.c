@@ -6,14 +6,14 @@
 #include <string.h>
 
 /*
- * Initialize semaphore with a custom initial value.
+ * Initialize the semaphore with an initial value and a maximum value.
  *
- * It is recommended to use the functions semaphore_init_locked() and
- * semaphore_init_unlocked() instead of this.
+ * It is recommended to use the functions below instead of this:
+ * - semaphore_init_locked()
+ * - semaphore_init_unlocked()
  *
- * Parameters:
- *   - init_count: initial value of the semaphore.
- *   - max_count: maximum value of the semaphore.
+ * @param init_count Initial value of the semaphore.
+ * @param max_count Maximum value of the semaphore.
  */
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
 {
@@ -25,19 +25,21 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
         "semaphore_init(): invalid init_count.");
 
     CRITICAL_ENTER();
-    {
-        /* Make non-zero, to be easy to spot uninitialized fields. */
-        memset(sem, 0x5A, sizeof(*sem));
 
-        sem->count = init_count;
-        sem->max = max_count;
-        event_init(&sem->event_unlock);
-    }
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(sem, 0x5A, sizeof(*sem));
+
+    sem->count = init_count;
+    sem->max = max_count;
+    event_init(&sem->event_unlock);
+
     CRITICAL_EXIT();
 }
 
 /*
- * Initialize semaphore in the locked state (initial value equals zero).
+ * Initialize the semaphore in the locked state (initial value equals zero).
+ *
+ * @param max_count Maximum value of the semaphore.
  */
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count)
 {
@@ -47,16 +49,30 @@ void semaphore_init_locked(semaphore_t *sem, uint8_t max_count)
 /*
  * Initialize semaphore in the unlocked state (initial value equals maximum
  * value).
+ *
+ * @param max_count Maximum value of the semaphore.
  */
 void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count)
 {
     semaphore_init(sem, max_count, max_count);
 }
 
+/* Call with interrupts disabled. */
+static uint8_t semaphore_can_be_locked(semaphore_t *sem)
+{
+    return sem->count > 0;
+}
+
+/* Call with interrupts disabled. */
+static uint8_t semaphore_can_be_unlocked(semaphore_t *sem)
+{
+    return sem->count < sem->max;
+}
+
 /*
- * Lock semaphore.
+ * Lock the semaphore.
  *
- * Returns: 1 if success, 0 otherwise.
+ * @return 1 with success, 0 otherwise.
  */
 result_t semaphore_lock(semaphore_t *sem)
 {
@@ -64,22 +80,22 @@ result_t semaphore_lock(semaphore_t *sem)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (semaphore_can_be_locked(sem))
     {
-        if (sem->count > 0)
-        {
-            sem->count--;
-            result = SUCCESS;
-        }
+        sem->count--;
+        result = SUCCESS;
     }
+
     CRITICAL_EXIT();
 
     return result;
 }
 
 /*
- * Unlock semaphore.
+ * Unlock the semaphore.
  *
- * Returns: 1 if success, 0 otherwise.
+ * @return 1 with success, 0 otherwise.
  */
 result_t semaphore_unlock(semaphore_t *sem)
 {
@@ -88,16 +104,22 @@ result_t semaphore_unlock(semaphore_t *sem)
 
     CRITICAL_ENTER();
 
-    if (sem->count < sem->max)
+    if (semaphore_can_be_unlocked(sem))
     {
+        scheduler_lock();
+
         sem->count++;
         result = SUCCESS;
-    }
 
-    scheduler_lock();
-    event_resume_task(&sem->event_unlock);
-    CRITICAL_EXIT();
-    scheduler_unlock();
+        event_resume_task(&sem->event_unlock);
+
+        CRITICAL_EXIT();
+        scheduler_unlock();
+    }
+    else
+    {
+        CRITICAL_EXIT();
+    }
 
     return result;
 }
@@ -111,9 +133,9 @@ uint8_t semaphore_get_count(semaphore_t *sem)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        count = sem->count;
-    }
+
+    count = sem->count;
+
     CRITICAL_EXIT();
 
     return count;
@@ -125,12 +147,18 @@ uint8_t semaphore_get_count(semaphore_t *sem)
 uint8_t semaphore_get_max(semaphore_t *sem)
 {
     /* Semaphore maximum value should not change.
-     * Critical section not necessary. */
+     * Critical section is not necessary. */
     return sem->max;
 }
 
 /*
- * Suspend task on semaphore.
+ * Suspend the task on the semaphore, waiting a maximum number for ticks to pass
+ * before resuming.
+ *
+ * This function can be used only by tasks.
+ *
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
  */
 void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 {
@@ -138,10 +166,12 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 
     CRITICAL_ENTER();
 
-    if (sem->count == 0)
+    if (!semaphore_can_be_locked(sem))
     {
         scheduler_lock();
+
         event_delay_task(&sem->event_unlock, ticks_to_delay);
+
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -152,9 +182,14 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 }
 
 /*
- * Lock semaphore if unlocked, else suspend the task on the semaphore.
+ * Lock the semaphore if unlocked, else tries to suspend the task on the
+ * semaphore, waiting a maximum number for ticks to pass before resuming.
  *
- * Returns: 1 if successfully locked the semaphore, 0 otherwise (suspended).
+ * This function can be used only by tasks.
+ *
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
+ * @return 1 with success locking, 0 otherwise.
  */
 result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 {

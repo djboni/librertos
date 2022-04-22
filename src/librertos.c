@@ -6,20 +6,6 @@
 #include <string.h>
 
 /*
- * "Unsafe" functions:
- * Some implementation functions read and change data without the protection of
- * a critical section, therefore they do not disable interrupts by themselves.
- * These functions are commented as "Unsafe" and should be used with caution,
- * only inside critical sections (interrupts must be disabled).
- *
- * "Non-deterministic" functions:
- * Some implementation functions take variable time to execute, such as O(n).
- * These functions are commented as "Non-deterministic" and should be used with
- * caution, only with scheduler locked and outside critical section (interrupts
- * must be enabled).
- */
-
-/*
  * LibreRTOS state.
  */
 librertos_t librertos;
@@ -27,10 +13,12 @@ librertos_t librertos;
 /*
  * Initialize LibreRTOS state.
  *
- * Must be called **before** starting the tick timer interrupt.
+ * Must be called before starting the tick timer interrupt or any other
+ * interrupt that uses LibreRTOS functions.
  */
 void librertos_init(void)
 {
+    int8_t i;
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
@@ -47,43 +35,43 @@ void librertos_init(void)
         "difftick_t must be the same size as tick_t.");
 
     CRITICAL_ENTER();
-    {
-        int8_t i;
 
-        /* Make non-zero, to be easy to spot uninitialized fields. */
-        memset(&librertos, 0x5A, sizeof(librertos));
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(&librertos, 0x5A, sizeof(librertos));
 
-        /* Start with scheduler locked, to avoid scheduling tasks in interrupts
-         * that happen while we initialize the hardware.
-         */
-        librertos.scheduler_lock = 1;
-        librertos.scheduler_depth = 0;
+    /* Start with scheduler locked, to avoid scheduling tasks in interrupts
+     * while initializing the hardware and when creating the tasks on
+     * initialization.
+     */
+    librertos.scheduler_lock = 1;
 
-        librertos.tick = 0;
-        librertos.current_task = NO_TASK_PTR;
+    librertos.scheduler_depth = 0;
+    librertos.tick = 0;
+    librertos.current_task = NO_TASK_PTR;
 
-        for (i = 0; i < NUM_PRIORITIES; i++)
-            list_init(&librertos.tasks_ready[i]);
+    for (i = 0; i < NUM_PRIORITIES; i++)
+        list_init(&librertos.tasks_ready[i]);
 
-        list_init(&librertos.tasks_running);
-        list_init(&librertos.tasks_suspended);
-        librertos.tasks_delayed_current = &librertos.tasks_delayed[0];
-        librertos.tasks_delayed_overflow = &librertos.tasks_delayed[1];
-        list_init(&librertos.tasks_delayed[0]);
-        list_init(&librertos.tasks_delayed[1]);
-    }
+    list_init(&librertos.tasks_running);
+    list_init(&librertos.tasks_suspended);
+    librertos.tasks_delayed_current = &librertos.tasks_delayed[0];
+    librertos.tasks_delayed_overflow = &librertos.tasks_delayed[1];
+
+    for (i = 0; i < 2; i++)
+        list_init(&librertos.tasks_delayed[i]);
+
     CRITICAL_EXIT();
 }
 
 /*
- * Create task.
+ * Create a task.
  *
- * Parameters:
- *   - priority: integer in the range from LOW_PRIORITY (0) up to
- *     HIGH_PRIORITY (NUM_PRIORITIES - 1).
- *   - task: task information.
- *   - func: task function with prototype void task_function(void *param).
- *   - param: task parameter.
+ * @param priority Task priority. Integer in the range from LOW_PRIORITY to
+ * HIGH_PRIORITY (0 to NUM_PRIORITIES-1).
+ * @param task Task scruct information.
+ * @param func Function executed by the task, with prototype
+ * void task_function(void *param).
+ * @param param Parameter passed to the task function.
  */
 void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param)
@@ -95,21 +83,22 @@ void librertos_create_task(
         priority,
         "librertos_create_task(): invalid priority.");
 
-    CRITICAL_ENTER();
-    {
-        /* Make non-zero, to be easy to spot uninitialized fields. */
-        memset(task, 0x5A, sizeof(*task));
-
-        task->func = func;
-        task->param = param;
-        task->priority = priority;
-        task->original_priority = priority;
-        node_init(&task->sched_node, task);
-        node_init(&task->event_node, task);
-
-        list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
-    }
     scheduler_lock();
+    CRITICAL_ENTER();
+
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(task, 0x5A, sizeof(*task));
+
+    task->func = func;
+    task->param = param;
+    task->priority = priority;
+    task->original_priority = priority;
+    task->delay_until = 0;
+    node_init(&task->sched_node, task);
+    node_init(&task->event_node, task);
+
+    list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
+
     CRITICAL_EXIT();
     scheduler_unlock();
 }
@@ -117,27 +106,42 @@ void librertos_create_task(
 /*
  * Start LibreRTOS, allows the scheduler to run on interrupts and when resuming
  * tasks.
+ *
+ * Call after initializing the hardware, tasks, but before calling the scheduler
+ * in a loop.
  */
 void librertos_start(void)
 {
     --librertos.scheduler_lock;
 }
 
+static struct node_t *get_higher_priority_task(task_t *current_task)
+{
+    int8_t current_priority = (current_task == NO_TASK_PTR)
+                                ? NO_TASK_PRIORITY
+                                : current_task->priority;
+    int8_t i;
+
+    for (i = HIGH_PRIORITY; i > current_priority; i--)
+    {
+        if (list_is_empty(&librertos.tasks_ready[i]))
+            continue;
+        return list_get_first(&librertos.tasks_ready[i]);
+    }
+
+    return NULL;
+}
+
 /*
  * Run scheduled tasks.
+ *
+ * Picks and runs the higher priority task that is ready.
  */
 void librertos_sched(void)
 {
     task_t *current_task;
-    int8_t current_priority;
-    int8_t some_task_ran;
-
     INTERRUPTS_VAL();
 
-    /* To avoid failing a test, this assertion **reads**
-     * librertos.scheduler_lock without the protection of a critical section.
-     * See related comment in the function task_suspend().
-     */
     LIBRERTOS_ASSERT(
         librertos.scheduler_lock == 0,
         librertos.scheduler_lock,
@@ -147,57 +151,37 @@ void librertos_sched(void)
      * to run.
      */
     INTERRUPTS_DISABLE();
-
     librertos.scheduler_depth++;
     current_task = librertos.current_task;
 
-    do
+    while (1)
     {
-        int8_t i;
         struct node_t *node;
         task_t *task;
 
-        current_priority = (current_task == NO_TASK_PTR)
-                             ? NO_TASK_PRIORITY
-                             : current_task->priority;
-
-        some_task_ran = 0;
-
-        for (i = HIGH_PRIORITY; i > current_priority; i--)
-        {
-            if (list_is_empty(&librertos.tasks_ready[i]))
-                continue;
-
-            some_task_ran = 1;
-            node = list_get_first(&librertos.tasks_ready[i]);
-            task = (task_t *)node->owner;
-
-            list_remove(node);
-            list_insert_first(&librertos.tasks_running, node);
-
-            librertos.current_task = task;
-
-            /* Enable interrupts while running the task. */
-            INTERRUPTS_ENABLE();
-            task->func(task->param);
-            INTERRUPTS_DISABLE();
-
-            librertos.current_task = current_task;
-
-            if (node->list == &librertos.tasks_running)
-            {
-                list_remove(node);
-                list_insert_last(&librertos.tasks_ready[task->priority], node);
-            }
-
-            /* Break here, after running the task, and try to find another
-             * higher priority task. It is necessary because a higher priority
-             * task might have become ready while this was running.
-             */
+        node = get_higher_priority_task(current_task);
+        if (node == NULL)
             break;
-        }
-    } while (some_task_ran != 0);
+        task = (task_t *)node->owner;
 
+        list_remove(node);
+        list_insert_first(&librertos.tasks_running, node);
+
+        librertos.current_task = task;
+
+        /* Enable interrupts while running the task. */
+        INTERRUPTS_ENABLE();
+        task->func(task->param);
+        INTERRUPTS_DISABLE();
+
+        if (node->list == &librertos.tasks_running)
+        {
+            list_remove(node);
+            list_insert_last(&librertos.tasks_ready[task->priority], node);
+        }
+    }
+
+    librertos.current_task = current_task;
     librertos.scheduler_depth--;
     INTERRUPTS_ENABLE();
 }
@@ -212,7 +196,9 @@ void scheduler_lock(void)
         CRITICAL_VAL();
 
         CRITICAL_ENTER();
+
         ++librertos.scheduler_lock;
+
         CRITICAL_EXIT();
     }
 }
@@ -228,6 +214,7 @@ void scheduler_unlock(void)
         CRITICAL_VAL();
 
         CRITICAL_ENTER();
+
         if (--librertos.scheduler_lock == 0)
         {
             CRITICAL_EXIT();
@@ -240,18 +227,37 @@ void scheduler_unlock(void)
     }
 }
 
+/*
+ * Lock scheduler for interrupts, avoids preemption when using the preemptive
+ * kernel. Returns the current task so it can be restored when unlocking the
+ * scheduler.
+ *
+ * This function must be called in the begining of interrupts that use LibreRTOS
+ * functions.
+ *
+ * @return Task preempted by the interrupt.
+ */
 task_t *interrupt_lock(void)
 {
     task_t *task;
 
     scheduler_lock();
-
     task = get_current_task();
     set_current_task(INTERRUPT_TASK_PTR);
 
     return task;
 }
 
+/*
+ * Unlock scheduler for interrupts, causes preemption when using the preemptive
+ * kernel and a higher priority tasks is ready. Pass the task returned by
+ * interrupt_lock().
+ *
+ * This function must be called in the end of interrupts that use LibreRTOS
+ * functions.
+ *
+ * @param task Task preempted by the interrupt.
+ */
 void interrupt_unlock(task_t *task)
 {
     set_current_task(task);
@@ -261,9 +267,10 @@ void interrupt_unlock(task_t *task)
 static void resume_delayed_tasks(tick_t now);
 
 /*
- * Process a tick timer interrupt.
+ * Process a tick timer interrupt. Increment the tick counter and resume
+ * suspended tasks.
  *
- * Must be called periodically by the interrupt of a timer.
+ * Must be called periodically by a timer interrupt.
  */
 void librertos_tick_interrupt(void)
 {
@@ -289,13 +296,12 @@ void librertos_tick_interrupt(void)
 tick_t get_tick(void)
 {
     tick_t tick;
-
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        tick = librertos.tick;
-    }
+
+    tick = librertos.tick;
+
     CRITICAL_EXIT();
 
     return tick;
@@ -308,13 +314,12 @@ tick_t get_tick(void)
 task_t *get_current_task(void)
 {
     task_t *task;
-
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        task = librertos.current_task;
-    }
+
+    task = librertos.current_task;
+
     CRITICAL_EXIT();
 
     return task;
@@ -328,12 +333,13 @@ void set_current_task(task_t *task)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        librertos.current_task = task;
-    }
+
+    librertos.current_task = task;
+
     CRITICAL_EXIT();
 }
 
+/* Call with interrupts disabled and scheduler locked. */
 static void swap_lists_of_delayed_tasks(void)
 {
     struct list_t *temp = librertos.tasks_delayed_overflow;
@@ -341,6 +347,7 @@ static void swap_lists_of_delayed_tasks(void)
     librertos.tasks_delayed_current = temp;
 }
 
+/* Call with interrupts disabled and scheduler locked. */
 static void resume_list_of_tasks(struct list_t *list, tick_t now)
 {
     INTERRUPTS_VAL();
@@ -360,7 +367,7 @@ static void resume_list_of_tasks(struct list_t *list, tick_t now)
     }
 }
 
-/* Non-deterministic: O(n) tasks on the list. */
+/* Call with interrupts disabled and scheduler locked. */
 static void resume_delayed_tasks(tick_t now)
 {
     if (now == 0)
@@ -373,7 +380,7 @@ static void resume_delayed_tasks(tick_t now)
     resume_list_of_tasks(librertos.tasks_delayed_current, now);
 }
 
-/* Non-deterministic: O(n) tasks on the list. */
+/* Call with interrupts disabled and scheduler locked. */
 static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
 {
     struct node_t *head = LIST_HEAD(list);
@@ -415,7 +422,7 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
     return pos;
 }
 
-/* Non-deterministic: O(n) tasks on the list. */
+/* No restrictions when calling. */
 static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
 {
     task_t *task;
@@ -428,7 +435,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
     scheduler_lock();
     CRITICAL_ENTER();
 
-    task = get_current_task();
+    task = librertos.current_task;
     node = &task->sched_node;
     task->delay_until = tick_to_wakeup;
     delay_list = (now < tick_to_wakeup) ? librertos.tasks_delayed_current
@@ -439,9 +446,6 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
 
     do
     {
-        /* Non-deterministic: O(n). Calling with interrupts disabled and
-         * scheduler locked.
-         */
         pos = delay_find_tick_position(delay_list, tick_to_wakeup);
 
         /* Check if pos was removed from the list during the comparison or
@@ -462,6 +466,10 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
 
 /*
  * Delay task for a certain amount of ticks.
+ *
+ * This function can be used only by tasks.
+ *
+ * If the task is currently running, it will keep running until it returns.
  */
 void task_delay(tick_t ticks_to_delay)
 {
@@ -481,13 +489,6 @@ void task_suspend(task_t *task)
 {
     CRITICAL_VAL();
 
-    /* To avoid failing a test, this assertion **reads** librertos.current_task
-     * without the protection of a critical section.
-     * Assertions are supposed to catch bugs on development, they should not be
-     * used as run-time checks, and should be removed on production builds.
-     * For this reason it is not a problem to leave it out of the critical
-     * section.
-     */
     LIBRERTOS_ASSERT(
         !(task == CURRENT_TASK_PTR
           && (librertos.current_task == NO_TASK_PTR
@@ -496,13 +497,13 @@ void task_suspend(task_t *task)
         "task_suspend(): no task or interrupt is running.");
 
     CRITICAL_ENTER();
-    {
-        if (task == CURRENT_TASK_PTR)
-            task = librertos.current_task;
 
-        list_remove(&task->sched_node);
-        list_insert_first(&librertos.tasks_suspended, &task->sched_node);
-    }
+    if (task == CURRENT_TASK_PTR)
+        task = librertos.current_task;
+
+    list_remove(&task->sched_node);
+    list_insert_first(&librertos.tasks_suspended, &task->sched_node);
+
     CRITICAL_EXIT();
 }
 
@@ -554,7 +555,7 @@ void task_resume_all(void)
     scheduler_unlock();
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_init(struct list_t *list)
 {
     list->head = (struct node_t *)list;
@@ -562,7 +563,7 @@ void list_init(struct list_t *list)
     list->length = 0;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void node_init(struct node_t *node, void *owner)
 {
     node->next = NULL;
@@ -571,13 +572,13 @@ void node_init(struct node_t *node, void *owner)
     node->owner = owner;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 uint8_t node_in_list(struct node_t *node)
 {
     return node->list != NULL;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_insert_after(
     struct list_t *list, struct node_t *pos, struct node_t *node)
 {
@@ -614,26 +615,26 @@ void list_insert_after(
     list->length++;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_insert_before(
     struct list_t *list, struct node_t *pos, struct node_t *node)
 {
     list_insert_after(list, pos->prev, node);
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_insert_first(struct list_t *list, struct node_t *node)
 {
     list_insert_after(list, LIST_HEAD(list), node);
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_insert_last(struct list_t *list, struct node_t *node)
 {
     list_insert_after(list, list->tail, node);
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_remove(struct node_t *node)
 {
     struct list_t *list = node->list;
@@ -671,25 +672,25 @@ void list_remove(struct node_t *node)
     list->length--;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 struct node_t *list_get_first(struct list_t *list)
 {
     return list->head;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 struct node_t *list_get_last(struct list_t *list)
 {
     return list->tail;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 uint8_t list_is_empty(struct list_t *list)
 {
     return list->length == 0;
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void list_move_first_to_last(struct list_t *list)
 {
     struct node_t *head = list_get_first(list);
@@ -729,13 +730,13 @@ void list_move_first_to_last(struct list_t *list)
      */
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void event_init(event_t *event)
 {
     list_init(&event->suspended_tasks);
 }
 
-/* Non-deterministic: O(n) tasks on the list. */
+/* Call with interrupts disabled and scheduler locked. */
 static struct node_t *
 event_find_priority_position(struct list_t *list, int8_t priority)
 {
@@ -778,9 +779,7 @@ event_find_priority_position(struct list_t *list, int8_t priority)
     return pos;
 }
 
-/* Non-deterministic: O(n) tasks waiting for the event.
- * Call with interrupts disabled and scheduler locked.
- */
+/* Call with interrupts disabled and scheduler locked. */
 void event_add_task_to_event(event_t *event)
 {
     task_t *task = librertos.current_task;
@@ -791,9 +790,6 @@ void event_add_task_to_event(event_t *event)
 
     do
     {
-        /* Non-deterministic: O(n). Calling with interrupts disabled and
-         * scheduler locked.
-         */
         pos = event_find_priority_position(
             &event->suspended_tasks, task_priority);
 
@@ -818,9 +814,7 @@ void event_add_task_to_event(event_t *event)
     }
 }
 
-/* Non-deterministic: O(n) tasks waiting for the event.
- * Call with interrupts disabled and scheduler locked.
- */
+/* Call with interrupts disabled and scheduler locked. */
 void event_delay_task(event_t *event, tick_t ticks_to_delay)
 {
     LIBRERTOS_ASSERT(
@@ -849,7 +843,7 @@ void event_delay_task(event_t *event, tick_t ticks_to_delay)
     }
 }
 
-/* Unsafe. */
+/* Call with interrupts disabled. */
 void event_resume_task(event_t *event)
 {
     if (event->suspended_tasks.length != 0)

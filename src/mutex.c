@@ -18,27 +18,27 @@ void mutex_init(mutex_t *mtx)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        /* Make non-zero, to be easy to spot uninitialized fields. */
-        memset(mtx, 0x5A, sizeof(*mtx));
 
-        mtx->locked = 0;
-        mtx->task_owner = NO_TASK_PTR;
-        event_init(&mtx->event_unlock);
-    }
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(mtx, 0x5A, sizeof(*mtx));
+
+    mtx->locked = 0;
+    mtx->task_owner = NO_TASK_PTR;
+    event_init(&mtx->event_unlock);
+
     CRITICAL_EXIT();
 }
 
-/* Unsafe. */
-static int8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task)
+/* Call with interrupts disabled. */
+static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task)
 {
     return mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner;
 }
 
 /*
- * Lock mutex.
+ * Lock the mutex.
  *
- * Returns: 1 if success, 0 otherwise.
+ * @return 1 with success, 0 otherwise.
  */
 result_t mutex_lock(mutex_t *mtx)
 {
@@ -47,23 +47,23 @@ result_t mutex_lock(mutex_t *mtx)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        current_task = librertos.current_task;
 
-        if (mutex_can_be_locked(mtx, current_task))
-        {
-            ++(mtx->locked);
-            mtx->task_owner = current_task;
-            result = SUCCESS;
-        }
+    current_task = librertos.current_task;
+
+    if (mutex_can_be_locked(mtx, current_task))
+    {
+        ++(mtx->locked);
+        mtx->task_owner = current_task;
+        result = SUCCESS;
     }
+
     CRITICAL_EXIT();
 
     return result;
 }
 
-/* Unsafe. */
-void task_set_priority(task_t *task, int8_t priority)
+/* Call with interrupts disabled. */
+static void task_set_priority(task_t *task, int8_t priority)
 {
     struct list_t *ready_list = &librertos.tasks_ready[task->priority];
     event_t *event_list = (event_t *)task->event_node.list;
@@ -94,16 +94,12 @@ void task_set_priority(task_t *task, int8_t priority)
 }
 
 /*
- * Unlock mutex.
+ * Unlock the mutex.
  */
 void mutex_unlock(mutex_t *mtx)
 {
     CRITICAL_VAL();
 
-    /* To avoid failing a test, this assertion **reads** mtx->locked without the
-     * protection of a critical section. See related comment in the function
-     * task_suspend().
-     */
     LIBRERTOS_ASSERT(
         mtx->locked != MUTEX_UNLOCKED,
         mtx->locked,
@@ -146,7 +142,7 @@ void mutex_unlock(mutex_t *mtx)
 }
 
 /*
- * Check if a mutex is locked.
+ * Check if the mutex is locked.
  */
 uint8_t mutex_is_locked(mutex_t *mtx)
 {
@@ -154,16 +150,22 @@ uint8_t mutex_is_locked(mutex_t *mtx)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        locked = !mutex_can_be_locked(mtx, librertos.current_task);
-    }
+
+    locked = !mutex_can_be_locked(mtx, librertos.current_task);
+
     CRITICAL_EXIT();
 
     return locked;
 }
 
 /*
- * Suspend task on mutex.
+ * Suspend the task on the mutex, waiting a maximum number for ticks to pass
+ * before resuming.
+ *
+ * This function can be used only by tasks.
+ *
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
  */
 void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 {
@@ -171,7 +173,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 
     CRITICAL_ENTER();
 
-    if (mtx->locked != MUTEX_UNLOCKED)
+    if (!mutex_can_be_locked(mtx, librertos.current_task))
     {
         task_t *owner = (task_t *)mtx->task_owner;
         int8_t current_priority = librertos.current_task->priority;
@@ -189,6 +191,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
         }
 
         event_delay_task(&mtx->event_unlock, ticks_to_delay);
+
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -199,9 +202,14 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 }
 
 /*
- * Lock mutex if unlocked, else suspend the task on the mutex.
+ * Lock the mutex if unlocked, else tries to suspend the task on the
+ * mutex, waiting a maximum number for ticks to pass before resuming.
  *
- * Returns: 1 if successfully locked the mutex, 0 otherwise (suspended).
+ * This function can be used only by tasks.
+ *
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
+ * @return 1 with success locking, 0 otherwise.
  */
 result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 {

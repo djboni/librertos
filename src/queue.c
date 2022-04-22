@@ -6,41 +6,50 @@
 #include <string.h>
 
 /*
- * Initialize queue.
+ * Initialize the queue.
  *
- * Parameters:
- *   - buff: pointer to buffer with size (que_size * item_size).
- *   - que_size: number of items the queue can hold.
- *   - item_size: size of the items the queue manages.
+ * @param buff Pointer to a buffer with size que_size*item_size.
+ * @param que_size Number of items the queue can hold.
+ * @param item_size Size of the items in the queue.
  */
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size)
 {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        /* Make non-zero, to be easy to spot uninitialized fields. */
-        memset(que, 0x5A, sizeof(*que));
 
-        que->free = que_size;
-        que->used = 0;
-        que->head = 0;
-        que->tail = 0;
-        que->item_size = item_size;
-        que->end = que_size * item_size;
-        que->buff = (uint8_t *)buff;
-        event_init(&que->event_write);
-    }
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(que, 0x5A, sizeof(*que));
+
+    que->free = que_size;
+    que->used = 0;
+    que->head = 0;
+    que->tail = 0;
+    que->item_size = item_size;
+    que->end = que_size * item_size;
+    que->buff = (uint8_t *)buff;
+    event_init(&que->event_write);
+
     CRITICAL_EXIT();
 }
 
+/* Call with interrupts disabled. */
+static uint8_t queue_can_be_read(queue_t *que)
+{
+    return que->used > 0;
+}
+
+/* Call with interrupts disabled. */
+static uint8_t queue_can_be_written(queue_t *que)
+{
+    return que->free > 0;
+}
+
 /*
- * Read an item from queue.
+ * Read an item from the queue.
  *
- * Parameters:
- *   - data: pointer to buffer where to write.
- *
- * Returns: 1 if success, 0 otherwise.
+ * @param data Pointer to a buffer with size que->item_size.
+ * @return 1 with success, 0 otherwise.
  */
 result_t queue_read(queue_t *que, void *data)
 {
@@ -48,34 +57,30 @@ result_t queue_read(queue_t *que, void *data)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
+
+    if (queue_can_be_read(que))
     {
-        if (que->used > 0)
-        {
-            uint8_t *buff = &que->buff[que->tail];
+        memcpy(data, &que->buff[que->tail], que->item_size);
 
-            memcpy(data, buff, que->item_size);
+        que->tail += que->item_size;
+        if (que->tail >= que->end)
+            que->tail = 0;
 
-            que->tail += que->item_size;
-            if (que->tail >= que->end)
-                que->tail = 0;
-
-            que->free++;
-            que->used--;
-            result = SUCCESS;
-        }
+        que->free++;
+        que->used--;
+        result = SUCCESS;
     }
+
     CRITICAL_EXIT();
 
     return result;
 }
 
 /*
- * Write an item to queue.
+ * Write an item to the queue.
  *
- * Parameters:
- *   - data: pointer to buffer where to read.
- *
- * Returns: 1 if success, 0 otherwise.
+ * @param data Pointer to a buffer with size que->item_size.
+ * @return 1 with success, 0 otherwise.
  */
 result_t queue_write(queue_t *que, const void *data)
 {
@@ -84,11 +89,11 @@ result_t queue_write(queue_t *que, const void *data)
 
     CRITICAL_ENTER();
 
-    if (que->free > 0)
+    if (queue_can_be_written(que))
     {
-        uint8_t *buff = &que->buff[que->head];
+        scheduler_lock();
 
-        memcpy(buff, data, que->item_size);
+        memcpy(&que->buff[que->head], data, que->item_size);
 
         que->head += que->item_size;
         if (que->head >= que->end)
@@ -97,12 +102,16 @@ result_t queue_write(queue_t *que, const void *data)
         que->free--;
         que->used++;
         result = SUCCESS;
-    }
 
-    scheduler_lock();
-    event_resume_task(&que->event_write);
-    CRITICAL_EXIT();
-    scheduler_unlock();
+        event_resume_task(&que->event_write);
+
+        CRITICAL_EXIT();
+        scheduler_unlock();
+    }
+    else
+    {
+        CRITICAL_EXIT();
+    }
 
     return result;
 }
@@ -116,9 +125,9 @@ uint8_t queue_get_num_free(queue_t *que)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        value = que->free;
-    }
+
+    value = que->free;
+
     CRITICAL_EXIT();
 
     return value;
@@ -133,9 +142,9 @@ uint8_t queue_get_num_used(queue_t *que)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        value = que->used;
-    }
+
+    value = que->used;
+
     CRITICAL_EXIT();
 
     return value;
@@ -166,9 +175,9 @@ uint8_t queue_get_num_items(queue_t *que)
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
-    {
-        value = que->free + que->used;
-    }
+
+    value = que->free + que->used;
+
     CRITICAL_EXIT();
 
     return value;
@@ -180,12 +189,18 @@ uint8_t queue_get_num_items(queue_t *que)
 uint8_t queue_get_item_size(queue_t *que)
 {
     /* Queue item size should not change.
-     * Critical section not necessary. */
+     * Critical section is not necessary. */
     return que->item_size;
 }
 
 /*
- * Suspend task on queue waiting to read.
+ * Suspend the task waiting to read the queue, waiting a maximum number for
+ * ticks to pass before resuming.
+ *
+ * This function can be used only by tasks.
+ *
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
  */
 void queue_suspend(queue_t *que, tick_t ticks_to_delay)
 {
@@ -193,10 +208,12 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay)
 
     CRITICAL_ENTER();
 
-    if (que->used == 0)
+    if (!queue_can_be_read(que))
     {
         scheduler_lock();
+
         event_delay_task(&que->event_write, ticks_to_delay);
+
         CRITICAL_EXIT();
         scheduler_unlock();
     }
@@ -207,12 +224,16 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay)
 }
 
 /*
- * Read an item from queue if not empty, else suspend the task on the queue.
+ * Read an item from the the queue if not empty, else tries to suspend the task
+ * waiting to read the queue, waiting a maximum number for ticks to pass before
+ * resuming.
  *
- * Parameters:
- *   - data: pointer to buffer where to write.
+ * This function can be used only by tasks.
  *
- * Returns: 1 if successfully read the queue, 0 otherwise (suspended).
+ * @param data Pointer to a buffer with size que->item_size.
+ * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
+ * MAX_DELAY to wait forever.
+ * @return 1 with success reading, 0 otherwise.
  */
 result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay)
 {

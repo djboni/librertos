@@ -14,6 +14,7 @@ extern "C" {
 
 extern librertos_t librertos;
 
+task_t *get_current_task(void);
 void set_current_task(task_t *task);
 
 void list_init(struct list_t *list);
