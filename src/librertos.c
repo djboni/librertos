@@ -7,7 +7,9 @@
 
 enum
 {
-    MUTEX_UNLOCKED = 0
+    MUTEX_UNLOCKED = 0,
+    TASK_NOT_RUNNING = 0,
+    TASK_RUNNING = 1
 };
 
 /*
@@ -57,7 +59,6 @@ void librertos_init(void)
     for (i = 0; i < NUM_PRIORITIES; i++)
         list_init(&librertos.tasks_ready[i]);
 
-    list_init(&librertos.tasks_running);
     list_init(&librertos.tasks_suspended);
     librertos.tasks_delayed_current = &librertos.tasks_delayed[0];
     librertos.tasks_delayed_overflow = &librertos.tasks_delayed[1];
@@ -96,6 +97,7 @@ void librertos_create_task(
 
     task->func = func;
     task->param = param;
+    task->task_state = TASK_NOT_RUNNING;
     task->priority = priority;
     task->original_priority = priority;
     task->delay_until = 0;
@@ -120,8 +122,10 @@ void librertos_start(void)
     --librertos.scheduler_lock;
 }
 
-static struct node_t *get_higher_priority_task(task_t *current_task)
+static task_t *get_higher_priority_task(task_t *current_task)
 {
+    struct node_t *node;
+    task_t *task;
     int8_t current_priority = (current_task == NO_TASK_PTR)
                                 ? NO_TASK_PRIORITY
                                 : current_task->priority;
@@ -131,7 +135,17 @@ static struct node_t *get_higher_priority_task(task_t *current_task)
     {
         if (list_is_empty(&librertos.tasks_ready[i]))
             continue;
-        return list_get_first(&librertos.tasks_ready[i]);
+
+        node = list_get_first(&librertos.tasks_ready[i]);
+        task = (task_t *)node->owner;
+
+        if (task->task_state == TASK_RUNNING)
+            break;
+
+        list_remove(node);
+        list_insert_last(&librertos.tasks_ready[i], node);
+
+        return task;
     }
 
     return NULL;
@@ -161,29 +175,19 @@ void librertos_sched(void)
 
     while (1)
     {
-        struct node_t *node;
-        task_t *task;
-
-        node = get_higher_priority_task(current_task);
-        if (node == NULL)
+        task_t *task = get_higher_priority_task(current_task);
+        if (task == NULL)
             break;
-        task = (task_t *)node->owner;
-
-        list_remove(node);
-        list_insert_first(&librertos.tasks_running, node);
 
         librertos.current_task = task;
+        task->task_state = TASK_RUNNING;
 
         /* Enable interrupts while running the task. */
         INTERRUPTS_ENABLE();
         task->func(task->param);
         INTERRUPTS_DISABLE();
 
-        if (node->list == &librertos.tasks_running)
-        {
-            list_remove(node);
-            list_insert_last(&librertos.tasks_ready[task->priority], node);
-        }
+        task->task_state = TASK_NOT_RUNNING;
     }
 
     librertos.current_task = current_task;

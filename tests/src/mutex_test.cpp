@@ -468,24 +468,6 @@ TEST(
         this, {&task[0], &task[1]}, actual_sequence);
 }
 
-static void func_lock_mutex_and_resume_1task(void *param)
-{
-    void **p = (void **)param;
-    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
-    mutex_t *mutex = (mutex_t *)p[1];
-    task_t *task1 = (task_t *)p[2];
-
-    // Lock mutex
-    mutex_lock(mutex);
-
-    // Resume can preempt.
-    task_resume(task1);
-
-    // Sequence after possible preemption.
-    sequence->push_back(get_current_task());
-    task_suspend(CURRENT_TASK_PTR);
-}
-
 static void func_lock_mutex_and_resume_2tasks(void *param)
 {
     void **p = (void **)param;
@@ -496,22 +478,6 @@ static void func_lock_mutex_and_resume_2tasks(void *param)
 
     // Lock mutex
     mutex_lock(mutex);
-
-    // Resume can preempt.
-    task_resume(task1);
-    task_resume(task2);
-
-    // Sequence after possible preemption.
-    sequence->push_back(get_current_task());
-    task_suspend(CURRENT_TASK_PTR);
-}
-
-static void func_resume_2tasks(void *param)
-{
-    void **p = (void **)param;
-    std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
-    task_t *task1 = (task_t *)p[1];
-    task_t *task2 = (task_t *)p[2];
 
     // Resume can preempt.
     task_resume(task1);
@@ -582,129 +548,227 @@ TEST(
         this, {&task[2], &task[0], &task[1]}, actual_sequence);
 }
 
-IGNORE_TEST(
-    MutexPriorityInversion,
-    HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner)
+static void func_test2_task0(void *param)
 {
-    std::vector<task_t *> actual_sequence;
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
 
-    initialize_os(this);
-    initialize_mutex(this);
+    // 1. Low priority locks the mutex
+    sequence->push_back(1);
+    mutex_lock(mtx);
 
-    void *param0[] = {&actual_sequence, &mtx, &task[1]};
-    create_one_task(this, 0, &func_lock_mutex_and_resume_1task, &param0[0]);
+    // 2. Resumes middle priority task
+    sequence->push_back(2);
+    task_resume(&test.task[1]);
 
-    void *param1[] = {&actual_sequence, &task[3], &task[2]};
-    create_one_task(this, 1, &func_resume_2tasks, &param1[0]);
+    // 9. Suspend itself
+    sequence->push_back(9);
+    task_suspend(NULL);
 
-    create_one_task(this, 2, &func, &actual_sequence);
+    // 10. Return
+    sequence->push_back(10);
+}
 
-    void *param3[] = {&actual_sequence, &mtx};
-    create_one_task(this, 3, &func_suspend_on_mutex, &param3);
+static void func_test2_task1(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+    (void)mtx;
 
-    // Given Task1 is suspended
-    taskX_is_suspended(this, 1);
-    // And Task2 is suspended
-    taskX_is_suspended(this, 2);
-    // And Task3 is suspended
-    taskX_is_suspended(this, 3);
+    // 3. Resumes high priority task
+    sequence->push_back(3);
+    task_resume(&test.task[3]);
 
-    // When The scheduler is called
-    call_the_scheduler(this);
+    // 6. Resumes middle priority task
+    sequence->push_back(6);
+    task_resume(&test.task[2]);
 
-#if 1
-    // Desired
+    // 7. Suspend itself
+    sequence->push_back(7);
+    task_suspend(NULL);
 
-    // Then ...
-    // - Task1-3 are suspended
-    // - Task0
-    //   - Locks mutex
-    //   - Resumes Task1
-    // - Task1
-    //   - Resumes Task3
-    // - Task3
-    //   - Suspends on mutex
-    //   - Registers, suspends and returns
-    // - Task1
-    //   - Resumes Task2
-    //   - Registers, suspends and returns
-    // - Task0
-    //   - Registers, suspends and returns
-    // - Task2
-    //   - Registers, suspends and returns
+    // 8. Return
+    sequence->push_back(8);
+}
 
-    tasks_should_be_scheduled_in_the_order(
-        this, {&task[3], &task[1], &task[0], &task[2]}, actual_sequence);
-#else
-    // Actual
-    // When Task0 Gets its priority increased, the scheduler cannot see it,
-    // because Task1 has preempted.
-    tasks_should_be_scheduled_in_the_order(
-        this, {&task[3], &task[2], &task[1], &task[0]}, actual_sequence);
-#endif
+static void func_test2_task2(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+    (void)mtx;
+
+    // 11. Suspend itself
+    sequence->push_back(11);
+    task_suspend(NULL);
+
+    // 12. Return
+    sequence->push_back(12);
+}
+
+static void func_test2_task3(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+
+    // 4. High priority locks the mutex
+    sequence->push_back(4);
+    mutex_suspend(mtx, MAX_DELAY);
+
+    // 5. Return
+    sequence->push_back(5);
 }
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_OwnerPreempted_RemoveTaskFromReadyList_TODO)
+    HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner)
 {
-    /* While the test
-     * HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner cannot be
-     * solved, keep
-     * HigherPrioritySuspends_OwnerPreempted_RemoveTaskFromReadyList_TODO.
-     * It revealed a bug, which made necessary to create the list of
-     * running tasks.
-     */
-    std::vector<task_t *> actual_sequence;
+    std::vector<int> sequence;
 
-    initialize_os(this);
-    initialize_mutex(this);
+    librertos_init();
+    mutex_init(&mtx);
 
-    void *param0[] = {&actual_sequence, &mtx, &task[1]};
-    create_one_task(this, 0, &func_lock_mutex_and_resume_1task, &param0[0]);
+    void *param[] = {&sequence, &mtx};
 
-    void *param1[] = {&actual_sequence, &task[3], &task[2]};
-    create_one_task(this, 1, &func_resume_2tasks, &param1[0]);
+    librertos_create_task(
+        LOW_PRIORITY, &test.task[0], &func_test2_task0, &param);
+    librertos_create_task(
+        LOW_PRIORITY + 1, &test.task[1], &func_test2_task1, &param);
+    librertos_create_task(
+        HIGH_PRIORITY - 1, &test.task[2], &func_test2_task2, &param);
+    librertos_create_task(
+        HIGH_PRIORITY, &test.task[3], &func_test2_task3, &param);
 
-    create_one_task(this, 2, &func, &actual_sequence);
+    task_suspend(&test.task[1]);
+    task_suspend(&test.task[2]);
+    task_suspend(&test.task[3]);
 
-    void *param3[] = {&actual_sequence, &mtx};
-    create_one_task(this, 3, &func_suspend_on_mutex, &param3);
+    librertos_start();
+    librertos_sched();
 
-    // Given Task1 is suspended
-    taskX_is_suspended(this, 1);
-    // And Task2 is suspended
-    taskX_is_suspended(this, 2);
-    // And Task3 is suspended
-    taskX_is_suspended(this, 3);
+    std::vector<int> expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    CHECK_EQUAL(expected, sequence);
+}
 
-    // When The scheduler is called
-    call_the_scheduler(this);
+static void func_test3_task0(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
 
-    // Actual
-    // When Task0 Gets its priority increased, the scheduler cannot see it,
-    // because Task1 has preempted it.
+    // 1. Low priority locks the mutex
+    sequence->push_back(1);
+    mutex_lock(mtx);
 
-    // Then ...
-    // - Task1-3 are suspended
-    // - Task0
-    //   - Locks mutex
-    //   - Resumes Task1
-    // - Task1
-    //   - Resumes Task3
-    // - Task3
-    //   - Suspends on mutex
-    //   - Registers, suspends and returns
-    // - Task1
-    //   - Resumes Task2
-    // - Task2
-    //   - Registers, suspends and returns
-    // - Task1
-    //   - Registers, suspends and returns
-    // - Task0
-    //   - Registers, suspends and returns
-    tasks_should_be_scheduled_in_the_order(
-        this, {&task[3], &task[2], &task[1], &task[0]}, actual_sequence);
+    // 2. Suspend itself
+    sequence->push_back(2);
+    task_suspend(NULL);
+
+    // 3. Resumes middle priority task
+    sequence->push_back(3);
+    task_resume(&test.task[1]);
+
+    // 14. Suspend itself
+    sequence->push_back(14);
+    task_suspend(NULL);
+
+    // 15. Return
+    sequence->push_back(15);
+}
+
+static void func_test3_task1(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+    (void)mtx;
+
+    // 4. Resumes high priority task
+    sequence->push_back(4);
+    task_resume(&test.task[3]);
+
+    // 12. Suspend itself
+    sequence->push_back(12);
+    task_suspend(NULL);
+
+    // 13. Return
+    sequence->push_back(13);
+}
+
+static void func_test3_task2(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+    (void)mtx;
+
+    // 8. Suspends and resumes low priority task
+    sequence->push_back(8);
+    task_suspend(&test.task[0]);
+
+    // 9. Low priority task is already running and should not run here
+    sequence->push_back(9);
+    task_resume(&test.task[0]);
+
+    // 10. Suspend itself
+    sequence->push_back(10);
+    task_suspend(NULL);
+
+    // 11. Return
+    sequence->push_back(11);
+}
+
+static void func_test3_task3(void *param)
+{
+    void **p = (void **)param;
+    auto sequence = (std::vector<int> *)p[0];
+    auto mtx = (mutex_t *)p[1];
+
+    // 5. High priority locks the mutex
+    sequence->push_back(5);
+    mutex_suspend(mtx, MAX_DELAY);
+
+    // 6. Resumes middle priority task
+    sequence->push_back(6);
+    task_resume(&test.task[2]);
+
+    // 7. Return
+    sequence->push_back(7);
+}
+
+TEST(
+    MutexPriorityInversion,
+    HigherPrioritySuspends_OwnerSuspendedAndPreempted_DoesNotGetScheduledAgain)
+{
+    std::vector<int> sequence;
+
+    librertos_init();
+    mutex_init(&mtx);
+
+    void *param[] = {&sequence, &mtx};
+
+    librertos_create_task(
+        LOW_PRIORITY, &test.task[0], &func_test3_task0, &param);
+    librertos_create_task(
+        LOW_PRIORITY + 1, &test.task[1], &func_test3_task1, &param);
+    librertos_create_task(
+        HIGH_PRIORITY - 1, &test.task[2], &func_test3_task2, &param);
+    librertos_create_task(
+        HIGH_PRIORITY, &test.task[3], &func_test3_task3, &param);
+
+    task_suspend(&test.task[1]);
+    task_suspend(&test.task[2]);
+    task_suspend(&test.task[3]);
+
+    librertos_start();
+    librertos_sched();
+
+    std::vector<int> expected{
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    CHECK_EQUAL(expected, sequence);
 }
 
 TEST_GROUP (MutexEventNewTest)

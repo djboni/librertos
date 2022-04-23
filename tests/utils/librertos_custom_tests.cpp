@@ -1,6 +1,8 @@
 #include "librertos_custom_tests.h"
 
 #include <cstring>
+#include <sstream>
+#include <string>
 
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
@@ -108,4 +110,23 @@ std::vector<task_t *> test_create_tasks(
     }
 
     return task_vec;
+}
+
+/* Convert a std::vector<int> to a string. */
+SimpleString StringFrom(std::vector<int> &vec)
+{
+    std::stringstream s;
+
+    s << "[";
+
+    for (unsigned i = 0; i < vec.size(); i++)
+    {
+        if (i != 0)
+            s << ", ";
+        s << vec[i];
+    }
+
+    s << "]";
+
+    return SimpleString{s.str().c_str()};
 }

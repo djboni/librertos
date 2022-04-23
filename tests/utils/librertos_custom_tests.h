@@ -153,7 +153,7 @@ void taskX_is_scheduled_and_suspends_helper_on_mutex(T *test, int i)
     set_current_task(NO_TASK_PTR);
 }
 
-    #define NUM_TASKS 3
+    #define NUM_TASKS 4
 
 struct test_t
 {
@@ -178,6 +178,8 @@ std::vector<task_t *> test_create_tasks(
     #define test_task_is_delayed_overflow(task) \
         POINTERS_EQUAL( \
             librertos.tasks_delayed_overflow, (task)->sched_node.list)
+
+SimpleString StringFrom(std::vector<int> &vec);
 
 #endif /* __cplusplus */
 

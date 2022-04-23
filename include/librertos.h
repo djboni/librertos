@@ -107,6 +107,7 @@ typedef struct os_task_t
 {
     task_function_t func;
     task_parameter_t param;
+    int8_t task_state;
     int8_t priority;
     int8_t original_priority;
     tick_t delay_until;
@@ -121,7 +122,6 @@ typedef struct
     tick_t tick;
     task_t *current_task;
     struct list_t tasks_ready[NUM_PRIORITIES];
-    struct list_t tasks_running;
     struct list_t tasks_suspended;
     struct list_t *tasks_delayed_current;
     struct list_t *tasks_delayed_overflow;
