@@ -12,7 +12,7 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [ { "name":"ASAN_OPTIONS", "value":"detect_leaks=0"} ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
