@@ -22,6 +22,9 @@ extern "C" {
 typedef uint16_t tick_t;
 typedef int16_t difftick_t;
 
+#define TICKS_PER_SECOND 10
+#define TICK_PERIOD (1.0 / TICKS_PER_SECOND)
+
 extern int8_t kernel_mode;
 
 extern void librertos_assert(intptr_t val, const char *msg);
