@@ -369,32 +369,37 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
     struct node_t *pos;
     INTERRUPTS_VAL();
 
-    pos = list->head;
+    do {
+        pos = list->head;
 
-    while (pos != head) {
-        task_t *task = (task_t *)pos->owner;
-        tick_t pos_tick = task->delay_until;
+        while (pos != head) {
+            task_t *task = (task_t *)pos->owner;
+            tick_t pos_tick = task->delay_until;
 
-        INTERRUPTS_ENABLE();
+            INTERRUPTS_ENABLE();
 
-        /* Compare outside of critical section. */
-        if (tick < pos_tick) {
-            /* Found the position: before pos. Stop. */
+            /* Compare outside of critical section. */
+            if (tick < pos_tick) {
+                /* Found the position: before pos. Stop. */
+                INTERRUPTS_DISABLE();
+                break;
+            }
+
             INTERRUPTS_DISABLE();
-            break;
+
+            if (pos->list != list) {
+                /* Restart if pos was removed from the list during the
+                 * comparison.
+                 */
+                break;
+            }
+
+            /* This is not the correct position. Continue. */
+            pos = pos->next;
         }
 
-        INTERRUPTS_DISABLE();
-
-        if (pos->list != list) {
-            /* pos was removed from the list during the comparison. Restart. */
-            pos = list->head;
-            continue;
-        }
-
-        /* This is not the correct position. Continue. */
-        pos = pos->next;
-    }
+        /* Restart if pos was removed from the list during the comparison. */
+    } while (pos != head && pos->list != list);
 
     pos = pos->prev;
 
@@ -423,12 +428,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     /* Suspend the task so that it can be resumed. */
     task_suspend(task);
 
-    do {
-        pos = delay_find_tick_position(delay_list, tick_to_wakeup);
-
-        /* Check if pos was removed from the list during the comparison or
-         * return. Restart. */
-    } while (pos != LIST_HEAD(delay_list) && pos->list != delay_list);
+    pos = delay_find_tick_position(delay_list, tick_to_wakeup);
 
     /* Check if current task was not resumed. */
     if (node->list == &librertos.tasks_suspended) {
@@ -652,32 +652,37 @@ event_find_priority_position(struct list_t *list, int8_t priority) {
     struct node_t *pos;
     INTERRUPTS_VAL();
 
-    pos = list->head;
+    do {
+        pos = list->head;
 
-    while (pos != head) {
-        task_t *task = (task_t *)pos->owner;
-        int8_t pos_priority = task->priority;
+        while (pos != head) {
+            task_t *task = (task_t *)pos->owner;
+            int8_t pos_priority = task->priority;
 
-        INTERRUPTS_ENABLE();
+            INTERRUPTS_ENABLE();
 
-        /* Compare outside of critical section. */
-        if (priority > pos_priority) {
-            /* Found the position: before pos. Stop. */
+            /* Compare outside of critical section. */
+            if (priority > pos_priority) {
+                /* Found the position: before pos. Stop. */
+                INTERRUPTS_DISABLE();
+                break;
+            }
+
             INTERRUPTS_DISABLE();
-            break;
+
+            if (pos->list != list) {
+                /* Restart if pos was removed from the list during the
+                 * comparison.
+                 */
+                break;
+            }
+
+            /* This is not the correct position. Continue. */
+            pos = pos->next;
         }
 
-        INTERRUPTS_DISABLE();
-
-        if (pos->list != list) {
-            /* pos was removed from the list during the comparison. Restart. */
-            pos = list->head;
-            continue;
-        }
-
-        /* This is not the correct position. Continue. */
-        pos = pos->next;
-    }
+        /* Restart if pos was removed from the list during the comparison. */
+    } while (pos != head && pos->list != list);
 
     pos = pos->prev;
 
@@ -692,13 +697,7 @@ void event_add_task_to_event(event_t *event) {
 
     list_insert_last(&event->suspended_tasks, &task->event_node);
 
-    do {
-        pos = event_find_priority_position(
-            &event->suspended_tasks, task_priority);
-
-        /* Check if pos was removed from the list during the comparison or
-         * return. Restart. */
-    } while (pos != LIST_HEAD(&event->suspended_tasks) && pos->list != &event->suspended_tasks);
+    pos = event_find_priority_position(&event->suspended_tasks, task_priority);
 
     /* Check if current task was not resumed. */
     if (task->sched_node.list == &librertos.tasks_suspended) {

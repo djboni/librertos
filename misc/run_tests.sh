@@ -15,6 +15,7 @@ TestsObjDir="$BuildDir/obj_tests"
 ObjDir="$BuildDir/obj"
 
 OptionRunTest=1
+OptionRunCustomTest=
 
 # Variables
 TestTotal=0
@@ -125,6 +126,19 @@ DoRunTest() {
 
     # Arguments
     Test="$1"
+
+    TestSH="${Test%.[cC]*}.sh"
+    if [ -z $OptionRunCustomTest ] && [ -f "$TestSH" ]; then
+        # Run the custom test
+
+        sh "$TestSH"
+        TestResult=$?
+
+        # Update results
+        DoUpdateResults $TestResult 0
+
+        return
+    fi
 
     # Determine file names and directories
 
@@ -301,6 +315,9 @@ DoProcessCommandLineArguments() {
             ;;
         --only-build)
             OptionRunTest=
+            ;;
+        --no-custom-test)
+            OptionRunCustomTest=1
             ;;
         -c|--clean)
             rm -fr "$BuildDir"
