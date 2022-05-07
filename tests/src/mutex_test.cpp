@@ -29,7 +29,7 @@ TEST_GROUP (Mutex) {
 };
 
 TEST(Mutex, Unlocked_Locks) {
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
 }
 
 TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction) {
@@ -78,8 +78,8 @@ TEST(Mutex, Unlocked_TaskCanLockMultipleTimes) {
     scheduler_lock();
     set_current_task(&task1);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
 }
 
 TEST(Mutex, Locked_TaskCanUnLockMultipleTimes) {
@@ -100,17 +100,17 @@ TEST(Mutex, Unlocked_TaskCanLock_AndUnlock_MultipleTimes) {
     scheduler_lock();
     set_current_task(&task1);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);
@@ -124,7 +124,7 @@ TEST(Mutex, Locked_SecondTaskCannotLock) {
     mutex_lock(&mtx);
     set_current_task(&task2);
 
-    LONGS_EQUAL(FAIL, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_FAIL, mutex_lock(&mtx));
 }
 
 TEST(Mutex, Locked_InterruptCannotLock) {
@@ -135,7 +135,7 @@ TEST(Mutex, Locked_InterruptCannotLock) {
     mutex_lock(&mtx);
     (void)interrupt_lock();
 
-    LONGS_EQUAL(FAIL, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_FAIL, mutex_lock(&mtx));
 }
 
 TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes) {
@@ -143,17 +143,17 @@ TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes) {
 
     (void)interrupt_lock();
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);
 
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);
     mutex_unlock(&mtx);

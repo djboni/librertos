@@ -67,23 +67,23 @@ TEST(Queue_Size1, TwoBuffGuards) {
 
 TEST(Queue_Size1, Empty_CannotRead) {
     que_struct data;
-    LONGS_EQUAL(FAIL, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_read(&que, &data));
 }
 
 TEST(Queue_Size1, Empty_Writes) {
-    LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_A));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_write(&que, &que_struct_val_A));
 }
 
 TEST(Queue_Size1, Empty_CannotWriteTwice) {
     queue_write(&que, &que_struct_val_A);
-    LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_B));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_write(&que, &que_struct_val_B));
 }
 
 TEST(Queue_Size1, NotEmpty_Reads) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
 
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
@@ -93,10 +93,10 @@ TEST(Queue_Size1, WrapsHead_WrapsTail) {
     queue_read(&que, &data);
 
     // Write wraps head
-    LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_B));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_write(&que, &que_struct_val_B));
 
     // Read wraps tail
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_B, &data, sizeof(que_struct));
 }
 
@@ -137,28 +137,28 @@ TEST_GROUP (Queue_Size2) {
 
 TEST(Queue_Size2, Empty_CannotRead) {
     que_struct data;
-    LONGS_EQUAL(FAIL, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_read(&que, &data));
 }
 
 TEST(Queue_Size2, Empty_Writes) {
-    LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_A));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_write(&que, &que_struct_val_A));
 }
 TEST(Queue_Size2, Empty_WritesTwice) {
     queue_write(&que, &que_struct_val_A);
-    LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_B));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_write(&que, &que_struct_val_B));
 }
 
 TEST(Queue_Size2, Empty_CannotWriteThreeTimes) {
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
-    LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_C));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_write(&que, &que_struct_val_C));
 }
 
 TEST(Queue_Size2, NotEmpty_Reads) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
 
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
@@ -167,7 +167,7 @@ TEST(Queue_Size2, FirstInFirstOut) {
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
 
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
@@ -177,7 +177,7 @@ TEST(Queue_Size2, FirstInFirstOut_2) {
     queue_write(&que, &que_struct_val_B);
     queue_read(&que, &data);
 
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_B, &data, sizeof(que_struct));
 }
 
@@ -188,12 +188,12 @@ TEST(Queue_Size2, WrapsHead_WrapsTail) {
     queue_read(&que, &data);
 
     // Write wraps head
-    LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_C));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_write(&que, &que_struct_val_C));
 
     queue_read(&que, &data);
 
     // Read wraps tail
-    LONGS_EQUAL(SUCCESS, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, queue_read(&que, &data));
     MEMCMP_EQUAL(&que_struct_val_C, &data, sizeof(que_struct));
 }
 
@@ -243,11 +243,11 @@ TEST_GROUP (Queue_Size0) {
 
 TEST(Queue_Size0, Empty_CannotRead) {
     que_struct data;
-    LONGS_EQUAL(FAIL, queue_read(&que, &data));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_read(&que, &data));
 }
 
 TEST(Queue_Size0, Full_CannotWrite) {
-    LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_A));
+    LONGS_EQUAL(LIBRERTOS_FAIL, queue_write(&que, &que_struct_val_A));
 }
 
 TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize) {

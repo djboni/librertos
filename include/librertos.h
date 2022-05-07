@@ -35,8 +35,8 @@ struct os_task_t;
 struct node_t;
 
 typedef enum {
-    FAIL = 0,
-    SUCCESS = 1
+    LIBRERTOS_FAIL = 0,
+    LIBRERTOS_SUCCESS = 1
 } result_t;
 
 typedef enum {

@@ -810,14 +810,14 @@ static uint8_t semaphore_can_be_unlocked(semaphore_t *sem) {
  * @return 1 with success, 0 otherwise.
  */
 result_t semaphore_lock(semaphore_t *sem) {
-    result_t result = FAIL;
+    result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
     if (semaphore_can_be_locked(sem)) {
         sem->count--;
-        result = SUCCESS;
+        result = LIBRERTOS_SUCCESS;
     }
 
     CRITICAL_EXIT();
@@ -831,7 +831,7 @@ result_t semaphore_lock(semaphore_t *sem) {
  * @return 1 with success, 0 otherwise.
  */
 result_t semaphore_unlock(semaphore_t *sem) {
-    result_t result = FAIL;
+    result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -840,7 +840,7 @@ result_t semaphore_unlock(semaphore_t *sem) {
         scheduler_lock();
 
         sem->count++;
-        result = SUCCESS;
+        result = LIBRERTOS_SUCCESS;
 
         event_resume_task(&sem->event_unlock);
 
@@ -918,7 +918,7 @@ result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     result_t result;
 
     result = semaphore_lock(sem);
-    if (result == FAIL)
+    if (result == LIBRERTOS_FAIL)
         semaphore_suspend(sem, ticks_to_delay);
 
     return result;
@@ -953,7 +953,7 @@ static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
  * @return 1 with success, 0 otherwise.
  */
 result_t mutex_lock(mutex_t *mtx) {
-    result_t result = FAIL;
+    result_t result = LIBRERTOS_FAIL;
     task_t *current_task;
     CRITICAL_VAL();
 
@@ -964,7 +964,7 @@ result_t mutex_lock(mutex_t *mtx) {
     if (mutex_can_be_locked(mtx, current_task)) {
         ++(mtx->locked);
         mtx->task_owner = current_task;
-        result = SUCCESS;
+        result = LIBRERTOS_SUCCESS;
     }
 
     CRITICAL_EXIT();
@@ -1106,7 +1106,7 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     result_t result;
 
     result = mutex_lock(mtx);
-    if (result == FAIL)
+    if (result == LIBRERTOS_FAIL)
         mutex_suspend(mtx, ticks_to_delay);
 
     return result;
@@ -1156,7 +1156,7 @@ static uint8_t queue_can_be_written(queue_t *que) {
  * @return 1 with success, 0 otherwise.
  */
 result_t queue_read(queue_t *que, void *data) {
-    result_t result = FAIL;
+    result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -1170,7 +1170,7 @@ result_t queue_read(queue_t *que, void *data) {
 
         que->free++;
         que->used--;
-        result = SUCCESS;
+        result = LIBRERTOS_SUCCESS;
     }
 
     CRITICAL_EXIT();
@@ -1185,7 +1185,7 @@ result_t queue_read(queue_t *que, void *data) {
  * @return 1 with success, 0 otherwise.
  */
 result_t queue_write(queue_t *que, const void *data) {
-    result_t result = FAIL;
+    result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -1201,7 +1201,7 @@ result_t queue_write(queue_t *que, const void *data) {
 
         que->free--;
         que->used++;
-        result = SUCCESS;
+        result = LIBRERTOS_SUCCESS;
 
         event_resume_task(&que->event_write);
 
@@ -1327,7 +1327,7 @@ result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay) {
     result_t result;
 
     result = queue_read(que, data);
-    if (result == FAIL)
+    if (result == LIBRERTOS_FAIL)
         queue_suspend(que, ticks_to_delay);
 
     return result;
