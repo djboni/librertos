@@ -67,6 +67,7 @@ DoBuildCppUTestIfNecessary() {
             set -xe
 
             # Build CppUTest
+            mkdir -p "$CPPUTEST_DIR/cpputest_build"
             cd "$CPPUTEST_DIR/cpputest_build"
             autoreconf .. -i
             ../configure
