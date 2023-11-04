@@ -25,13 +25,18 @@ extern "C" {
  * InterruptsBalanced will throw an exception on destruction if there is an
  * imbalance on the increments/decrements.
  *
- * An increment must must be followed by a decrement.
- * Must decrement first.
+ * With strict order (strict_order=true) must increment first.
+ * An increment must be followed by a decrement.
+ *
+ * Without strict order (strict_order=false) can increment or decrement first.
+ * An increment must be followed by a decrement and a decrement must be followed
+ * by an increment.
+ *
  * Cannot increment or decrement multiple times.
  *
  * Example:
  *
- * InterruptsBalanced balanced;
+ * InterruptsBalanced balanced(true);
  * ++balanced;
  * --balanced;
  */

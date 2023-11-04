@@ -50,19 +50,18 @@ void librertos_init(void) {
      */
     librertos.scheduler_lock = 1;
 
-    librertos.scheduler_depth = 0;
     librertos.tick = 0;
     librertos.current_task = NO_TASK_PTR;
 
-    for (i = 0; i < NUM_PRIORITIES; i++)
+    for (i = 0; i < NUM_PRIORITIES; ++i)
         list_init(&librertos.tasks_ready[i]);
 
     list_init(&librertos.tasks_suspended);
     librertos.tasks_delayed_current = &librertos.tasks_delayed[0];
     librertos.tasks_delayed_overflow = &librertos.tasks_delayed[1];
 
-    for (i = 0; i < 2; i++)
-        list_init(&librertos.tasks_delayed[i]);
+    list_init(&librertos.tasks_delayed[0]);
+    list_init(&librertos.tasks_delayed[1]);
 
     CRITICAL_EXIT();
 }
@@ -115,7 +114,7 @@ void librertos_create_task(
  * in a loop.
  */
 void librertos_start(void) {
-    --librertos.scheduler_lock;
+    librertos.scheduler_lock = 0;
 }
 
 static task_t *get_higher_priority_task(task_t *current_task) {
@@ -126,7 +125,7 @@ static task_t *get_higher_priority_task(task_t *current_task) {
                                   : current_task->priority;
     int8_t i;
 
-    for (i = HIGH_PRIORITY; i > current_priority; i--) {
+    for (i = HIGH_PRIORITY; i > current_priority; --i) {
         if (list_is_empty(&librertos.tasks_ready[i]))
             continue;
 
@@ -163,7 +162,6 @@ void librertos_sched(void) {
      * to run.
      */
     INTERRUPTS_DISABLE();
-    librertos.scheduler_depth++;
     current_task = librertos.current_task;
 
     while (1) {
@@ -183,7 +181,6 @@ void librertos_sched(void) {
     }
 
     librertos.current_task = current_task;
-    librertos.scheduler_depth--;
     INTERRUPTS_ENABLE();
 }
 
@@ -193,11 +190,8 @@ void librertos_sched(void) {
 void scheduler_lock(void) {
     if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
-
         CRITICAL_ENTER();
-
         ++librertos.scheduler_lock;
-
         CRITICAL_EXIT();
     }
 }
@@ -209,9 +203,7 @@ void scheduler_lock(void) {
 void scheduler_unlock(void) {
     if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
-
         CRITICAL_ENTER();
-
         if (--librertos.scheduler_lock == 0) {
             CRITICAL_EXIT();
             librertos_sched();
@@ -226,18 +218,16 @@ void scheduler_unlock(void) {
  * kernel. Returns the current task so it can be restored when unlocking the
  * scheduler.
  *
- * This function must be called in the begining of interrupts that use LibreRTOS
+ * This function must be called in the beginning of interrupts that use LibreRTOS
  * functions.
  *
  * @return Task preempted by the interrupt.
  */
 task_t *interrupt_lock(void) {
     task_t *task;
-
     scheduler_lock();
     task = get_current_task();
     set_current_task(INTERRUPT_TASK_PTR);
-
     return task;
 }
 
@@ -268,14 +258,10 @@ void librertos_tick_interrupt(void) {
     task_t *task = interrupt_lock();
     tick_t now;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     now = ++librertos.tick;
     resume_delayed_tasks(now);
-
     CRITICAL_EXIT();
-
     interrupt_unlock(task);
 }
 
@@ -287,13 +273,9 @@ void librertos_tick_interrupt(void) {
 tick_t get_tick(void) {
     tick_t tick;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     tick = librertos.tick;
-
     CRITICAL_EXIT();
-
     return tick;
 }
 
@@ -304,13 +286,9 @@ tick_t get_tick(void) {
 task_t *get_current_task(void) {
     task_t *task;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     task = librertos.current_task;
-
     CRITICAL_EXIT();
-
     return task;
 }
 
@@ -319,11 +297,8 @@ task_t *get_current_task(void) {
  */
 void set_current_task(task_t *task) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     librertos.current_task = task;
-
     CRITICAL_EXIT();
 }
 
@@ -359,7 +334,6 @@ static void resume_delayed_tasks(tick_t now) {
         swap_lists_of_delayed_tasks();
         resume_list_of_tasks(librertos.tasks_delayed_overflow, MAX_DELAY);
     }
-
     resume_list_of_tasks(librertos.tasks_delayed_current, now);
 }
 
@@ -402,7 +376,6 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
     } while (pos != head && pos->list != list);
 
     pos = pos->prev;
-
     return pos;
 }
 
@@ -413,8 +386,6 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     struct node_t *pos;
     struct list_t *delay_list;
     CRITICAL_VAL();
-
-    (void)tick_to_wakeup;
 
     scheduler_lock();
     CRITICAL_ENTER();
@@ -515,14 +486,11 @@ void task_resume(task_t *task) {
  */
 void task_resume_all(void) {
     CRITICAL_VAL();
-
     scheduler_lock();
     CRITICAL_ENTER();
-
     resume_list_of_tasks(&librertos.tasks_suspended, MAX_DELAY);
     resume_list_of_tasks(&librertos.tasks_delayed[0], MAX_DELAY);
     resume_list_of_tasks(&librertos.tasks_delayed[1], MAX_DELAY);
-
     CRITICAL_EXIT();
     scheduler_unlock();
 }
@@ -550,35 +518,10 @@ uint8_t node_in_list(struct node_t *node) {
 /* Call with interrupts disabled. */
 void list_insert_after(
     struct list_t *list, struct node_t *pos, struct node_t *node) {
-    /*
-     * A  x-- C --x  B
-     *   <--------->
-     *
-     * A = pos
-     * C = node
-     */
-
     node->next = pos->next;
     node->prev = pos;
-
-    /*
-     * A <--- C ---> B
-     *   <--------->
-     */
-
     pos->next->prev = node;
-
-    /*
-     * A <--- C <--> B
-     *   ---------->
-     */
-
     pos->next = node;
-
-    /*
-     * A <--> C <--> B
-     */
-
     node->list = list;
     list->length++;
 }
@@ -596,36 +539,10 @@ void list_insert_last(struct list_t *list, struct node_t *node) {
 /* Call with interrupts disabled. */
 void list_remove(struct node_t *node) {
     struct list_t *list = node->list;
-
-    /*
-     * A <--> C <--> B
-     *
-     * A = pos
-     * C = node
-     */
-
     node->next->prev = node->prev;
-
-    /*
-     * A <--> C ---> B
-     *   <----------
-     */
-
     node->prev->next = node->next;
-
-    /*
-     * A <--- C ---> B
-     *   <--------->
-     */
-
     node->next = NULL;
     node->prev = NULL;
-
-    /*
-     * A  x-- C --x  B
-     *   <--------->
-     */
-
     node->list = NULL;
     list->length--;
 }
@@ -812,7 +729,6 @@ static uint8_t semaphore_can_be_unlocked(semaphore_t *sem) {
 result_t semaphore_lock(semaphore_t *sem) {
     result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (semaphore_can_be_locked(sem)) {
@@ -821,7 +737,6 @@ result_t semaphore_lock(semaphore_t *sem) {
     }
 
     CRITICAL_EXIT();
-
     return result;
 }
 
@@ -833,7 +748,6 @@ result_t semaphore_lock(semaphore_t *sem) {
 result_t semaphore_unlock(semaphore_t *sem) {
     result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (semaphore_can_be_unlocked(sem)) {
@@ -859,13 +773,9 @@ result_t semaphore_unlock(semaphore_t *sem) {
 uint8_t semaphore_get_count(semaphore_t *sem) {
     uint8_t count;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     count = sem->count;
-
     CRITICAL_EXIT();
-
     return count;
 }
 
@@ -889,7 +799,6 @@ uint8_t semaphore_get_max(semaphore_t *sem) {
  */
 void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (!semaphore_can_be_locked(sem)) {
@@ -915,12 +824,9 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
  * @return 1 with success locking, 0 otherwise.
  */
 result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
-    result_t result;
-
-    result = semaphore_lock(sem);
+    result_t result = semaphore_lock(sem);
     if (result == LIBRERTOS_FAIL)
         semaphore_suspend(sem, ticks_to_delay);
-
     return result;
 }
 
@@ -929,7 +835,6 @@ result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
  */
 void mutex_init(mutex_t *mtx) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
@@ -956,19 +861,17 @@ result_t mutex_lock(mutex_t *mtx) {
     result_t result = LIBRERTOS_FAIL;
     task_t *current_task;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     current_task = librertos.current_task;
 
     if (mutex_can_be_locked(mtx, current_task)) {
-        ++(mtx->locked);
+        mtx->locked++;
         mtx->task_owner = current_task;
         result = LIBRERTOS_SUCCESS;
     }
 
     CRITICAL_EXIT();
-
     return result;
 }
 
@@ -1014,7 +917,7 @@ void mutex_unlock(mutex_t *mtx) {
     CRITICAL_ENTER();
 
     if (mtx->locked != MUTEX_UNLOCKED) {
-        --(mtx->locked);
+        mtx->locked--;
     }
 
     if (mtx->locked == MUTEX_UNLOCKED) {
@@ -1046,13 +949,9 @@ void mutex_unlock(mutex_t *mtx) {
 uint8_t mutex_is_locked(mutex_t *mtx) {
     uint8_t locked;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     locked = !mutex_can_be_locked(mtx, librertos.current_task);
-
     CRITICAL_EXIT();
-
     return locked;
 }
 
@@ -1067,7 +966,6 @@ uint8_t mutex_is_locked(mutex_t *mtx) {
  */
 void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (!mutex_can_be_locked(mtx, librertos.current_task)) {
@@ -1103,12 +1001,9 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
  * @return 1 with success locking, 0 otherwise.
  */
 result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
-    result_t result;
-
-    result = mutex_lock(mtx);
+    result_t result = mutex_lock(mtx);
     if (result == LIBRERTOS_FAIL)
         mutex_suspend(mtx, ticks_to_delay);
-
     return result;
 }
 
@@ -1121,7 +1016,6 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
  */
 void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     /* Make non-zero, to be easy to spot uninitialized fields. */
@@ -1158,7 +1052,6 @@ static uint8_t queue_can_be_written(queue_t *que) {
 result_t queue_read(queue_t *que, void *data) {
     result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (queue_can_be_read(que)) {
@@ -1174,7 +1067,6 @@ result_t queue_read(queue_t *que, void *data) {
     }
 
     CRITICAL_EXIT();
-
     return result;
 }
 
@@ -1187,7 +1079,6 @@ result_t queue_read(queue_t *que, void *data) {
 result_t queue_write(queue_t *que, const void *data) {
     result_t result = LIBRERTOS_FAIL;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (queue_can_be_written(que)) {
@@ -1220,13 +1111,9 @@ result_t queue_write(queue_t *que, const void *data) {
 uint8_t queue_get_num_free(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     value = que->free;
-
     CRITICAL_EXIT();
-
     return value;
 }
 
@@ -1236,13 +1123,9 @@ uint8_t queue_get_num_free(queue_t *que) {
 uint8_t queue_get_num_used(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     value = que->used;
-
     CRITICAL_EXIT();
-
     return value;
 }
 
@@ -1266,13 +1149,9 @@ uint8_t queue_is_full(queue_t *que) {
 uint8_t queue_get_num_items(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
-
     value = que->free + que->used;
-
     CRITICAL_EXIT();
-
     return value;
 }
 
@@ -1296,7 +1175,6 @@ uint8_t queue_get_item_size(queue_t *que) {
  */
 void queue_suspend(queue_t *que, tick_t ticks_to_delay) {
     CRITICAL_VAL();
-
     CRITICAL_ENTER();
 
     if (!queue_can_be_read(que)) {
@@ -1324,11 +1202,8 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay) {
  * @return 1 with success reading, 0 otherwise.
  */
 result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay) {
-    result_t result;
-
-    result = queue_read(que, data);
+    result_t result = queue_read(que, data);
     if (result == LIBRERTOS_FAIL)
         queue_suspend(que, ticks_to_delay);
-
     return result;
 }
