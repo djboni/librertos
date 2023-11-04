@@ -13,46 +13,38 @@
     #define LED_BIT (1 << PB7)
 #endif
 
-void led_config(void)
-{
+void led_config(void) {
     LED_DDR |= LED_BIT; /* LED output. */
     led_off();
 }
 
-void led_on(void)
-{
+void led_on(void) {
     LED_PORT |= LED_BIT; /* LED ON. */
 }
 
-void led_off(void)
-{
+void led_off(void) {
     LED_PORT &= ~LED_BIT; /* LED OFF. */
 }
 
-void led_toggle(void)
-{
+void led_toggle(void) {
     LED_PIN = LED_BIT; /* LED toggle. */
 }
 
-void port_init(void)
-{
+void port_init(void) {
     led_config();
 }
 
-void idle_wait_interrupt(void)
-{
+void idle_wait_interrupt(void) {
 }
 
-void port_enable_tick_interrupt(void)
-{
+void port_enable_tick_interrupt(void) {
     uint8_t prescaler;
 
     PRR &= ~(1U << PRTIM0); /* Enable timer clock. */
 
     TIMSK0 = 0U; /* Disable timer interrupts. */
 
-    switch (TIMER_PRESCALER)
-    {
+    switch (TIMER_PRESCALER) {
     case 1U:
         prescaler = 0x01U;
         break;
@@ -81,9 +73,8 @@ void port_enable_tick_interrupt(void)
              (0x00U << COM0B0) | /* Normal port operation, OC0B disconnected. */
              (0x03U << WGM00);   /* Mode: Fast PWM (WGM02:0=0b011). */
 
-    TCCR0B = (0x00U << FOC0A) | (0x00U << FOC0B) | (0x00U << WGM02)
-           |                      /* Mode: Fast PWM (WGM02:0=0b011). */
-             (prescaler << CS00); /* Clock source. */
+    TCCR0B = (0x00U << FOC0A) | (0x00U << FOC0B) | (0x00U << WGM02) | /* Mode: Fast PWM (WGM02:0=0b011). */
+             (prescaler << CS00);                                     /* Clock source. */
 
     TCNT0 = 0U;             /* Clear counter. */
     TIFR0 = 0xFFU;          /* Clear interrupt flags. */
@@ -91,7 +82,6 @@ void port_enable_tick_interrupt(void)
 }
 
 /* Timer0 overflow ISR. */
-ISR(TIMER0_OVF_vect)
-{
+ISR(TIMER0_OVF_vect) {
     librertos_tick_interrupt();
 }

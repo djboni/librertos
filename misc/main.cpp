@@ -6,18 +6,17 @@
 
 #include <cstdio>
 
-struct MockSupportPluginComparator : MockNamedValueComparator
-{
-    MockSupportPluginComparator() {}
-    ~MockSupportPluginComparator() {}
+struct MockSupportPluginComparator : MockNamedValueComparator {
+    MockSupportPluginComparator() {
+    }
+    ~MockSupportPluginComparator() {
+    }
 
-    bool isEqual(const void *object1, const void *object2)
-    {
+    bool isEqual(const void *object1, const void *object2) {
         return object1 == object2;
     }
 
-    SimpleString valueToString(const void *object)
-    {
+    SimpleString valueToString(const void *object) {
         char str[32];
 
         std::snprintf(&str[0], sizeof(str), "%p", object);
@@ -27,8 +26,7 @@ struct MockSupportPluginComparator : MockNamedValueComparator
     }
 };
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     MockSupportPluginComparator comparator;
     MockSupportPlugin mock_plugin;
 

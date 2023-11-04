@@ -7,7 +7,10 @@
             "label": "Build Current Test",
             "type": "shell",
             "command": "misc/run_tests.sh",
-            "args": ["--only-build", "${relativeFileDirname}/${fileBasename}"],
+            "args": [
+                "--only-build",
+                "${relativeFileDirname}/${fileBasename}"
+            ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },

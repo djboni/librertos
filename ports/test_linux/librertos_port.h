@@ -35,39 +35,34 @@ extern "C" {
  * ++balanced;
  * --balanced;
  */
-class InterruptsBalanced
-{
-public:
-    struct Imbalanced
-    {
+class InterruptsBalanced {
+  public:
+    struct Imbalanced {
     };
 
     InterruptsBalanced(bool strict_order = true)
-        : balance(0), already_thrown(false), strict_order(strict_order)
-    {
+        : balance(0), already_thrown(false), strict_order(strict_order) {
     }
 
-    ~InterruptsBalanced() NOEXCEPT_FALSE { throw_if_unbalanced(); }
+    ~InterruptsBalanced() NOEXCEPT_FALSE {
+        throw_if_unbalanced();
+    }
 
-    void operator++()
-    {
+    void operator++() {
         if (strict_order)
             throw_if_unbalanced();
         ++balance;
     }
 
-    void operator--()
-    {
+    void operator--() {
         --balance;
         if (strict_order)
             throw_if_unbalanced();
     }
 
-private:
-    void throw_if_unbalanced()
-    {
-        if (balance != 0 && !already_thrown)
-        {
+  private:
+    void throw_if_unbalanced() {
+        if (balance != 0 && !already_thrown) {
             already_thrown = true;
             throw Imbalanced();
         }

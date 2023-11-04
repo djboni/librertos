@@ -10,8 +10,10 @@ extern "C" {
 #include "librertos_proj.h"
 
 #define INTERRUPTS_VAL()
-#define INTERRUPTS_DISABLE() __asm __volatile("cli" ::: "memory")
-#define INTERRUPTS_ENABLE() __asm __volatile("sei" ::: "memory")
+#define INTERRUPTS_DISABLE() __asm __volatile("cli" :: \
+                                                  : "memory")
+#define INTERRUPTS_ENABLE() __asm __volatile("sei" :: \
+                                                 : "memory")
 
 #define CRITICAL_VAL() uint8_t __istate_val
 #define CRITICAL_ENTER() \
@@ -20,7 +22,8 @@ extern "C" {
         "cli             \n\t" \
         : "=r"(__istate_val)::"memory")
 #define CRITICAL_EXIT() \
-    __asm __volatile("out __SREG__, %0 \n\t" ::"r"(__istate_val) : "memory")
+    __asm __volatile("out __SREG__, %0 \n\t" ::"r"(__istate_val) \
+                     : "memory")
 
 void port_init(void);
 void idle_wait_interrupt(void);

@@ -18,14 +18,12 @@ extern "C" {
 #define MAX_DELAY ((tick_t)-1)
 
 #define PERIODIC(delay_ticks, code) \
-    do \
-    { \
+    do { \
         const difftick_t __delay = (delay_ticks); \
         static tick_t __last = -__delay; \
         tick_t __now = get_tick(); \
         difftick_t __diff = __now - __last; \
-        if (__diff >= __delay) \
-        { \
+        if (__diff >= __delay) { \
             __last += __delay; \
             { \
                 code; \
@@ -36,33 +34,28 @@ extern "C" {
 struct os_task_t;
 struct node_t;
 
-typedef enum
-{
+typedef enum {
     FAIL = 0,
     SUCCESS = 1
 } result_t;
 
-typedef enum
-{
+typedef enum {
     LOW_PRIORITY = 0,
     HIGH_PRIORITY = NUM_PRIORITIES - 1
 } priority_t;
 
-typedef enum
-{
+typedef enum {
     LIBRERTOS_PREEMPTIVE = 0,
     LIBRERTOS_COOPERATIVE
 } kernel_mode_t;
 
-struct list_t
-{
+struct list_t {
     struct node_t *head;
     struct node_t *tail;
     uint8_t length;
 };
 
-struct node_t
-{
+struct node_t {
     struct node_t *next;
     struct node_t *prev;
     struct list_t *list;
@@ -103,8 +96,7 @@ typedef struct
 typedef void *task_parameter_t;
 typedef void (*task_function_t)(task_parameter_t param);
 
-typedef struct os_task_t
-{
+typedef struct os_task_t {
     task_function_t func;
     task_parameter_t param;
     int8_t task_state;

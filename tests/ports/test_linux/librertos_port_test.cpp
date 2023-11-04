@@ -5,27 +5,25 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (TestInterruptsBalanced)
-{
-    void setup() {}
-    void teardown() {}
+TEST_GROUP (TestInterruptsBalanced) {
+    void setup() {
+    }
+    void teardown() {
+    }
 };
 
-TEST(TestInterruptsBalanced, Construct_OK)
-{
+TEST(TestInterruptsBalanced, Construct_OK) {
     InterruptsBalanced balanced;
 }
 
-TEST(TestInterruptsBalanced, IncrementAndDecrement_OK)
-{
+TEST(TestInterruptsBalanced, IncrementAndDecrement_OK) {
     InterruptsBalanced balanced;
 
     ++balanced;
     --balanced;
 }
 
-TEST(TestInterruptsBalanced, IncrementAndDecrement_OK_2)
-{
+TEST(TestInterruptsBalanced, IncrementAndDecrement_OK_2) {
     InterruptsBalanced balanced;
 
     ++balanced;
@@ -35,15 +33,13 @@ TEST(TestInterruptsBalanced, IncrementAndDecrement_OK_2)
     --balanced;
 }
 
-static void should_throw_on_destructor(bool &throws_after_increment)
-{
+static void should_throw_on_destructor(bool &throws_after_increment) {
     InterruptsBalanced balanced;
     ++balanced;
     throws_after_increment = true;
 }
 
-TEST(TestInterruptsBalanced, JustIncrement_Throws)
-{
+TEST(TestInterruptsBalanced, JustIncrement_Throws) {
     bool throws_after_increment = false;
 
     CHECK_THROWS(
@@ -53,8 +49,7 @@ TEST(TestInterruptsBalanced, JustIncrement_Throws)
     CHECK_TRUE(throws_after_increment);
 }
 
-TEST(TestInterruptsBalanced, JustDecrement_Throws)
-{
+TEST(TestInterruptsBalanced, JustDecrement_Throws) {
     InterruptsBalanced balanced;
 
     CHECK_THROWS(InterruptsBalanced::Imbalanced, --balanced);

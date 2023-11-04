@@ -15,14 +15,15 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (Delay)
-{
-    void setup() { test_init(); }
-    void teardown() {}
+TEST_GROUP (Delay) {
+    void setup() {
+        test_init();
+    }
+    void teardown() {
+    }
 };
 
-TEST(Delay, Delay_SuspendOneTask)
-{
+TEST(Delay, Delay_SuspendOneTask) {
     auto task = test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -31,8 +32,7 @@ TEST(Delay, Delay_SuspendOneTask)
     POINTERS_EQUAL(librertos.tasks_delayed_current, task[0]->sched_node.list);
 }
 
-TEST(Delay, Delay_SuspendsTwoTasks)
-{
+TEST(Delay, Delay_SuspendsTwoTasks) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -45,8 +45,7 @@ TEST(Delay, Delay_SuspendsTwoTasks)
     POINTERS_EQUAL(librertos.tasks_delayed_current, task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ResumeOneTask)
-{
+TEST(Delay, TickInterrupt_ResumeOneTask) {
     auto task = test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -57,8 +56,7 @@ TEST(Delay, TickInterrupt_ResumeOneTask)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[0]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks)
-{
+TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -73,8 +71,7 @@ TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks)
     POINTERS_EQUAL(librertos.tasks_delayed_current, task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks_2)
-{
+TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks_2) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -90,8 +87,7 @@ TEST(Delay, TickInterrupt_ResumeOnlyExpiredTasks_2)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ResumeMultipleExpiredTasks)
-{
+TEST(Delay, TickInterrupt_ResumeMultipleExpiredTasks) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -110,8 +106,7 @@ TEST(Delay, TickInterrupt_ResumeMultipleExpiredTasks)
     POINTERS_EQUAL(librertos.tasks_delayed_current, task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_TwoTasks_TimeSequence)
-{
+TEST(Delay, TickInterrupt_TwoTasks_TimeSequence) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -131,8 +126,7 @@ TEST(Delay, TickInterrupt_TwoTasks_TimeSequence)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_2)
-{
+TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_2) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -152,8 +146,7 @@ TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_2)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_3)
-{
+TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_3) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -168,8 +161,7 @@ TEST(Delay, TickInterrupt_TwoTasks_TimeSequence_3)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -200,8 +192,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_2)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_2) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -232,8 +223,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_2)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_3)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_3) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[1]);
@@ -264,8 +254,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_3)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_4)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_4) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[1]);
@@ -296,8 +285,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_4)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_5)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_5) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[2]);
@@ -328,8 +316,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_5)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_6)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_6) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[2]);
@@ -360,8 +347,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_6)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_7)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_7) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -386,8 +372,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_7)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_8)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_8) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[1]);
@@ -412,8 +397,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_8)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_9)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_9) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -438,8 +422,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_9)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_10)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_10) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[1]);
@@ -464,8 +447,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_10)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_11)
-{
+TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_11) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_current_task(task[0]);
@@ -484,8 +466,7 @@ TEST(Delay, TickInterrupt_ThreeTasks_TimeSequence_11)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, Delay_SuspendOneTask_Overflowed)
-{
+TEST(Delay, Delay_SuspendOneTask_Overflowed) {
     auto task = test_create_tasks({0}, NULL, {NULL});
 
     set_tick(1);
@@ -496,8 +477,7 @@ TEST(Delay, Delay_SuspendOneTask_Overflowed)
     POINTERS_EQUAL(librertos.tasks_delayed_overflow, task[0]->sched_node.list);
 }
 
-TEST(Delay, Delay_SuspendsTwoTasks_Overflowed)
-{
+TEST(Delay, Delay_SuspendsTwoTasks_Overflowed) {
     auto task = test_create_tasks({0, 0}, NULL, {NULL});
 
     set_tick(2);
@@ -512,8 +492,7 @@ TEST(Delay, Delay_SuspendsTwoTasks_Overflowed)
     POINTERS_EQUAL(librertos.tasks_delayed_overflow, task[1]->sched_node.list);
 }
 
-TEST(Delay, TickInterrupt_Overflow_SwapDelayLists)
-{
+TEST(Delay, TickInterrupt_Overflow_SwapDelayLists) {
     POINTERS_EQUAL(
         &librertos.tasks_delayed[0], librertos.tasks_delayed_current);
     POINTERS_EQUAL(
@@ -536,8 +515,7 @@ TEST(Delay, TickInterrupt_Overflow_SwapDelayLists)
         &librertos.tasks_delayed[1], librertos.tasks_delayed_overflow);
 }
 
-TEST(Delay, TickInterrupt_Overflow_ResumeTasks)
-{
+TEST(Delay, TickInterrupt_Overflow_ResumeTasks) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_tick(2);
@@ -569,8 +547,7 @@ TEST(Delay, TickInterrupt_Overflow_ResumeTasks)
     POINTERS_EQUAL(&librertos.tasks_ready[0], task[2]->sched_node.list);
 }
 
-TEST(Delay, ResumeAllTasks_AlsoResumesDelayedTasks)
-{
+TEST(Delay, ResumeAllTasks_AlsoResumesDelayedTasks) {
     auto task = test_create_tasks({0, 0, 0}, NULL, {NULL});
 
     set_tick(1);

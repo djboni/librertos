@@ -10,8 +10,7 @@ extern "C" {
 #include <stdint.h>
 
 #define LIBRERTOS_ASSERT(expr, val, msg) \
-    do \
-    { \
+    do { \
         if (!(expr)) \
             librertos_assert((val), (msg)); \
     } while (0)
@@ -35,11 +34,12 @@ extern void librertos_assert(intptr_t val, const char *msg);
 
 #ifdef __cplusplus
 
-class AssertionError
-{
-public:
+class AssertionError {
+  public:
     const char *const msg;
-    AssertionError(const char *m) : msg(m) {}
+    AssertionError(const char *m)
+        : msg(m) {
+    }
 };
 
 #endif /* __cplusplus */

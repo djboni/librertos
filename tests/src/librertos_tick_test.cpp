@@ -15,64 +15,60 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (TimeKeeper)
-{
-    void setup() { librertos_init(); }
-    void teardown() {}
+TEST_GROUP (TimeKeeper) {
+    void setup() {
+        librertos_init();
+    }
+    void teardown() {
+    }
 };
 
-TEST(TimeKeeper, InitialTickIsZero)
-{
+TEST(TimeKeeper, InitialTickIsZero) {
     LONGS_EQUAL(0, get_tick());
 }
 
-TEST(TimeKeeper, InterruptIncrementsTick)
-{
+TEST(TimeKeeper, InterruptIncrementsTick) {
     librertos_tick_interrupt();
     LONGS_EQUAL(1, get_tick());
 }
 
-TEST(TimeKeeper, InterruptIncrementsTick_2)
-{
+TEST(TimeKeeper, InterruptIncrementsTick_2) {
     librertos_tick_interrupt();
     librertos_tick_interrupt();
     LONGS_EQUAL(2, get_tick());
 }
 
-TEST(TimeKeeper, TimeTravelAddsToTick)
-{
+TEST(TimeKeeper, TimeTravelAddsToTick) {
     time_travel(100);
     LONGS_EQUAL(100, get_tick());
 }
 
-TEST(TimeKeeper, TimeTravelAddsToTick_2)
-{
+TEST(TimeKeeper, TimeTravelAddsToTick_2) {
     librertos_tick_interrupt();
     time_travel(100);
     LONGS_EQUAL(101, get_tick());
 }
 
-TEST(TimeKeeper, SetTick)
-{
+TEST(TimeKeeper, SetTick) {
     set_tick(100);
     LONGS_EQUAL(100, get_tick());
 }
 
-TEST(TimeKeeper, SetTick_2)
-{
+TEST(TimeKeeper, SetTick_2) {
     librertos_tick_interrupt();
     set_tick(100);
     LONGS_EQUAL(100, get_tick());
 }
 
-TEST_GROUP (PeriodicMacro)
-{
-    void setup() { librertos_init(); }
-    void teardown() {}
+TEST_GROUP (PeriodicMacro) {
+    void setup() {
+        librertos_init();
+    }
+    void teardown() {
+    }
 };
 
-TEST(PeriodicMacro, ShouldRunOnTick0)
-{
+TEST(PeriodicMacro, ShouldRunOnTick0) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -81,8 +77,7 @@ TEST(PeriodicMacro, ShouldRunOnTick0)
     LONGS_EQUAL(1, var);
 }
 
-TEST(PeriodicMacro, ShouldRunOnceOnTick0)
-{
+TEST(PeriodicMacro, ShouldRunOnceOnTick0) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -92,8 +87,7 @@ TEST(PeriodicMacro, ShouldRunOnceOnTick0)
     LONGS_EQUAL(1, var);
 }
 
-TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod)
-{
+TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -105,8 +99,7 @@ TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod)
     LONGS_EQUAL(1, var);
 }
 
-TEST(PeriodicMacro, ShouldRunAfterPeriod)
-{
+TEST(PeriodicMacro, ShouldRunAfterPeriod) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -118,8 +111,7 @@ TEST(PeriodicMacro, ShouldRunAfterPeriod)
     LONGS_EQUAL(2, var);
 }
 
-TEST(PeriodicMacro, ShouldHaveStrictPeriod)
-{
+TEST(PeriodicMacro, ShouldHaveStrictPeriod) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -132,8 +124,7 @@ TEST(PeriodicMacro, ShouldHaveStrictPeriod)
     LONGS_EQUAL(2, var);
 }
 
-TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2)
-{
+TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 
@@ -148,8 +139,7 @@ TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2)
     LONGS_EQUAL(2, var);
 }
 
-TEST(PeriodicMacro, ShouldRunAfterPeriod_2)
-{
+TEST(PeriodicMacro, ShouldRunAfterPeriod_2) {
     int var = 0;
     auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
 

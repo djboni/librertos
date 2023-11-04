@@ -14,13 +14,11 @@ static sem_t idle_wakeup;
 static sem_t interrupt_go;
 static pthread_mutex_t mutual_exclusion;
 
-static void sig_handler(int sig_num)
-{
+static void sig_handler(int sig_num) {
     int retval;
     INTERRUPTS_VAL();
 
-    if (sig_num == SIGUSR1)
-    {
+    if (sig_num == SIGUSR1) {
         retval = sem_post(&interrupt_go);
         LIBRERTOS_ASSERT(
             retval == 0,
@@ -36,22 +34,18 @@ static void sig_handler(int sig_num)
             retval == 0,
             retval,
             "func_tick_interrupt(): Could not unlock (post) semaphore.");
-    }
-    else
-    {
+    } else {
         printf("sig_handler(): Caught the wrong signal number [%d].", sig_num);
         exit(sig_num);
     }
 }
 
-static void *func_tick_interrupt(void *param)
-{
+static void *func_tick_interrupt(void *param) {
     int retval;
     INTERRUPTS_VAL();
     (void)param;
 
-    for (;;)
-    {
+    for (;;) {
         usleep(1000000 * TICK_PERIOD);
 
         INTERRUPTS_DISABLE();
@@ -70,8 +64,7 @@ static void *func_tick_interrupt(void *param)
     return NULL;
 }
 
-void port_init(void)
-{
+void port_init(void) {
     int retval;
     pthread_mutexattr_t attr;
 
@@ -94,8 +87,7 @@ void port_init(void)
         retval == 0, retval, "port_init(): Could not initialize mutex.");
 }
 
-void port_enable_tick_interrupt(void)
-{
+void port_enable_tick_interrupt(void) {
     int retval =
         pthread_create(&tick_interrupt, NULL, &func_tick_interrupt, NULL);
     LIBRERTOS_ASSERT(
@@ -104,8 +96,7 @@ void port_enable_tick_interrupt(void)
         "port_enable_tick_interrupt(): Could not create tick thread.");
 }
 
-void idle_wait_interrupt(void)
-{
+void idle_wait_interrupt(void) {
     int retval = sem_wait(&idle_wakeup);
     LIBRERTOS_ASSERT(
         retval == 0,
@@ -113,29 +104,25 @@ void idle_wait_interrupt(void)
         "idle_wait_interrupt(): Could not lock (wait) semaphore.");
 }
 
-void INTERRUPTS_DISABLE(void)
-{
+void INTERRUPTS_DISABLE(void) {
     int retval = pthread_mutex_lock(&mutual_exclusion);
     LIBRERTOS_ASSERT(
         retval == 0, retval, "INTERRUPTS_DISABLE(): Could not lock mutex.");
 }
 
-void INTERRUPTS_ENABLE(void)
-{
+void INTERRUPTS_ENABLE(void) {
     int retval = pthread_mutex_unlock(&mutual_exclusion);
     LIBRERTOS_ASSERT(
         retval == 0, retval, "INTERRUPTS_ENABLE(): Could not unlock mutex.");
 }
 
-void CRITICAL_ENTER(void)
-{
+void CRITICAL_ENTER(void) {
     int retval = pthread_mutex_lock(&mutual_exclusion);
     LIBRERTOS_ASSERT(
         retval == 0, retval, "CRITICAL_ENTER(): Could not lock mutex.");
 }
 
-void CRITICAL_EXIT(void)
-{
+void CRITICAL_EXIT(void) {
     int retval = pthread_mutex_unlock(&mutual_exclusion);
     LIBRERTOS_ASSERT(
         retval == 0, retval, "CRITICAL_EXIT(): Could not unlock mutex.");

@@ -23,23 +23,20 @@
 task_t task_idle;
 task_t task_blink;
 
-void func_task_idle(void *param)
-{
+void func_task_idle(void *param) {
     (void)param;
 
     idle_wait_interrupt();
 }
 
-void func_task_blink(void *param)
-{
+void func_task_blink(void *param) {
     (void)param;
 
     led_toggle();
     task_delay(0.5 * TICKS_PER_SECOND);
 }
 
-int main(void)
-{
+int main(void) {
     port_init();
     librertos_init();
 

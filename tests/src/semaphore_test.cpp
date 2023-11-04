@@ -15,115 +15,100 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (Sempahore)
-{
+TEST_GROUP (Sempahore) {
     semaphore_t sem;
 
-    void setup() {}
-    void teardown() {}
+    void setup() {
+    }
+    void teardown() {
+    }
 };
 
-TEST(Sempahore, BinaryLocked_CannotLock)
-{
+TEST(Sempahore, BinaryLocked_CannotLock) {
     semaphore_init_locked(&sem, 1);
     LONGS_EQUAL(FAIL, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, BinaryUnlocked_Locks)
-{
+TEST(Sempahore, BinaryUnlocked_Locks) {
     semaphore_init_unlocked(&sem, 1);
     LONGS_EQUAL(SUCCESS, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, BinaryUnlocked_CannotLockTwice)
-{
+TEST(Sempahore, BinaryUnlocked_CannotLockTwice) {
     semaphore_init_unlocked(&sem, 1);
     semaphore_lock(&sem);
     LONGS_EQUAL(FAIL, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, BinaryLocked_CanUnlock)
-{
+TEST(Sempahore, BinaryLocked_CanUnlock) {
     semaphore_init_locked(&sem, 1);
     LONGS_EQUAL(SUCCESS, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, BinaryLocked_CannotUnlock)
-{
+TEST(Sempahore, BinaryLocked_CannotUnlock) {
     semaphore_init_unlocked(&sem, 1);
     LONGS_EQUAL(FAIL, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, BinaryLocked_CannotUnlockTwice)
-{
+TEST(Sempahore, BinaryLocked_CannotUnlockTwice) {
     semaphore_init_locked(&sem, 1);
     semaphore_unlock(&sem);
     LONGS_EQUAL(FAIL, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, BinaryLocked_CannotLock_CanUnlock)
-{
+TEST(Sempahore, BinaryLocked_CannotLock_CanUnlock) {
     semaphore_init_locked(&sem, 1);
     LONGS_EQUAL(FAIL, semaphore_lock(&sem));
     LONGS_EQUAL(SUCCESS, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, CountingLocked_CannotLock)
-{
+TEST(Sempahore, CountingLocked_CannotLock) {
     semaphore_init_locked(&sem, 2);
     LONGS_EQUAL(FAIL, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, CountingUnlocked_Locks)
-{
+TEST(Sempahore, CountingUnlocked_Locks) {
     semaphore_init_unlocked(&sem, 2);
     LONGS_EQUAL(SUCCESS, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, CountingUnlocked_LocksTwice)
-{
+TEST(Sempahore, CountingUnlocked_LocksTwice) {
     semaphore_init_unlocked(&sem, 2);
     semaphore_lock(&sem);
     LONGS_EQUAL(SUCCESS, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, CountingUnlocked_CannotLockThreeTimes)
-{
+TEST(Sempahore, CountingUnlocked_CannotLockThreeTimes) {
     semaphore_init_unlocked(&sem, 2);
     semaphore_lock(&sem);
     semaphore_lock(&sem);
     LONGS_EQUAL(FAIL, semaphore_lock(&sem));
 }
 
-TEST(Sempahore, CountingLocked_CanUnlock)
-{
+TEST(Sempahore, CountingLocked_CanUnlock) {
     semaphore_init_locked(&sem, 2);
     LONGS_EQUAL(SUCCESS, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, CountingLocked_CannotUnlock)
-{
+TEST(Sempahore, CountingLocked_CannotUnlock) {
     semaphore_init_unlocked(&sem, 2);
     LONGS_EQUAL(FAIL, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, CountingLocked_CannotUnlockTwice)
-{
+TEST(Sempahore, CountingLocked_CannotUnlockTwice) {
     semaphore_init_locked(&sem, 2);
     semaphore_unlock(&sem);
     LONGS_EQUAL(SUCCESS, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, CountingLocked_CannotUnlockThreeTimes)
-{
+TEST(Sempahore, CountingLocked_CannotUnlockThreeTimes) {
     semaphore_init_locked(&sem, 2);
     semaphore_unlock(&sem);
     semaphore_unlock(&sem);
     LONGS_EQUAL(FAIL, semaphore_unlock(&sem));
 }
 
-TEST(Sempahore, Binary_GetCount_GetMax)
-{
+TEST(Sempahore, Binary_GetCount_GetMax) {
     semaphore_init_locked(&sem, 1);
     LONGS_EQUAL(0, semaphore_get_count(&sem));
     LONGS_EQUAL(1, semaphore_get_max(&sem));
@@ -133,8 +118,7 @@ TEST(Sempahore, Binary_GetCount_GetMax)
     LONGS_EQUAL(1, semaphore_get_max(&sem));
 }
 
-TEST(Sempahore, Counting_GetCount_GetMax)
-{
+TEST(Sempahore, Counting_GetCount_GetMax) {
     semaphore_init_locked(&sem, 2);
     LONGS_EQUAL(0, semaphore_get_count(&sem));
     LONGS_EQUAL(2, semaphore_get_max(&sem));
@@ -148,8 +132,7 @@ TEST(Sempahore, Counting_GetCount_GetMax)
     LONGS_EQUAL(2, semaphore_get_max(&sem));
 }
 
-TEST(Sempahore, InvalidInitCount_CallsAssertFunction)
-{
+TEST(Sempahore, InvalidInitCount_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", 2)
@@ -158,16 +141,14 @@ TEST(Sempahore, InvalidInitCount_CallsAssertFunction)
     CHECK_THROWS(AssertionError, semaphore_init(&sem, 2, 1));
 }
 
-TEST_GROUP (SemaphoreEvent)
-{
+TEST_GROUP (SemaphoreEvent) {
     char buff[BUFF_SIZE];
 
     semaphore_t sem;
     task_t task1, task2;
     ParamSemaphore param1;
 
-    void setup()
-    {
+    void setup() {
         // Task sequencing buffer
         strcpy(buff, "");
 
@@ -178,11 +159,11 @@ TEST_GROUP (SemaphoreEvent)
         librertos_init();
         semaphore_init_locked(&sem, 1);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(SemaphoreEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
-{
+TEST(SemaphoreEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -194,8 +175,7 @@ TEST(SemaphoreEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_", buff);
 }
 
-TEST(SemaphoreEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
-{
+TEST(SemaphoreEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled) {
     semaphore_unlock(&sem);
 
     librertos_create_task(
@@ -210,8 +190,7 @@ TEST(SemaphoreEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AU_", buff);
 }
 
-TEST(SemaphoreEvent, TaskResumesOnEvent_ShouldBeScheduled)
-{
+TEST(SemaphoreEvent, TaskResumesOnEvent_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -223,8 +202,7 @@ TEST(SemaphoreEvent, TaskResumesOnEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(SemaphoreEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
-{
+TEST(SemaphoreEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamSemaphore::task_sequencing, &param1);
 
@@ -239,8 +217,7 @@ TEST(SemaphoreEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(SemaphoreEvent, TaskLockSuspend_UnavailableSemaphore_ShouldNotBeScheduled)
-{
+TEST(SemaphoreEvent, TaskLockSuspend_UnavailableSemaphore_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY,
         &task1,
@@ -257,8 +234,7 @@ TEST(SemaphoreEvent, TaskLockSuspend_UnavailableSemaphore_ShouldNotBeScheduled)
 
 TEST(
     SemaphoreEvent,
-    TaskLockSuspend_UnavailableSemaphore_ShouldBeScheduledWhenUnlocked)
-{
+    TaskLockSuspend_UnavailableSemaphore_ShouldBeScheduledWhenUnlocked) {
     librertos_create_task(
         LOW_PRIORITY,
         &task1,
@@ -281,8 +257,7 @@ TEST(
         buff);
 }
 
-TEST(SemaphoreEvent, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled)
-{
+TEST(SemaphoreEvent, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY,
         &task1,
@@ -299,20 +274,18 @@ TEST(SemaphoreEvent, TaskLockSuspend_AvailableSemaphore_ShouldBeScheduled)
         buff);
 }
 
-TEST_GROUP (SemaphoreEventNewTest)
-{
+TEST_GROUP (SemaphoreEventNewTest) {
     semaphore_t sem;
 
-    void setup()
-    {
+    void setup() {
         test_init();
         semaphore_init_locked(&sem, 1);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
-{
+TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -325,8 +298,7 @@ TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
-{
+TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -339,8 +311,7 @@ TEST(SemaphoreEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
-{
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -353,8 +324,7 @@ TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
-{
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -367,8 +337,7 @@ TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
-{
+TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -381,8 +350,7 @@ TEST(SemaphoreEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Success)
-{
+TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Success) {
     test_create_tasks({0}, NULL, {NULL});
     semaphore_unlock(&sem);
 
@@ -392,8 +360,7 @@ TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Success)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Fail)
-{
+TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Fail) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -402,8 +369,7 @@ TEST(SemaphoreEventNewTest, TaskLockSuspendOnEvent_Fail)
     test_task_is_suspended(&test.task[0]);
 }
 
-TEST(SemaphoreEventNewTest, TaskLockDelaysOnEvent_Fail)
-{
+TEST(SemaphoreEventNewTest, TaskLockDelaysOnEvent_Fail) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);

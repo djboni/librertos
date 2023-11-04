@@ -17,22 +17,22 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (Mutex)
-{
+TEST_GROUP (Mutex) {
     mutex_t mtx;
     task_t task1, task2;
 
-    void setup() { mutex_init(&mtx); }
-    void teardown() {}
+    void setup() {
+        mutex_init(&mtx);
+    }
+    void teardown() {
+    }
 };
 
-TEST(Mutex, Unlocked_Locks)
-{
+TEST(Mutex, Unlocked_Locks) {
     LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
 }
 
-TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction)
-{
+TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", 0)
@@ -41,14 +41,12 @@ TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction)
     CHECK_THROWS(AssertionError, mutex_unlock(&mtx));
 }
 
-TEST(Mutex, Locked_Unlocks)
-{
+TEST(Mutex, Locked_Unlocks) {
     mutex_lock(&mtx);
     mutex_unlock(&mtx);
 }
 
-TEST(Mutex, IsLocked_SameTask)
-{
+TEST(Mutex, IsLocked_SameTask) {
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
 
     mutex_lock(&mtx);
@@ -58,8 +56,7 @@ TEST(Mutex, IsLocked_SameTask)
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
 }
 
-TEST(Mutex, IsLocked_OtherTask)
-{
+TEST(Mutex, IsLocked_OtherTask) {
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
 
     set_current_task(&task1);
@@ -75,8 +72,7 @@ TEST(Mutex, IsLocked_OtherTask)
     LONGS_EQUAL(1, mutex_is_locked(&mtx));
 }
 
-TEST(Mutex, Unlocked_TaskCanLockMultipleTimes)
-{
+TEST(Mutex, Unlocked_TaskCanLockMultipleTimes) {
     librertos_init();
 
     scheduler_lock();
@@ -86,8 +82,7 @@ TEST(Mutex, Unlocked_TaskCanLockMultipleTimes)
     LONGS_EQUAL(SUCCESS, mutex_lock(&mtx));
 }
 
-TEST(Mutex, Locked_TaskCanUnLockMultipleTimes)
-{
+TEST(Mutex, Locked_TaskCanUnLockMultipleTimes) {
     librertos_init();
 
     scheduler_lock();
@@ -99,8 +94,7 @@ TEST(Mutex, Locked_TaskCanUnLockMultipleTimes)
     mutex_unlock(&mtx);
 }
 
-TEST(Mutex, Unlocked_TaskCanLock_AndUnlock_MultipleTimes)
-{
+TEST(Mutex, Unlocked_TaskCanLock_AndUnlock_MultipleTimes) {
     librertos_init();
 
     scheduler_lock();
@@ -122,8 +116,7 @@ TEST(Mutex, Unlocked_TaskCanLock_AndUnlock_MultipleTimes)
     mutex_unlock(&mtx);
 }
 
-TEST(Mutex, Locked_SecondTaskCannotLock)
-{
+TEST(Mutex, Locked_SecondTaskCannotLock) {
     librertos_init();
 
     scheduler_lock();
@@ -134,8 +127,7 @@ TEST(Mutex, Locked_SecondTaskCannotLock)
     LONGS_EQUAL(FAIL, mutex_lock(&mtx));
 }
 
-TEST(Mutex, Locked_InterruptCannotLock)
-{
+TEST(Mutex, Locked_InterruptCannotLock) {
     librertos_init();
 
     scheduler_lock();
@@ -146,8 +138,7 @@ TEST(Mutex, Locked_InterruptCannotLock)
     LONGS_EQUAL(FAIL, mutex_lock(&mtx));
 }
 
-TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes)
-{
+TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes) {
     librertos_init();
 
     (void)interrupt_lock();
@@ -168,16 +159,14 @@ TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes)
     mutex_unlock(&mtx);
 }
 
-TEST_GROUP (MutexEvent)
-{
+TEST_GROUP (MutexEvent) {
     char buff[BUFF_SIZE];
 
     mutex_t mtx;
     task_t task1, task2;
     ParamMutex param1;
 
-    void setup()
-    {
+    void setup() {
         // Task sequencing buffer
         strcpy(buff, "");
 
@@ -187,11 +176,11 @@ TEST_GROUP (MutexEvent)
         librertos_init();
         mutex_init(&mtx);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(MutexEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
-{
+TEST(MutexEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -205,8 +194,7 @@ TEST(MutexEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_", buff);
 }
 
-TEST(MutexEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
-{
+TEST(MutexEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -219,8 +207,7 @@ TEST(MutexEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AU_", buff);
 }
 
-TEST(MutexEvent, TaskResumesOnEvent_ShouldBeScheduled)
-{
+TEST(MutexEvent, TaskResumesOnEvent_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -234,8 +221,7 @@ TEST(MutexEvent, TaskResumesOnEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(MutexEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
-{
+TEST(MutexEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_sequencing, &param1);
 
@@ -252,8 +238,7 @@ TEST(MutexEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldNotBeScheduled)
-{
+TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
     librertos_create_task(
@@ -272,8 +257,7 @@ TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldNotBeScheduled)
         buff);
 }
 
-TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldBeScheduledWhenUnlocked)
-{
+TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldBeScheduledWhenUnlocked) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
 
@@ -297,8 +281,7 @@ TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldBeScheduledWhenUnlocked)
         buff);
 }
 
-TEST(MutexEvent, TaskLockSuspend_AvailableMutex_ShouldBeScheduled)
-{
+TEST(MutexEvent, TaskLockSuspend_AvailableMutex_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamMutex::task_mutex_lock_suspend, &param1);
 
@@ -310,19 +293,19 @@ TEST(MutexEvent, TaskLockSuspend_AvailableMutex_ShouldBeScheduled)
         buff);
 }
 
-TEST_GROUP (MutexPriorityInversion)
-{
+TEST_GROUP (MutexPriorityInversion) {
     mutex_t mtx;
     mutex_t helper;
     task_t task[4];
     uint8_t tasks_used;
 
-    void setup() {}
-    void teardown() {}
+    void setup() {
+    }
+    void teardown() {
+    }
 };
 
-static void func(void *param)
-{
+static void func(void *param) {
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)param;
     sequence->push_back(get_current_task());
     task_suspend(CURRENT_TASK_PTR);
@@ -330,8 +313,7 @@ static void func(void *param)
 
 TEST(
     MutexPriorityInversion,
-    LowerPrioritySuspends_TaskReady_NoChangeInPriorities)
-{
+    LowerPrioritySuspends_TaskReady_NoChangeInPriorities) {
     std::vector<task_t *> actual_sequence;
 
     // Given A high priority task locks the mutex
@@ -353,8 +335,7 @@ TEST(
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_TaskReady_IncreasePriorityOfOwner)
-{
+    HigherPrioritySuspends_TaskReady_IncreasePriorityOfOwner) {
     std::vector<task_t *> actual_sequence;
 
     // Given A low priority task locks the mutex
@@ -376,8 +357,7 @@ TEST(
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_TaskUnlocksMutex_OriginalPriorityReturns)
-{
+    HigherPrioritySuspends_TaskUnlocksMutex_OriginalPriorityReturns) {
     std::vector<task_t *> actual_sequence;
 
     // Given A low priority task locks the mutex
@@ -402,8 +382,7 @@ TEST(
 
 TEST(
     MutexPriorityInversion,
-    LowerPrioritySuspends_TaskSuspendedOnEvent_NoChangeInPriorities)
-{
+    LowerPrioritySuspends_TaskSuspendedOnEvent_NoChangeInPriorities) {
     std::vector<task_t *> actual_sequence;
 
     // Given
@@ -436,8 +415,7 @@ TEST(
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_TaskSuspendedOnEvent_IncreasePriorityOfOwner)
-{
+    HigherPrioritySuspends_TaskSuspendedOnEvent_IncreasePriorityOfOwner) {
     std::vector<task_t *> actual_sequence;
 
     // Given
@@ -468,8 +446,7 @@ TEST(
         this, {&task[0], &task[1]}, actual_sequence);
 }
 
-static void func_lock_mutex_and_resume_2tasks(void *param)
-{
+static void func_lock_mutex_and_resume_2tasks(void *param) {
     void **p = (void **)param;
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
     mutex_t *mutex = (mutex_t *)p[1];
@@ -488,8 +465,7 @@ static void func_lock_mutex_and_resume_2tasks(void *param)
     task_suspend(CURRENT_TASK_PTR);
 }
 
-static void func_suspend_on_mutex(void *param)
-{
+static void func_suspend_on_mutex(void *param) {
     void **p = (void **)param;
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)p[0];
     mutex_t *mutex = (mutex_t *)p[1];
@@ -504,8 +480,7 @@ static void func_suspend_on_mutex(void *param)
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_OwnerRunning_IncreasePriorityOfOwner)
-{
+    HigherPrioritySuspends_OwnerRunning_IncreasePriorityOfOwner) {
     std::vector<task_t *> actual_sequence;
 
     initialize_os(this);
@@ -548,8 +523,7 @@ TEST(
         this, {&task[2], &task[0], &task[1]}, actual_sequence);
 }
 
-static void func_test2_task0(void *param)
-{
+static void func_test2_task0(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -570,8 +544,7 @@ static void func_test2_task0(void *param)
     sequence->push_back(10);
 }
 
-static void func_test2_task1(void *param)
-{
+static void func_test2_task1(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -593,8 +566,7 @@ static void func_test2_task1(void *param)
     sequence->push_back(8);
 }
 
-static void func_test2_task2(void *param)
-{
+static void func_test2_task2(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -608,8 +580,7 @@ static void func_test2_task2(void *param)
     sequence->push_back(12);
 }
 
-static void func_test2_task3(void *param)
-{
+static void func_test2_task3(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -624,8 +595,7 @@ static void func_test2_task3(void *param)
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner)
-{
+    HigherPrioritySuspends_OwnerPreempted_IncreasePriorityOfOwner) {
     std::vector<int> sequence;
 
     librertos_init();
@@ -653,8 +623,7 @@ TEST(
     CHECK_EQUAL(expected, sequence);
 }
 
-static void func_test3_task0(void *param)
-{
+static void func_test3_task0(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -679,8 +648,7 @@ static void func_test3_task0(void *param)
     sequence->push_back(15);
 }
 
-static void func_test3_task1(void *param)
-{
+static void func_test3_task1(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -698,8 +666,7 @@ static void func_test3_task1(void *param)
     sequence->push_back(13);
 }
 
-static void func_test3_task2(void *param)
-{
+static void func_test3_task2(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -721,8 +688,7 @@ static void func_test3_task2(void *param)
     sequence->push_back(11);
 }
 
-static void func_test3_task3(void *param)
-{
+static void func_test3_task3(void *param) {
     void **p = (void **)param;
     auto sequence = (std::vector<int> *)p[0];
     auto mtx = (mutex_t *)p[1];
@@ -741,8 +707,7 @@ static void func_test3_task3(void *param)
 
 TEST(
     MutexPriorityInversion,
-    HigherPrioritySuspends_OwnerSuspendedAndPreempted_DoesNotGetScheduledAgain)
-{
+    HigherPrioritySuspends_OwnerSuspendedAndPreempted_DoesNotGetScheduledAgain) {
     std::vector<int> sequence;
 
     librertos_init();
@@ -771,20 +736,18 @@ TEST(
     CHECK_EQUAL(expected, sequence);
 }
 
-TEST_GROUP (MutexEventNewTest)
-{
+TEST_GROUP (MutexEventNewTest) {
     mutex_t mtx;
 
-    void setup()
-    {
+    void setup() {
         test_init();
         mutex_init(&mtx);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
-{
+TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -798,8 +761,7 @@ TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
-{
+TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -813,8 +775,7 @@ TEST(MutexEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
-{
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -828,8 +789,7 @@ TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
-{
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -843,8 +803,7 @@ TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
-{
+TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -858,8 +817,7 @@ TEST(MutexEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Success)
-{
+TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Success) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -868,8 +826,7 @@ TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Success)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Fail)
-{
+TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Fail) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 
@@ -879,8 +836,7 @@ TEST(MutexEventNewTest, TaskLockSuspendOnEvent_Fail)
     test_task_is_suspended(&test.task[0]);
 }
 
-TEST(MutexEventNewTest, TaskLockDelaysOnEvent_Fail)
-{
+TEST(MutexEventNewTest, TaskLockDelaysOnEvent_Fail) {
     test_create_tasks({0}, NULL, {NULL});
     mutex_lock(&mtx);
 

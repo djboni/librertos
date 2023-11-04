@@ -5,8 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
-enum
-{
+enum {
     MUTEX_UNLOCKED = 0,
     TASK_NOT_RUNNING = 0,
     TASK_RUNNING = 1
@@ -23,8 +22,7 @@ librertos_t librertos;
  * Must be called before starting the tick timer interrupt or any other
  * interrupt that uses LibreRTOS functions.
  */
-void librertos_init(void)
-{
+void librertos_init(void) {
     int8_t i;
     CRITICAL_VAL();
 
@@ -80,8 +78,7 @@ void librertos_init(void)
  * @param param Parameter passed to the task function.
  */
 void librertos_create_task(
-    int8_t priority, task_t *task, task_function_t func, task_parameter_t param)
-{
+    int8_t priority, task_t *task, task_function_t func, task_parameter_t param) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
@@ -117,22 +114,19 @@ void librertos_create_task(
  * Call after initializing the hardware, tasks, but before calling the scheduler
  * in a loop.
  */
-void librertos_start(void)
-{
+void librertos_start(void) {
     --librertos.scheduler_lock;
 }
 
-static task_t *get_higher_priority_task(task_t *current_task)
-{
+static task_t *get_higher_priority_task(task_t *current_task) {
     struct node_t *node;
     task_t *task;
     int8_t current_priority = (current_task == NO_TASK_PTR)
-                                ? NO_TASK_PRIORITY
-                                : current_task->priority;
+                                  ? NO_TASK_PRIORITY
+                                  : current_task->priority;
     int8_t i;
 
-    for (i = HIGH_PRIORITY; i > current_priority; i--)
-    {
+    for (i = HIGH_PRIORITY; i > current_priority; i--) {
         if (list_is_empty(&librertos.tasks_ready[i]))
             continue;
 
@@ -156,8 +150,7 @@ static task_t *get_higher_priority_task(task_t *current_task)
  *
  * Picks and runs the higher priority task that is ready.
  */
-void librertos_sched(void)
-{
+void librertos_sched(void) {
     task_t *current_task;
     INTERRUPTS_VAL();
 
@@ -173,8 +166,7 @@ void librertos_sched(void)
     librertos.scheduler_depth++;
     current_task = librertos.current_task;
 
-    while (1)
-    {
+    while (1) {
         task_t *task = get_higher_priority_task(current_task);
         if (task == NULL)
             break;
@@ -198,10 +190,8 @@ void librertos_sched(void)
 /*
  * Lock scheduler, avoids preemption when using the preemptive kernel.
  */
-void scheduler_lock(void)
-{
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
-    {
+void scheduler_lock(void) {
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
 
         CRITICAL_ENTER();
@@ -216,21 +206,16 @@ void scheduler_lock(void)
  * Unlock scheduler, causes preemption when using the preemptive kernel and a
  * higher priority tasks is ready.
  */
-void scheduler_unlock(void)
-{
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE)
-    {
+void scheduler_unlock(void) {
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
 
         CRITICAL_ENTER();
 
-        if (--librertos.scheduler_lock == 0)
-        {
+        if (--librertos.scheduler_lock == 0) {
             CRITICAL_EXIT();
             librertos_sched();
-        }
-        else
-        {
+        } else {
             CRITICAL_EXIT();
         }
     }
@@ -246,8 +231,7 @@ void scheduler_unlock(void)
  *
  * @return Task preempted by the interrupt.
  */
-task_t *interrupt_lock(void)
-{
+task_t *interrupt_lock(void) {
     task_t *task;
 
     scheduler_lock();
@@ -267,8 +251,7 @@ task_t *interrupt_lock(void)
  *
  * @param task Task preempted by the interrupt.
  */
-void interrupt_unlock(task_t *task)
-{
+void interrupt_unlock(task_t *task) {
     set_current_task(task);
     scheduler_unlock();
 }
@@ -281,8 +264,7 @@ static void resume_delayed_tasks(tick_t now);
  *
  * Must be called periodically by a timer interrupt.
  */
-void librertos_tick_interrupt(void)
-{
+void librertos_tick_interrupt(void) {
     task_t *task = interrupt_lock();
     tick_t now;
     CRITICAL_VAL();
@@ -302,8 +284,7 @@ void librertos_tick_interrupt(void)
  *
  * Note that the tick count can overflow.
  */
-tick_t get_tick(void)
-{
+tick_t get_tick(void) {
     tick_t tick;
     CRITICAL_VAL();
 
@@ -320,8 +301,7 @@ tick_t get_tick(void)
  * Get the currently running task, NO_TASK_PTR (a.k.a NULL) if no task is
  * running and INTERRUPT_TASK_PTR if an interrupt is running.
  */
-task_t *get_current_task(void)
-{
+task_t *get_current_task(void) {
     task_t *task;
     CRITICAL_VAL();
 
@@ -337,8 +317,7 @@ task_t *get_current_task(void)
 /*
  * Set the currently running task.
  */
-void set_current_task(task_t *task)
-{
+void set_current_task(task_t *task) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -349,20 +328,17 @@ void set_current_task(task_t *task)
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-static void swap_lists_of_delayed_tasks(void)
-{
+static void swap_lists_of_delayed_tasks(void) {
     struct list_t *temp = librertos.tasks_delayed_overflow;
     librertos.tasks_delayed_overflow = librertos.tasks_delayed_current;
     librertos.tasks_delayed_current = temp;
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-static void resume_list_of_tasks(struct list_t *list, tick_t now)
-{
+static void resume_list_of_tasks(struct list_t *list, tick_t now) {
     INTERRUPTS_VAL();
 
-    while (list->length != 0)
-    {
+    while (list->length != 0) {
         struct node_t *node = list_get_first(list);
         task_t *task = (task_t *)node->owner;
 
@@ -377,10 +353,8 @@ static void resume_list_of_tasks(struct list_t *list, tick_t now)
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-static void resume_delayed_tasks(tick_t now)
-{
-    if (now == 0)
-    {
+static void resume_delayed_tasks(tick_t now) {
+    if (now == 0) {
         /* Tick overflow. */
         swap_lists_of_delayed_tasks();
         resume_list_of_tasks(librertos.tasks_delayed_overflow, MAX_DELAY);
@@ -390,24 +364,21 @@ static void resume_delayed_tasks(tick_t now)
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
-{
+static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick) {
     struct node_t *head = LIST_HEAD(list);
     struct node_t *pos;
     INTERRUPTS_VAL();
 
     pos = list->head;
 
-    while (pos != head)
-    {
+    while (pos != head) {
         task_t *task = (task_t *)pos->owner;
         tick_t pos_tick = task->delay_until;
 
         INTERRUPTS_ENABLE();
 
         /* Compare outside of critical section. */
-        if (tick < pos_tick)
-        {
+        if (tick < pos_tick) {
             /* Found the position: before pos. Stop. */
             INTERRUPTS_DISABLE();
             break;
@@ -415,8 +386,7 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
 
         INTERRUPTS_DISABLE();
 
-        if (pos->list != list)
-        {
+        if (pos->list != list) {
             /* pos was removed from the list during the comparison. Restart. */
             pos = list->head;
             continue;
@@ -432,8 +402,7 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
 }
 
 /* No restrictions when calling. */
-static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
-{
+static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     task_t *task;
     struct node_t *node;
     struct node_t *pos;
@@ -454,8 +423,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
     /* Suspend the task so that it can be resumed. */
     task_suspend(task);
 
-    do
-    {
+    do {
         pos = delay_find_tick_position(delay_list, tick_to_wakeup);
 
         /* Check if pos was removed from the list during the comparison or
@@ -463,8 +431,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
     } while (pos != LIST_HEAD(delay_list) && pos->list != delay_list);
 
     /* Check if current task was not resumed. */
-    if (node->list == &librertos.tasks_suspended)
-    {
+    if (node->list == &librertos.tasks_suspended) {
         /* Update the position. */
         list_remove(node);
         list_insert_after(delay_list, pos, node);
@@ -481,8 +448,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup)
  *
  * If the task is currently running, it will keep running until it returns.
  */
-void task_delay(tick_t ticks_to_delay)
-{
+void task_delay(tick_t ticks_to_delay) {
     tick_t now = get_tick();
     tick_t tick_to_wakeup = now + ticks_to_delay;
     task_delay_now_until(now, tick_to_wakeup);
@@ -495,14 +461,11 @@ void task_delay(tick_t ticks_to_delay)
  *
  * Pass CURRENT_TASK_PTR (a.k.a NULL pointer) to suspend the current task.
  */
-void task_suspend(task_t *task)
-{
+void task_suspend(task_t *task) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
-        !(task == CURRENT_TASK_PTR
-          && (librertos.current_task == NO_TASK_PTR
-              || librertos.current_task == INTERRUPT_TASK_PTR)),
+        !(task == CURRENT_TASK_PTR && (librertos.current_task == NO_TASK_PTR || librertos.current_task == INTERRUPT_TASK_PTR)),
         (intptr_t)librertos.current_task,
         "task_suspend(): no task or interrupt is running.");
 
@@ -520,8 +483,7 @@ void task_suspend(task_t *task)
 /*
  * Resume task.
  */
-void task_resume(task_t *task)
-{
+void task_resume(task_t *task) {
     struct list_t *list_ready;
     struct node_t *node_sched;
     struct node_t *node_event;
@@ -551,8 +513,7 @@ void task_resume(task_t *task)
 /*
  * Resume all tasks.
  */
-void task_resume_all(void)
-{
+void task_resume_all(void) {
     CRITICAL_VAL();
 
     scheduler_lock();
@@ -567,16 +528,14 @@ void task_resume_all(void)
 }
 
 /* Call with interrupts disabled. */
-void list_init(struct list_t *list)
-{
+void list_init(struct list_t *list) {
     list->head = (struct node_t *)list;
     list->tail = (struct node_t *)list;
     list->length = 0;
 }
 
 /* Call with interrupts disabled. */
-void node_init(struct node_t *node, void *owner)
-{
+void node_init(struct node_t *node, void *owner) {
     node->next = NULL;
     node->prev = NULL;
     node->list = NULL;
@@ -584,15 +543,13 @@ void node_init(struct node_t *node, void *owner)
 }
 
 /* Call with interrupts disabled. */
-uint8_t node_in_list(struct node_t *node)
-{
+uint8_t node_in_list(struct node_t *node) {
     return node->list != NULL;
 }
 
 /* Call with interrupts disabled. */
 void list_insert_after(
-    struct list_t *list, struct node_t *pos, struct node_t *node)
-{
+    struct list_t *list, struct node_t *pos, struct node_t *node) {
     /*
      * A  x-- C --x  B
      *   <--------->
@@ -627,20 +584,17 @@ void list_insert_after(
 }
 
 /* Call with interrupts disabled. */
-void list_insert_first(struct list_t *list, struct node_t *node)
-{
+void list_insert_first(struct list_t *list, struct node_t *node) {
     list_insert_after(list, LIST_HEAD(list), node);
 }
 
 /* Call with interrupts disabled. */
-void list_insert_last(struct list_t *list, struct node_t *node)
-{
+void list_insert_last(struct list_t *list, struct node_t *node) {
     list_insert_after(list, list->tail, node);
 }
 
 /* Call with interrupts disabled. */
-void list_remove(struct node_t *node)
-{
+void list_remove(struct node_t *node) {
     struct list_t *list = node->list;
 
     /*
@@ -677,43 +631,37 @@ void list_remove(struct node_t *node)
 }
 
 /* Call with interrupts disabled. */
-struct node_t *list_get_first(struct list_t *list)
-{
+struct node_t *list_get_first(struct list_t *list) {
     return list->head;
 }
 
 /* Call with interrupts disabled. */
-uint8_t list_is_empty(struct list_t *list)
-{
+uint8_t list_is_empty(struct list_t *list) {
     return list->length == 0;
 }
 
 /* Call with interrupts disabled. */
-void event_init(event_t *event)
-{
+void event_init(event_t *event) {
     list_init(&event->suspended_tasks);
 }
 
 /* Call with interrupts disabled and scheduler locked. */
 static struct node_t *
-event_find_priority_position(struct list_t *list, int8_t priority)
-{
+event_find_priority_position(struct list_t *list, int8_t priority) {
     struct node_t *head = LIST_HEAD(list);
     struct node_t *pos;
     INTERRUPTS_VAL();
 
     pos = list->head;
 
-    while (pos != head)
-    {
+    while (pos != head) {
         task_t *task = (task_t *)pos->owner;
         int8_t pos_priority = task->priority;
 
         INTERRUPTS_ENABLE();
 
         /* Compare outside of critical section. */
-        if (priority > pos_priority)
-        {
+        if (priority > pos_priority) {
             /* Found the position: before pos. Stop. */
             INTERRUPTS_DISABLE();
             break;
@@ -721,8 +669,7 @@ event_find_priority_position(struct list_t *list, int8_t priority)
 
         INTERRUPTS_DISABLE();
 
-        if (pos->list != list)
-        {
+        if (pos->list != list) {
             /* pos was removed from the list during the comparison. Restart. */
             pos = list->head;
             continue;
@@ -738,33 +685,26 @@ event_find_priority_position(struct list_t *list, int8_t priority)
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-void event_add_task_to_event(event_t *event)
-{
+void event_add_task_to_event(event_t *event) {
     task_t *task = librertos.current_task;
     int8_t task_priority = task->priority;
     struct node_t *pos;
 
     list_insert_last(&event->suspended_tasks, &task->event_node);
 
-    do
-    {
+    do {
         pos = event_find_priority_position(
             &event->suspended_tasks, task_priority);
 
         /* Check if pos was removed from the list during the comparison or
          * return. Restart. */
-    } while (pos != LIST_HEAD(&event->suspended_tasks)
-             && pos->list != &event->suspended_tasks);
+    } while (pos != LIST_HEAD(&event->suspended_tasks) && pos->list != &event->suspended_tasks);
 
     /* Check if current task was not resumed. */
-    if (task->sched_node.list == &librertos.tasks_suspended)
-    {
-        if (pos == &task->event_node)
-        {
+    if (task->sched_node.list == &librertos.tasks_suspended) {
+        if (pos == &task->event_node) {
             /* Already in the correct position. */
-        }
-        else
-        {
+        } else {
             /* Update the position. */
             list_remove(&task->event_node);
             list_insert_after(&event->suspended_tasks, pos, &task->event_node);
@@ -773,11 +713,9 @@ void event_add_task_to_event(event_t *event)
 }
 
 /* Call with interrupts disabled and scheduler locked. */
-void event_delay_task(event_t *event, tick_t ticks_to_delay)
-{
+void event_delay_task(event_t *event, tick_t ticks_to_delay) {
     LIBRERTOS_ASSERT(
-        !(librertos.current_task == NO_TASK_PTR
-          || librertos.current_task == INTERRUPT_TASK_PTR),
+        !(librertos.current_task == NO_TASK_PTR || librertos.current_task == INTERRUPT_TASK_PTR),
         (intptr_t)librertos.current_task,
         "event_delay_task(): no task or interrupt is running.");
 
@@ -793,8 +731,7 @@ void event_delay_task(event_t *event, tick_t ticks_to_delay)
 
     event_add_task_to_event(event);
 
-    if (ticks_to_delay != MAX_DELAY)
-    {
+    if (ticks_to_delay != MAX_DELAY) {
         tick_t now = get_tick();
         tick_t tick_to_wakeup = now + ticks_to_delay;
         task_delay_now_until(now, tick_to_wakeup);
@@ -802,10 +739,8 @@ void event_delay_task(event_t *event, tick_t ticks_to_delay)
 }
 
 /* Call with interrupts disabled. */
-void event_resume_task(event_t *event)
-{
-    if (event->suspended_tasks.length != 0)
-    {
+void event_resume_task(event_t *event) {
+    if (event->suspended_tasks.length != 0) {
         task_t *task = (task_t *)list_get_first(&event->suspended_tasks)->owner;
         task_resume(task);
     }
@@ -821,8 +756,7 @@ void event_resume_task(event_t *event)
  * @param init_count Initial value of the semaphore.
  * @param max_count Maximum value of the semaphore.
  */
-void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
-{
+void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
@@ -847,8 +781,7 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count)
  *
  * @param max_count Maximum value of the semaphore.
  */
-void semaphore_init_locked(semaphore_t *sem, uint8_t max_count)
-{
+void semaphore_init_locked(semaphore_t *sem, uint8_t max_count) {
     semaphore_init(sem, 0, max_count);
 }
 
@@ -858,20 +791,17 @@ void semaphore_init_locked(semaphore_t *sem, uint8_t max_count)
  *
  * @param max_count Maximum value of the semaphore.
  */
-void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count)
-{
+void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count) {
     semaphore_init(sem, max_count, max_count);
 }
 
 /* Call with interrupts disabled. */
-static uint8_t semaphore_can_be_locked(semaphore_t *sem)
-{
+static uint8_t semaphore_can_be_locked(semaphore_t *sem) {
     return sem->count > 0;
 }
 
 /* Call with interrupts disabled. */
-static uint8_t semaphore_can_be_unlocked(semaphore_t *sem)
-{
+static uint8_t semaphore_can_be_unlocked(semaphore_t *sem) {
     return sem->count < sem->max;
 }
 
@@ -880,15 +810,13 @@ static uint8_t semaphore_can_be_unlocked(semaphore_t *sem)
  *
  * @return 1 with success, 0 otherwise.
  */
-result_t semaphore_lock(semaphore_t *sem)
-{
+result_t semaphore_lock(semaphore_t *sem) {
     result_t result = FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (semaphore_can_be_locked(sem))
-    {
+    if (semaphore_can_be_locked(sem)) {
         sem->count--;
         result = SUCCESS;
     }
@@ -903,15 +831,13 @@ result_t semaphore_lock(semaphore_t *sem)
  *
  * @return 1 with success, 0 otherwise.
  */
-result_t semaphore_unlock(semaphore_t *sem)
-{
+result_t semaphore_unlock(semaphore_t *sem) {
     result_t result = FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (semaphore_can_be_unlocked(sem))
-    {
+    if (semaphore_can_be_unlocked(sem)) {
         scheduler_lock();
 
         sem->count++;
@@ -921,9 +847,7 @@ result_t semaphore_unlock(semaphore_t *sem)
 
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 
@@ -933,8 +857,7 @@ result_t semaphore_unlock(semaphore_t *sem)
 /*
  * Get the current value of the semaphore.
  */
-uint8_t semaphore_get_count(semaphore_t *sem)
-{
+uint8_t semaphore_get_count(semaphore_t *sem) {
     uint8_t count;
     CRITICAL_VAL();
 
@@ -950,8 +873,7 @@ uint8_t semaphore_get_count(semaphore_t *sem)
 /*
  * Get the maximum value of the semaphore.
  */
-uint8_t semaphore_get_max(semaphore_t *sem)
-{
+uint8_t semaphore_get_max(semaphore_t *sem) {
     /* Semaphore maximum value should not change.
      * Critical section is not necessary. */
     return sem->max;
@@ -966,23 +888,19 @@ uint8_t semaphore_get_max(semaphore_t *sem)
  * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
  * MAX_DELAY to wait forever.
  */
-void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
-{
+void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (!semaphore_can_be_locked(sem))
-    {
+    if (!semaphore_can_be_locked(sem)) {
         scheduler_lock();
 
         event_delay_task(&sem->event_unlock, ticks_to_delay);
 
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 }
@@ -997,8 +915,7 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay)
  * MAX_DELAY to wait forever.
  * @return 1 with success locking, 0 otherwise.
  */
-result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay)
-{
+result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     result_t result;
 
     result = semaphore_lock(sem);
@@ -1011,8 +928,7 @@ result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay)
 /*
  * Initialize mutex.
  */
-void mutex_init(mutex_t *mtx)
-{
+void mutex_init(mutex_t *mtx) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -1028,8 +944,7 @@ void mutex_init(mutex_t *mtx)
 }
 
 /* Call with interrupts disabled. */
-static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task)
-{
+static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
     return mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner;
 }
 
@@ -1038,8 +953,7 @@ static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task)
  *
  * @return 1 with success, 0 otherwise.
  */
-result_t mutex_lock(mutex_t *mtx)
-{
+result_t mutex_lock(mutex_t *mtx) {
     result_t result = FAIL;
     task_t *current_task;
     CRITICAL_VAL();
@@ -1048,8 +962,7 @@ result_t mutex_lock(mutex_t *mtx)
 
     current_task = librertos.current_task;
 
-    if (mutex_can_be_locked(mtx, current_task))
-    {
+    if (mutex_can_be_locked(mtx, current_task)) {
         ++(mtx->locked);
         mtx->task_owner = current_task;
         result = SUCCESS;
@@ -1061,22 +974,19 @@ result_t mutex_lock(mutex_t *mtx)
 }
 
 /* Call with interrupts disabled. */
-static void task_set_priority(task_t *task, int8_t priority)
-{
+static void task_set_priority(task_t *task, int8_t priority) {
     struct list_t *ready_list = &librertos.tasks_ready[task->priority];
     event_t *event_list = (event_t *)task->event_node.list;
 
     task->priority = priority;
 
-    if (task->sched_node.list == ready_list)
-    {
+    if (task->sched_node.list == ready_list) {
         /* Put in the correct ready list. */
         list_remove(&task->sched_node);
         list_insert_first(&librertos.tasks_ready[priority], &task->sched_node);
     }
 
-    if (event_list != NULL)
-    {
+    if (event_list != NULL) {
         /* Put the task in the correct place in the event list. Keep it
          * suspended or delayed.
          */
@@ -1094,8 +1004,7 @@ static void task_set_priority(task_t *task, int8_t priority)
 /*
  * Unlock the mutex.
  */
-void mutex_unlock(mutex_t *mtx)
-{
+void mutex_unlock(mutex_t *mtx) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
@@ -1105,25 +1014,20 @@ void mutex_unlock(mutex_t *mtx)
 
     CRITICAL_ENTER();
 
-    if (mtx->locked != MUTEX_UNLOCKED)
-    {
+    if (mtx->locked != MUTEX_UNLOCKED) {
         --(mtx->locked);
     }
 
-    if (mtx->locked == MUTEX_UNLOCKED)
-    {
+    if (mtx->locked == MUTEX_UNLOCKED) {
         task_t *owner;
 
         scheduler_lock();
 
         owner = (task_t *)mtx->task_owner;
 
-        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR)
-        {
+        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR) {
             /* Cannot change priority of no task or interrupt. */
-        }
-        else
-        {
+        } else {
             if (owner->priority != owner->original_priority)
                 task_set_priority(owner, owner->original_priority);
             mtx->task_owner = NO_TASK_PTR;
@@ -1132,9 +1036,7 @@ void mutex_unlock(mutex_t *mtx)
         event_resume_task(&mtx->event_unlock);
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 }
@@ -1142,8 +1044,7 @@ void mutex_unlock(mutex_t *mtx)
 /*
  * Check if the mutex is locked.
  */
-uint8_t mutex_is_locked(mutex_t *mtx)
-{
+uint8_t mutex_is_locked(mutex_t *mtx) {
     uint8_t locked;
     CRITICAL_VAL();
 
@@ -1165,25 +1066,20 @@ uint8_t mutex_is_locked(mutex_t *mtx)
  * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
  * MAX_DELAY to wait forever.
  */
-void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
-{
+void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (!mutex_can_be_locked(mtx, librertos.current_task))
-    {
+    if (!mutex_can_be_locked(mtx, librertos.current_task)) {
         task_t *owner = (task_t *)mtx->task_owner;
         int8_t current_priority = librertos.current_task->priority;
 
         scheduler_lock();
 
-        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR)
-        {
+        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR) {
             /* Cannot change priority of no task or interrupt. */
-        }
-        else
-        {
+        } else {
             if (owner->priority < current_priority)
                 task_set_priority(owner, current_priority);
         }
@@ -1192,9 +1088,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
 
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 }
@@ -1209,8 +1103,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay)
  * MAX_DELAY to wait forever.
  * @return 1 with success locking, 0 otherwise.
  */
-result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay)
-{
+result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     result_t result;
 
     result = mutex_lock(mtx);
@@ -1227,8 +1120,7 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay)
  * @param que_size Number of items the queue can hold.
  * @param item_size Size of the items in the queue.
  */
-void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size)
-{
+void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
@@ -1249,14 +1141,12 @@ void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size)
 }
 
 /* Call with interrupts disabled. */
-static uint8_t queue_can_be_read(queue_t *que)
-{
+static uint8_t queue_can_be_read(queue_t *que) {
     return que->used > 0;
 }
 
 /* Call with interrupts disabled. */
-static uint8_t queue_can_be_written(queue_t *que)
-{
+static uint8_t queue_can_be_written(queue_t *que) {
     return que->free > 0;
 }
 
@@ -1266,15 +1156,13 @@ static uint8_t queue_can_be_written(queue_t *que)
  * @param data Pointer to a buffer with size que->item_size.
  * @return 1 with success, 0 otherwise.
  */
-result_t queue_read(queue_t *que, void *data)
-{
+result_t queue_read(queue_t *que, void *data) {
     result_t result = FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (queue_can_be_read(que))
-    {
+    if (queue_can_be_read(que)) {
         memcpy(data, &que->buff[que->tail], que->item_size);
 
         que->tail += que->item_size;
@@ -1297,15 +1185,13 @@ result_t queue_read(queue_t *que, void *data)
  * @param data Pointer to a buffer with size que->item_size.
  * @return 1 with success, 0 otherwise.
  */
-result_t queue_write(queue_t *que, const void *data)
-{
+result_t queue_write(queue_t *que, const void *data) {
     result_t result = FAIL;
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (queue_can_be_written(que))
-    {
+    if (queue_can_be_written(que)) {
         scheduler_lock();
 
         memcpy(&que->buff[que->head], data, que->item_size);
@@ -1322,9 +1208,7 @@ result_t queue_write(queue_t *que, const void *data)
 
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 
@@ -1334,8 +1218,7 @@ result_t queue_write(queue_t *que, const void *data)
 /*
  * Get number of free items in the queue.
  */
-uint8_t queue_get_num_free(queue_t *que)
-{
+uint8_t queue_get_num_free(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
 
@@ -1351,8 +1234,7 @@ uint8_t queue_get_num_free(queue_t *que)
 /*
  * Get number of used items in the queue.
  */
-uint8_t queue_get_num_used(queue_t *que)
-{
+uint8_t queue_get_num_used(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
 
@@ -1368,24 +1250,21 @@ uint8_t queue_get_num_used(queue_t *que)
 /*
  * Check if the queue is empty (zero items used).
  */
-uint8_t queue_is_empty(queue_t *que)
-{
+uint8_t queue_is_empty(queue_t *que) {
     return queue_get_num_used(que) == 0;
 }
 
 /*
  * Check if the queue is full (all items used).
  */
-uint8_t queue_is_full(queue_t *que)
-{
+uint8_t queue_is_full(queue_t *que) {
     return queue_get_num_free(que) == 0;
 }
 
 /*
  * Get total number of items in the queue (free + used).
  */
-uint8_t queue_get_num_items(queue_t *que)
-{
+uint8_t queue_get_num_items(queue_t *que) {
     uint8_t value;
     CRITICAL_VAL();
 
@@ -1401,8 +1280,7 @@ uint8_t queue_get_num_items(queue_t *que)
 /*
  * Get the size of the items in the queue.
  */
-uint8_t queue_get_item_size(queue_t *que)
-{
+uint8_t queue_get_item_size(queue_t *que) {
     /* Queue item size should not change.
      * Critical section is not necessary. */
     return que->item_size;
@@ -1417,23 +1295,19 @@ uint8_t queue_get_item_size(queue_t *que)
  * @param ticks_to_delay Number of ticks to delay resuming the task. Pass
  * MAX_DELAY to wait forever.
  */
-void queue_suspend(queue_t *que, tick_t ticks_to_delay)
-{
+void queue_suspend(queue_t *que, tick_t ticks_to_delay) {
     CRITICAL_VAL();
 
     CRITICAL_ENTER();
 
-    if (!queue_can_be_read(que))
-    {
+    if (!queue_can_be_read(que)) {
         scheduler_lock();
 
         event_delay_task(&que->event_write, ticks_to_delay);
 
         CRITICAL_EXIT();
         scheduler_unlock();
-    }
-    else
-    {
+    } else {
         CRITICAL_EXIT();
     }
 }
@@ -1450,8 +1324,7 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay)
  * MAX_DELAY to wait forever.
  * @return 1 with success reading, 0 otherwise.
  */
-result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay)
-{
+result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay) {
     result_t result;
 
     result = queue_read(que, data);

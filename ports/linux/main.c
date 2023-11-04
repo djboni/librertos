@@ -16,15 +16,13 @@ task_t task_print1;
 task_t task_print2;
 task_t task_print3;
 
-void func_task_idle(void *param)
-{
+void func_task_idle(void *param) {
     (void)param;
 
     idle_wait_interrupt();
 }
 
-void func_task_print(void *param)
-{
+void func_task_print(void *param) {
     int value = (intptr_t)param;
 
     printf("func_task_print %d %u\n", value, get_tick());
@@ -32,8 +30,7 @@ void func_task_print(void *param)
     task_delay(TICKS_PER_SECOND * value);
 }
 
-int main(void)
-{
+int main(void) {
     port_init();
     librertos_init();
 

@@ -15,16 +15,14 @@
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
-TEST_GROUP (Event)
-{
+TEST_GROUP (Event) {
     char buff[BUFF_SIZE];
 
     event_t event;
     task_t task1, task2, task3;
     Param param1, param2, param3;
 
-    void setup()
-    {
+    void setup() {
         // Task sequencing buffer
         strcpy(buff, "");
 
@@ -37,11 +35,11 @@ TEST_GROUP (Event)
         librertos_init();
         event_init(&event);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
-{
+TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
@@ -53,8 +51,7 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     STRCMP_EQUAL("", buff);
 }
 
-TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction)
-{
+TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)&task1)
@@ -70,8 +67,7 @@ TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction)
     CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
-TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction)
-{
+TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)NO_TASK_PTR)
@@ -81,8 +77,7 @@ TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction)
     CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
-TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
-{
+TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
@@ -94,8 +89,7 @@ TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction)
     CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
 
-TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
-{
+TEST(Event, TaskResumedOnEvent_ShouldBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
 
@@ -109,13 +103,11 @@ TEST(Event, TaskResumedOnEvent_ShouldBeScheduled)
     STRCMP_EQUAL("ABC", buff);
 }
 
-TEST(Event, NoTaskToResume_OK)
-{
+TEST(Event, NoTaskToResume_OK) {
     event_resume_task(&event);
 }
 
-TEST(Event, TwoTasksSuspendOnTheSameEvent_BothSuspend)
-{
+TEST(Event, TwoTasksSuspendOnTheSameEvent_BothSuspend) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -139,8 +131,7 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_BothSuspend)
     STRCMP_EQUAL("", buff);
 }
 
-TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
-{
+TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -152,44 +143,6 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
     event_delay_task(&event, MAX_DELAY);
 
     set_current_task(&task1);
-    event_delay_task(&event, MAX_DELAY);
-
-    set_current_task(NO_TASK_PTR);
-
-    list_tester(
-        &event.suspended_tasks,
-        std::vector<node_t *>{&task2.event_node, &task1.event_node});
-
-    librertos_sched();
-    STRCMP_EQUAL("", buff);
-
-    event_resume_task(&event);
-    librertos_sched();
-    STRCMP_EQUAL("abc", buff);
-
-    list_tester(
-        &event.suspended_tasks, std::vector<node_t *>{&task1.event_node});
-
-    event_resume_task(&event);
-    librertos_sched();
-    STRCMP_EQUAL("abcABC", buff);
-
-    list_tester(&event.suspended_tasks, std::vector<node_t *>{});
-}
-
-TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
-{
-    librertos_create_task(
-        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
-    librertos_create_task(
-        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
-
-    librertos_start();
-
-    set_current_task(&task1);
-    event_delay_task(&event, MAX_DELAY);
-
-    set_current_task(&task2);
     event_delay_task(&event, MAX_DELAY);
 
     set_current_task(NO_TASK_PTR);
@@ -215,8 +168,44 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
     list_tester(&event.suspended_tasks, std::vector<node_t *>{});
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
-{
+TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2) {
+    librertos_create_task(
+        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
+    librertos_create_task(
+        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
+
+    librertos_start();
+
+    set_current_task(&task1);
+    event_delay_task(&event, MAX_DELAY);
+
+    set_current_task(&task2);
+    event_delay_task(&event, MAX_DELAY);
+
+    set_current_task(NO_TASK_PTR);
+
+    list_tester(
+        &event.suspended_tasks,
+        std::vector<node_t *>{&task2.event_node, &task1.event_node});
+
+    librertos_sched();
+    STRCMP_EQUAL("", buff);
+
+    event_resume_task(&event);
+    librertos_sched();
+    STRCMP_EQUAL("abc", buff);
+
+    list_tester(
+        &event.suspended_tasks, std::vector<node_t *>{&task1.event_node});
+
+    event_resume_task(&event);
+    librertos_sched();
+    STRCMP_EQUAL("abcABC", buff);
+
+    list_tester(&event.suspended_tasks, std::vector<node_t *>{});
+}
+
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -258,8 +247,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
-{
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -301,8 +289,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_3)
-{
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_3) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -344,8 +331,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_3)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_4)
-{
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_4) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -387,8 +373,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_4)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_5)
-{
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_5) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -430,8 +415,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_5)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6)
-{
+TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
     librertos_create_task(
@@ -473,20 +457,18 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6)
     STRCMP_EQUAL("123abcABC", buff);
 }
 
-TEST_GROUP (EventNewTest)
-{
+TEST_GROUP (EventNewTest) {
     event_t event;
 
-    void setup()
-    {
+    void setup() {
         test_init();
         event_init(&event);
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
-{
+TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -499,8 +481,7 @@ TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
-{
+TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -513,8 +494,7 @@ TEST(EventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
-{
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -527,8 +507,7 @@ TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
-{
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithEvent) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -541,8 +520,7 @@ TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
-{
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -555,8 +533,7 @@ TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_2)
-{
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_2) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -573,8 +550,7 @@ TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_2)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_3)
-{
+TEST(EventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt_3) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_tick(3);

@@ -29,14 +29,12 @@ static const que_struct que_struct_val_B = {0x5C5C5C5C};
 static const que_struct que_struct_val_C = {0x5D5D5D5D};
 static const que_struct que_struct_val_D = {0x5E5E5E5E};
 
-static void initialize_buff(que_struct *buff, uint8_t size)
-{
+static void initialize_buff(que_struct *buff, uint8_t size) {
     // First and last elements of buff are guards
     memset(buff, 0x5A, size * sizeof(que_struct));
 }
 
-static void finalize_buff(que_struct *buff, uint8_t size)
-{
+static void finalize_buff(que_struct *buff, uint8_t size) {
     que_struct expected;
 
     // Initialize expected and validate both guards
@@ -45,48 +43,43 @@ static void finalize_buff(que_struct *buff, uint8_t size)
     MEMCMP_EQUAL(&expected, &buff[size - 1], sizeof(que_struct));
 }
 
-TEST_GROUP (Queue_Size1)
-{
+TEST_GROUP (Queue_Size1) {
     static const uint8_t que_size = 1;
     static const uint8_t buff_size = que_size + que_guards;
 
     que_struct buff[buff_size];
     queue_t que;
 
-    void setup()
-    {
+    void setup() {
         initialize_buff(&buff[0], buff_size);
         queue_init(&que, &buff[1], que_size, sizeof(que_struct));
     }
 
-    void teardown() { finalize_buff(&buff[0], buff_size); }
+    void teardown() {
+        finalize_buff(&buff[0], buff_size);
+    }
 };
 
-TEST(Queue_Size1, TwoBuffGuards)
-{
+TEST(Queue_Size1, TwoBuffGuards) {
     // We literally want two guards (que_guards == 2)
     LONGS_EQUAL(2, que_guards);
 }
 
-TEST(Queue_Size1, Empty_CannotRead)
-{
+TEST(Queue_Size1, Empty_CannotRead) {
     que_struct data;
     LONGS_EQUAL(FAIL, queue_read(&que, &data));
 }
 
-TEST(Queue_Size1, Empty_Writes)
-{
+TEST(Queue_Size1, Empty_Writes) {
     LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_A));
 }
 
-TEST(Queue_Size1, Empty_CannotWriteTwice)
-{
+TEST(Queue_Size1, Empty_CannotWriteTwice) {
     queue_write(&que, &que_struct_val_A);
     LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_B));
 }
 
-TEST(Queue_Size1, NotEmpty_Reads)
-{
+TEST(Queue_Size1, NotEmpty_Reads) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
 
@@ -94,8 +87,7 @@ TEST(Queue_Size1, NotEmpty_Reads)
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size1, WrapsHead_WrapsTail)
-{
+TEST(Queue_Size1, WrapsHead_WrapsTail) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
     queue_read(&que, &data);
@@ -108,8 +100,7 @@ TEST(Queue_Size1, WrapsHead_WrapsTail)
     MEMCMP_EQUAL(&que_struct_val_B, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size1, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
-{
+TEST(Queue_Size1, NumFree_NumUsed_Empty_Full_NumItems_ItemSize) {
     LONGS_EQUAL(1, queue_get_num_free(&que));
     LONGS_EQUAL(0, queue_get_num_used(&que));
     LONGS_EQUAL(1, queue_is_empty(&que));
@@ -127,48 +118,43 @@ TEST(Queue_Size1, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
     LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }
 
-TEST_GROUP (Queue_Size2)
-{
+TEST_GROUP (Queue_Size2) {
     static const uint8_t que_size = 2;
     static const uint8_t buff_size = que_size + que_guards;
 
     que_struct buff[buff_size];
     queue_t que;
 
-    void setup()
-    {
+    void setup() {
         initialize_buff(&buff[0], buff_size);
         queue_init(&que, &buff[1], que_size, sizeof(que_struct));
     }
 
-    void teardown() { finalize_buff(&buff[0], buff_size); }
+    void teardown() {
+        finalize_buff(&buff[0], buff_size);
+    }
 };
 
-TEST(Queue_Size2, Empty_CannotRead)
-{
+TEST(Queue_Size2, Empty_CannotRead) {
     que_struct data;
     LONGS_EQUAL(FAIL, queue_read(&que, &data));
 }
 
-TEST(Queue_Size2, Empty_Writes)
-{
+TEST(Queue_Size2, Empty_Writes) {
     LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_A));
 }
-TEST(Queue_Size2, Empty_WritesTwice)
-{
+TEST(Queue_Size2, Empty_WritesTwice) {
     queue_write(&que, &que_struct_val_A);
     LONGS_EQUAL(SUCCESS, queue_write(&que, &que_struct_val_B));
 }
 
-TEST(Queue_Size2, Empty_CannotWriteThreeTimes)
-{
+TEST(Queue_Size2, Empty_CannotWriteThreeTimes) {
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
     LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_C));
 }
 
-TEST(Queue_Size2, NotEmpty_Reads)
-{
+TEST(Queue_Size2, NotEmpty_Reads) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
 
@@ -176,8 +162,7 @@ TEST(Queue_Size2, NotEmpty_Reads)
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size2, FirstInFirstOut)
-{
+TEST(Queue_Size2, FirstInFirstOut) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
@@ -186,8 +171,7 @@ TEST(Queue_Size2, FirstInFirstOut)
     MEMCMP_EQUAL(&que_struct_val_A, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size2, FirstInFirstOut_2)
-{
+TEST(Queue_Size2, FirstInFirstOut_2) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
@@ -197,8 +181,7 @@ TEST(Queue_Size2, FirstInFirstOut_2)
     MEMCMP_EQUAL(&que_struct_val_B, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size2, WrapsHead_WrapsTail)
-{
+TEST(Queue_Size2, WrapsHead_WrapsTail) {
     que_struct data = que_struct_zero;
     queue_write(&que, &que_struct_val_A);
     queue_write(&que, &que_struct_val_B);
@@ -214,8 +197,7 @@ TEST(Queue_Size2, WrapsHead_WrapsTail)
     MEMCMP_EQUAL(&que_struct_val_C, &data, sizeof(que_struct));
 }
 
-TEST(Queue_Size2, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
-{
+TEST(Queue_Size2, NumFree_NumUsed_Empty_Full_NumItems_ItemSize) {
     LONGS_EQUAL(2, queue_get_num_free(&que));
     LONGS_EQUAL(0, queue_get_num_used(&que));
     LONGS_EQUAL(1, queue_is_empty(&que));
@@ -242,36 +224,33 @@ TEST(Queue_Size2, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
     LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }
 
-TEST_GROUP (Queue_Size0)
-{
+TEST_GROUP (Queue_Size0) {
     static const uint8_t que_size = 0;
     static const uint8_t buff_size = que_size + que_guards;
 
     que_struct buff[buff_size];
     queue_t que;
 
-    void setup()
-    {
+    void setup() {
         initialize_buff(&buff[0], buff_size);
         queue_init(&que, &buff[1], que_size, sizeof(que_struct));
     }
 
-    void teardown() { finalize_buff(&buff[0], buff_size); }
+    void teardown() {
+        finalize_buff(&buff[0], buff_size);
+    }
 };
 
-TEST(Queue_Size0, Empty_CannotRead)
-{
+TEST(Queue_Size0, Empty_CannotRead) {
     que_struct data;
     LONGS_EQUAL(FAIL, queue_read(&que, &data));
 }
 
-TEST(Queue_Size0, Full_CannotWrite)
-{
+TEST(Queue_Size0, Full_CannotWrite) {
     LONGS_EQUAL(FAIL, queue_write(&que, &que_struct_val_A));
 }
 
-TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
-{
+TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize) {
     LONGS_EQUAL(0, queue_get_num_free(&que));
     LONGS_EQUAL(0, queue_get_num_used(&que));
     LONGS_EQUAL(1, queue_is_empty(&que));
@@ -280,8 +259,7 @@ TEST(Queue_Size0, NumFree_NumUsed_Empty_Full_NumItems_ItemSize)
     LONGS_EQUAL(sizeof(que_struct), queue_get_item_size(&que));
 }
 
-TEST_GROUP (QueueEvent)
-{
+TEST_GROUP (QueueEvent) {
     char buff[BUFF_SIZE];
 
     queue_t que;
@@ -289,8 +267,7 @@ TEST_GROUP (QueueEvent)
     task_t task1, task2;
     ParamQueue param1;
 
-    void setup()
-    {
+    void setup() {
         // Task sequencing buffer
         strcpy(buff, "");
 
@@ -305,11 +282,11 @@ TEST_GROUP (QueueEvent)
             sizeof(que_buff) / sizeof(que_buff[0]),
             sizeof(que_buff[0]));
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(QueueEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
-{
+TEST(QueueEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_sequencing, &param1);
 
@@ -321,8 +298,7 @@ TEST(QueueEvent, TaskSuspendsOnEvent_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_", buff);
 }
 
-TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
-{
+TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled) {
     int8_t data = 0;
 
     queue_write(&que, &data);
@@ -339,8 +315,7 @@ TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AU_", buff);
 }
 
-TEST(QueueEvent, TaskResumesOnEvent_ShouldBeScheduled)
-{
+TEST(QueueEvent, TaskResumesOnEvent_ShouldBeScheduled) {
     int8_t data = 0;
 
     librertos_create_task(
@@ -354,8 +329,7 @@ TEST(QueueEvent, TaskResumesOnEvent_ShouldBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(QueueEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
-{
+TEST(QueueEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled) {
     int8_t data = 0;
 
     librertos_create_task(
@@ -372,8 +346,7 @@ TEST(QueueEvent, TaskResumesOnEvent_SchedulerLocked_ShouldNotBeScheduled)
     STRCMP_EQUAL("AL_AU_", buff);
 }
 
-TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldNotBeScheduled)
-{
+TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldNotBeScheduled) {
     librertos_create_task(
         LOW_PRIORITY, &task1, &ParamQueue::task_queue_read_suspend, &param1);
 
@@ -386,8 +359,7 @@ TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldNotBeScheduled)
         buff);
 }
 
-TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldBeScheduledWhenWritten)
-{
+TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldBeScheduledWhenWritten) {
     int8_t data = 0;
 
     librertos_create_task(
@@ -410,8 +382,7 @@ TEST(QueueEvent, TaskReadSuspend_EmptyQueue_ShouldBeScheduledWhenWritten)
         buff);
 }
 
-TEST(QueueEvent, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled)
-{
+TEST(QueueEvent, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled) {
     int8_t data = 0;
 
     librertos_create_task(
@@ -428,13 +399,11 @@ TEST(QueueEvent, TaskReadSuspend_NonEmptyQueue_ShouldBeScheduled)
         buff);
 }
 
-TEST_GROUP (QueueEventNewTest)
-{
+TEST_GROUP (QueueEventNewTest) {
     uint8_t que_buff[2];
     queue_t que;
 
-    void setup()
-    {
+    void setup() {
         test_init();
         queue_init(
             &que,
@@ -442,11 +411,11 @@ TEST_GROUP (QueueEventNewTest)
             sizeof(que_buff) / sizeof(que_buff[0]),
             sizeof(que_buff[0]));
     }
-    void teardown() {}
+    void teardown() {
+    }
 };
 
-TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
-{
+TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -459,8 +428,7 @@ TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
-{
+TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent) {
     uint8_t data = 0;
 
     test_create_tasks({0}, NULL, {NULL});
@@ -475,8 +443,7 @@ TEST(QueueEventNewTest, TaskSuspendsOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
-{
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -489,8 +456,7 @@ TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTaskResume)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
-{
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithEvent) {
     uint8_t data = 0;
 
     test_create_tasks({0}, NULL, {NULL});
@@ -505,8 +471,7 @@ TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithEvent)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
-{
+TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt) {
     test_create_tasks({0}, NULL, {NULL});
 
     set_current_task(&test.task[0]);
@@ -519,8 +484,7 @@ TEST(QueueEventNewTest, TaskDelaysOnEvent_ResumesWithTickInterrupt)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Success)
-{
+TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Success) {
     uint8_t data_w = 0x5A;
     uint8_t data_r = 0xA5;
 
@@ -534,8 +498,7 @@ TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Success)
     test_task_is_ready(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Fail)
-{
+TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Fail) {
     uint8_t data_r = 0xA5;
 
     test_create_tasks({0}, NULL, {NULL});
@@ -547,8 +510,7 @@ TEST(QueueEventNewTest, TaskReadSuspendOnEvent_Fail)
     test_task_is_suspended(&test.task[0]);
 }
 
-TEST(QueueEventNewTest, TaskReadDelaysOnEvent_Fail)
-{
+TEST(QueueEventNewTest, TaskReadDelaysOnEvent_Fail) {
     uint8_t data_r = 0xA5;
 
     test_create_tasks({0}, NULL, {NULL});
