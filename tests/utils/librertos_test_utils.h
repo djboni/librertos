@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
+#define LIBRERTOS_DEBUG_DECLARATIONS
 #include "librertos.h"
-#include "librertos_impl.h"
 
 #include <string.h>
 

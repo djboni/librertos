@@ -120,6 +120,27 @@ typedef struct
     struct list_t tasks_delayed[2];
 } librertos_t;
 
+void librertos_init(void);
+void librertos_tick_interrupt(void);
+void librertos_create_task(
+    int8_t priority,
+    task_t *task,
+    task_function_t func,
+    task_parameter_t param);
+void librertos_start(void);
+void librertos_sched(void);
+
+void scheduler_lock(void);
+void scheduler_unlock(void);
+task_t *interrupt_lock(void);
+void interrupt_unlock(task_t *task);
+
+tick_t get_tick(void);
+void task_delay(tick_t ticks_to_delay);
+void task_suspend(task_t *task);
+void task_resume(task_t *task);
+void task_resume_all(void);
+
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
 void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count);
@@ -149,26 +170,34 @@ uint8_t queue_get_item_size(queue_t *que);
 void queue_suspend(queue_t *que, tick_t ticks_to_delay);
 result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
-void librertos_init(void);
-void librertos_tick_interrupt(void);
-void librertos_create_task(
-    int8_t priority,
-    task_t *task,
-    task_function_t func,
-    task_parameter_t param);
-void librertos_start(void);
-void librertos_sched(void);
+#ifdef LIBRERTOS_DEBUG_DECLARATIONS
 
-void scheduler_lock(void);
-void scheduler_unlock(void);
-task_t *interrupt_lock(void);
-void interrupt_unlock(task_t *task);
+    #define NONZERO_INITVAL 0x5A
+    #define NO_TASK_PRIORITY (-1)
+    #define LIST_HEAD(list) ((struct node_t *)(list))
 
-tick_t get_tick(void);
-void task_delay(tick_t ticks_to_delay);
-void task_suspend(task_t *task);
-void task_resume(task_t *task);
-void task_resume_all(void);
+extern librertos_t librertos;
+
+task_t *get_current_task(void);
+void set_current_task(task_t *task);
+
+void list_init(struct list_t *list);
+void node_init(struct node_t *node, void *owner);
+uint8_t node_in_list(struct node_t *node);
+void list_insert_first(struct list_t *list, struct node_t *node);
+void list_insert_last(struct list_t *list, struct node_t *node);
+void list_insert_after(
+    struct list_t *list, struct node_t *pos, struct node_t *node);
+void list_remove(struct node_t *node);
+struct node_t *list_get_first(struct list_t *list);
+uint8_t list_is_empty(struct list_t *list);
+
+void event_init(event_t *event);
+void event_add_task_to_event(event_t *event);
+void event_delay_task(event_t *event, tick_t ticks_to_delay);
+void event_resume_task(event_t *event);
+
+#endif /* LIBRERTOS_DEBUG_DECLARATIONS */
 
 #ifdef __cplusplus
 }

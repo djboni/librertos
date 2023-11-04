@@ -1,6 +1,7 @@
 /* Copyright (c) 2016-2023 Djones A. Boni - MIT License */
 
-#include "librertos_impl.h"
+#define LIBRERTOS_DEBUG_DECLARATIONS
+#include "librertos.h"
 
 #include <stddef.h>
 #include <string.h>

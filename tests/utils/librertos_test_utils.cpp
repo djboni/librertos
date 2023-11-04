@@ -1,5 +1,4 @@
 #include "librertos_test_utils.h"
-#include "librertos_impl.h"
 
 int8_t kernel_mode = LIBRERTOS_PREEMPTIVE;
 
