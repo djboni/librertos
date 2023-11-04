@@ -1,20 +1,4 @@
-/*
- LibreRTOS - Portable single-stack Real Time Operating System.
-
- Copyright 2016-2021 Djones A. Boni
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+/* Copyright (c) 2022 Djones A. Boni - MIT License */
 
 #ifndef LIBRERTOS_H_
 #define LIBRERTOS_H_
@@ -23,249 +7,176 @@
 extern "C" {
 #endif
 
-#include "projdefs.h"
+#include "librertos_port.h"
+#include "librertos_proj.h"
 #include <stdint.h>
 
-#ifndef LIBRERTOS_MAX_PRIORITY
-#define LIBRERTOS_MAX_PRIORITY 3 /* integer > 0 */
-#endif
+#define NO_TASK_PTR ((task_t *)0)
+#define CURRENT_TASK_PTR ((task_t *)0)
+#define INTERRUPT_TASK_PTR ((task_t *)1)
 
-#ifndef LIBRERTOS_PREEMPTION
-#define LIBRERTOS_PREEMPTION 0 /* boolean */
-#endif
+#define MAX_DELAY ((tick_t)-1)
 
-#ifndef LIBRERTOS_PREEMPT_LIMIT
-#define LIBRERTOS_PREEMPT_LIMIT 0 /* integer >= 0, < LIBRERTOS_MAX_PRIORITY */
-#endif
+#define PERIODIC(delay_ticks, code) \
+    do \
+    { \
+        const difftick_t __delay = (delay_ticks); \
+        static tick_t __last = -__delay; \
+        tick_t __now = get_tick(); \
+        difftick_t __diff = __now - __last; \
+        if (__diff >= __delay) \
+        { \
+            __last += __delay; \
+            { \
+                code; \
+            } \
+        } \
+    } while (0)
 
-#ifndef LIBRERTOS_SOFTWARETIMERS
-#define LIBRERTOS_SOFTWARETIMERS 0 /* boolean */
-#endif
+struct os_task_t;
+struct node_t;
 
-#ifndef LIBRERTOS_STATE_GUARDS
-#define LIBRERTOS_STATE_GUARDS 0 /* boolean */
-#endif
+typedef enum
+{
+    FAIL = 0,
+    SUCCESS = 1
+} result_t;
 
-#ifndef LIBRERTOS_STATISTICS
-#define LIBRERTOS_STATISTICS 0 /* boolean */
-#endif
+typedef enum
+{
+    LOW_PRIORITY = 0,
+    HIGH_PRIORITY = NUM_PRIORITIES - 1
+} priority_t;
 
-#ifndef LIBRERTOS_TEST_CONCURRENT_ACCESS
-#define LIBRERTOS_TEST_CONCURRENT_ACCESS()
-#endif
+typedef enum
+{
+    LIBRERTOS_PREEMPTIVE = 0,
+    LIBRERTOS_COOPERATIVE
+} kernel_mode_t;
+
+struct list_t
+{
+    struct node_t *head;
+    struct node_t *tail;
+    uint8_t length;
+};
+
+struct node_t
+{
+    struct node_t *next;
+    struct node_t *prev;
+    struct list_t *list;
+    void *owner;
+};
+
+typedef struct
+{
+    struct list_t suspended_tasks;
+} event_t;
+
+typedef struct
+{
+    uint8_t count;
+    uint8_t max;
+    event_t event_unlock;
+} semaphore_t;
+
+typedef struct
+{
+    uint8_t locked;
+    struct os_task_t *task_owner;
+    event_t event_unlock;
+} mutex_t;
+
+typedef struct
+{
+    uint8_t free;
+    uint8_t used;
+    uint16_t head;
+    uint16_t tail;
+    uint16_t item_size;
+    uint16_t end;
+    uint8_t *buff;
+    event_t event_write;
+} queue_t;
 
 typedef void *task_parameter_t;
-typedef void (*task_function_t)(task_parameter_t);
+typedef void (*task_function_t)(task_parameter_t param);
 
-struct task_t;
-struct task_list_node_t;
+typedef struct os_task_t
+{
+    task_function_t func;
+    task_parameter_t param;
+    int8_t task_state;
+    int8_t priority;
+    int8_t original_priority;
+    tick_t delay_until;
+    struct node_t sched_node;
+    struct node_t event_node;
+} task_t;
 
-struct task_head_list_t {
-  struct task_list_node_t *head_ptr;
-  struct task_list_node_t *tail_ptr;
-  uint8_t length;
-};
+typedef struct
+{
+    int8_t scheduler_lock;
+    int8_t scheduler_depth;
+    tick_t tick;
+    task_t *current_task;
+    struct list_t tasks_ready[NUM_PRIORITIES];
+    struct list_t tasks_suspended;
+    struct list_t *tasks_delayed_current;
+    struct list_t *tasks_delayed_overflow;
+    struct list_t tasks_delayed[2];
+} librertos_t;
 
-struct task_list_node_t {
-  struct task_list_node_t *next_ptr;
-  struct task_list_node_t *prev_ptr;
-  tick_t value;
-  struct task_head_list_t *list_ptr;
-  void *owner_ptr;
-};
+void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
+void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
+void semaphore_init_unlocked(semaphore_t *sem, uint8_t max_count);
+result_t semaphore_lock(semaphore_t *sem);
+result_t semaphore_unlock(semaphore_t *sem);
+uint8_t semaphore_get_count(semaphore_t *sem);
+uint8_t semaphore_get_max(semaphore_t *sem);
+void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay);
+result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay);
 
-enum task_state_t {
-  TASKSTATE_UNINITIALIZED = 0,
-  TASKSTATE_READY,
-  TASKSTATE_BLOCKED,
-  TASKSTATE_SUSPENDED
-};
+void mutex_init(mutex_t *mtx);
+result_t mutex_lock(mutex_t *mtx);
+void mutex_unlock(mutex_t *mtx);
+uint8_t mutex_is_locked(mutex_t *mtx);
+void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay);
+result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay);
 
-struct task_t {
-  enum task_state_t state;
-  task_function_t function;
-  task_parameter_t parameter;
-  priority_t priority;
-  struct task_list_node_t node_delay;
-  struct task_list_node_t node_event;
+void queue_init(queue_t *que, void *buff, uint8_t que_size, uint8_t item_size);
+result_t queue_read(queue_t *que, void *data);
+result_t queue_write(queue_t *que, const void *data);
+uint8_t queue_is_empty(queue_t *que);
+uint8_t queue_is_full(queue_t *que);
+uint8_t queue_get_num_free(queue_t *que);
+uint8_t queue_get_num_used(queue_t *que);
+uint8_t queue_get_num_items(queue_t *que);
+uint8_t queue_get_item_size(queue_t *que);
+void queue_suspend(queue_t *que, tick_t ticks_to_delay);
+result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
-#if (LIBRERTOS_STATISTICS != 0)
-  stattime_t task_run_time;
-  stattime_t task_num_sched;
-#endif
-};
+void librertos_init(void);
+void librertos_tick_interrupt(void);
+void librertos_create_task(
+    int8_t priority,
+    task_t *task,
+    task_function_t func,
+    task_parameter_t param);
+void librertos_start(void);
+void librertos_sched(void);
 
-#if (LIBRERTOS_SOFTWARETIMERS != 0)
+void scheduler_lock(void);
+void scheduler_unlock(void);
+task_t *interrupt_lock(void);
+void interrupt_unlock(task_t *task);
 
-struct timer_t;
-
-typedef void *timer_parameter_t;
-typedef void (*timer_function_t)(struct timer_t *, timer_parameter_t);
-
-enum timer_type_t {
-  TIMERTYPE_ONESHOT =
-      0, /* Timer need to be reset to run. Run after period has passed. */
-  TIMERTYPE_AUTO,    /* Auto reset timer after it has run. */
-  TIMERTYPE_NOPERIOD /* Timer need to be reset to run. Run as soon as it is
-                        reset. */
-};
-
-struct timer_t {
-  enum timer_type_t type;
-  tick_t period;
-  timer_function_t function;
-  timer_parameter_t parameter;
-  struct task_list_node_t node_timer;
-};
-
-#endif
-
-struct event_r_t {
-  struct task_head_list_t list_read;
-};
-
-struct event_rw_t {
-  struct task_head_list_t list_read;
-  struct task_head_list_t list_write;
-};
-
-struct semaphore_t {
-  len_t count;
-  len_t max;
-  struct event_r_t event;
-};
-
-struct mutex_t {
-  len_t count;
-  struct task_t *mutex_owner_ptr;
-  struct event_r_t event;
-};
-
-struct queue_t {
-  len_t item_size;
-  len_t free;
-  len_t used;
-  len_t w_lock;
-  len_t r_lock;
-  uint8_t *head_ptr;
-  uint8_t *tail_ptr;
-  uint8_t *buff_ptr;
-  uint8_t *buff_end_ptr;
-  struct event_rw_t event;
-};
-
-struct fifo_t {
-  len_t length;
-  len_t free;
-  len_t used;
-  len_t w_lock;
-  len_t r_lock;
-  uint8_t *head_ptr;
-  uint8_t *tail_ptr;
-  uint8_t *buff_ptr;
-  uint8_t *buff_end_ptr;
-  struct event_rw_t event;
-};
-
-void LibrertosInit(void);
-void LibrertosStart(void);
-void LibrertosScheduler(void);
-void LibrertosTick(void);
-
-void LibrertosTaskCreate(struct task_t *ptr, priority_t priority,
-                         task_function_t function, task_parameter_t parameter);
-
-#if (LIBRERTOS_SOFTWARETIMERS != 0)
-
-void LibrertosTimerTaskCreate(priority_t priority);
-
-#endif
-
-tick_t GetTickCount(void);
-void TaskDelay(tick_t ticks_to_delay);
-void TaskResume(struct task_t *ptr);
-struct task_t *GetCurrentTask(void);
-
-void SchedulerLock(void);
-void SchedulerUnlock(void);
-
-void SemaphoreInit(struct semaphore_t *ptr, len_t count, len_t max);
-bool_t SemaphoreGive(struct semaphore_t *ptr);
-bool_t SemaphoreTake(struct semaphore_t *ptr);
-bool_t SemaphoreTakePend(struct semaphore_t *ptr, tick_t ticks_to_wait);
-void SemaphorePend(struct semaphore_t *ptr, tick_t ticks_to_wait);
-len_t SemaphoreGetCount(const struct semaphore_t *ptr);
-len_t SemaphoreGetMax(const struct semaphore_t *ptr);
-
-void MutexInit(struct mutex_t *ptr);
-bool_t MutexLock(struct mutex_t *ptr);
-bool_t MutexUnlock(struct mutex_t *ptr);
-bool_t MutexLockPend(struct mutex_t *ptr, tick_t ticks_to_wait);
-void MutexPend(struct mutex_t *ptr, tick_t ticks_to_wait);
-len_t MutexGetCount(const struct mutex_t *ptr);
-struct task_t *MutexGetOwner(const struct mutex_t *ptr);
-
-void QueueInit(struct queue_t *ptr, void *buff_ptr, len_t length,
-               len_t item_size);
-bool_t QueueRead(struct queue_t *ptr, void *buff_ptr);
-bool_t QueueReadPend(struct queue_t *ptr, void *buff_ptr, tick_t ticks_to_wait);
-void QueuePendRead(struct queue_t *ptr, tick_t ticks_to_wait);
-bool_t QueueWrite(struct queue_t *ptr, const void *buff_ptr);
-bool_t QueueWritePend(struct queue_t *ptr, const void *buff_ptr,
-                      tick_t ticks_to_wait);
-void QueuePendWrite(struct queue_t *ptr, tick_t ticks_to_wait);
-len_t QueueUsed(const struct queue_t *ptr);
-len_t QueueFree(const struct queue_t *ptr);
-len_t QueueLength(const struct queue_t *ptr);
-len_t QueueItemSize(const struct queue_t *ptr);
-bool_t QueueEmpty(const struct queue_t *ptr);
-bool_t QueueFull(const struct queue_t *ptr);
-
-void FifoInit(struct fifo_t *ptr, void *buff_ptr, len_t length);
-bool_t FifoReadByte(struct fifo_t *ptr, void *buff_ptr);
-len_t FifoRead(struct fifo_t *ptr, void *buff_ptr, len_t length);
-len_t FifoReadPend(struct fifo_t *ptr, void *buff_ptr, len_t length,
-                   tick_t ticks_to_wait);
-void FifoPendRead(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait);
-bool_t FifoWriteByte(struct fifo_t *ptr, const void *buff_ptr);
-len_t FifoWrite(struct fifo_t *ptr, const void *buff_ptr, len_t length);
-len_t FifoWritePend(struct fifo_t *ptr, const void *buff_ptr, len_t length,
-                    tick_t ticks_to_wait);
-void FifoPendWrite(struct fifo_t *ptr, len_t length, tick_t ticks_to_wait);
-len_t FifoUsed(const struct fifo_t *ptr);
-len_t FifoFree(const struct fifo_t *ptr);
-len_t FifoLength(const struct fifo_t *ptr);
-bool_t FifoEmpty(const struct fifo_t *ptr);
-bool_t FifoFull(const struct fifo_t *ptr);
-
-#if (LIBRERTOS_SOFTWARETIMERS != 0)
-
-void TimerInit(struct timer_t *ptr, enum timer_type_t type, tick_t period,
-               timer_function_t function, timer_parameter_t parameter);
-void TimerStart(struct timer_t *ptr);
-void TimerReset(struct timer_t *ptr);
-void TimerStop(struct timer_t *ptr);
-bool_t TimerIsRunning(const struct timer_t *ptr);
-
-#endif
-
-#if (LIBRERTOS_STATE_GUARDS != 0)
-
-bool_t LibrertosStateCheck(void);
-
-#endif
-
-#if (LIBRERTOS_STATISTICS != 0)
-
-stattime_t LibrertosTotalRunTime(void);
-stattime_t LibrertosNoTaskRunTime(void);
-stattime_t LibrertosTaskRunTime(const struct task_t *ptr);
-stattime_t LibrertosTaskNumSchedules(const struct task_t *ptr);
-
-/** Defined by user. */
-extern stattime_t LibrertosSystemRunTime(void);
-
-#endif
+tick_t get_tick(void);
+void task_delay(tick_t ticks_to_delay);
+void task_suspend(task_t *task);
+void task_resume(task_t *task);
+void task_resume_all(void);
 
 #ifdef __cplusplus
 }

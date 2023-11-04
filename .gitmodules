@@ -1,3 +1,6 @@
-[submodule "test/unit_test_c_with_python"]
-	path = test/unit_test_c_with_python
-	url = https://github.com/djboni/unit_test_c_with_python
+[submodule "projects"]
+	path = projects
+	url = https://github.com/djboni/librertos_projects.git
+[submodule "misc/cpputest"]
+	path = misc/cpputest
+	url = https://github.com/cpputest/cpputest.git
