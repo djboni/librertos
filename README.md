@@ -35,9 +35,11 @@ Notes:
 0. Clone this project using `git` or download the project as a
    [zip file](https://github.com/djboni/librertos/archive/refs/heads/master.zip)
    and extract it
-1. Add `scr/librertos.c` to the build
+1. Add `src/librertos.c` to the build
 2. Add `include/` to the include directories
 3. Add `#include librertos.h` to the source files
+4. Create a port file `librertos_port.h` and a project file `librertos_proj.h`
+   (see the [examples](examples/) directory)
 
 ## Running Tests
 
@@ -82,9 +84,9 @@ It is also possible to run the tests and check the code coverage information:
 make run_coverage
 ```
 
-If you want to run a specific test use the script `misc/run_tests.sh` and pass
+If you want to run a specific test use the script `tests/run_tests.sh` and pass
 the **test** path. Example:
 
 ```sh
-misc/run_tests.sh tests/src/semaphore_test.cpp
+tests/run_tests.sh tests/src/semaphore_test.cpp
 ```

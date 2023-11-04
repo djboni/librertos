@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-File="tests/src/concurrent_test.cpp"
+File="tests/concurrent_test.cpp"
 BuildDir="build"
 Gdb="$BuildDir/${File%.[cC]*}.gdb"
 Exec="$BuildDir/${File%.[cC]*}.elf"
@@ -176,7 +176,7 @@ run
 quit
 " > "$Gdb"
 
-misc/run_tests.sh --no-custom-test "$File"
+tests/run_tests.sh --no-custom-test "$File"
 
 if [ ! -f "$Exec" ]; then
     echo "$0: error: could not find '$Exec'" >&2

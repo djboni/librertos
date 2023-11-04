@@ -3,10 +3,10 @@
 all: run_tests
 
 clean:
-	misc/run_tests.sh --clean
+	tests/run_tests.sh --clean
 
 run_tests:
-	misc/run_tests.sh --all
+	tests/run_tests.sh --all
 
 run_coverage:
-	misc/run_tests.sh --all --coverage
+	tests/run_tests.sh --all --coverage

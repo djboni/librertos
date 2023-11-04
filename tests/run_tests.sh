@@ -3,12 +3,12 @@
 
 # Constants
 
-BuildScript="misc/build.mk"
-CPPUTEST_DIR="misc/cpputest"
+BuildScript="tests/utils/build.mk"
+CPPUTEST_DIR="tests/cpputest"
 
 BuildDir="build"
 SrcDir="src"
-PortDir="ports"
+PortDir="tests/port"
 TestsDir="tests"
 TestsEnd="_test.[cC]*"
 TestsObjDir="$BuildDir/obj_tests"
@@ -174,11 +174,11 @@ DoRunTest() {
 
         CC="g++"
         CFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
-        CFLAGS="$CFLAGS -include misc/MemoryLeakDetector.h"
+        CFLAGS="$CFLAGS -include tests/utils/MemoryLeakDetector.h"
         CXX="g++"
         CXXFLAGS="-g -O0 -std=c++11 -pedantic -Wall -Wextra -Wno-long-long --coverage $ASAN $UBSAN"
-        CXXFLAGS="$CXXFLAGS -include misc/MemoryLeakDetector.h"
-        CPPFLAGS="-I include -I $PortDir/test_linux -I . -I $CPPUTEST_DIR/include"
+        CXXFLAGS="$CXXFLAGS -include tests/utils/MemoryLeakDetector.h"
+        CPPFLAGS="-I include -I $PortDir -I . -I $CPPUTEST_DIR/include"
         LD="g++"
         LDFLAGS="--coverage $ASAN $UBSAN -l CppUTest -l CppUTestExt -L $CPPUTEST_DIR/cpputest_build/lib"
 
@@ -192,7 +192,7 @@ DoRunTest() {
         make -f $BuildScript \
             EXEC="$Exec" \
             OBJ_DIR="$TestsObjDir" \
-            INPUTS="$Test $AdditionalFiles misc/main.cpp $PortDir/test_linux/librertos_port.cpp" \
+            INPUTS="$Test $AdditionalFiles tests/utils/main.cpp $PortDir/librertos_port.cpp" \
             CC="$CC" \
             CFLAGS="$CFLAGS" \
             CXX="$CXX" \
@@ -244,7 +244,7 @@ DoRunTest() {
         CFLAGS="-g -O0 -std=c90 -pedantic -Wall -Wextra -Werror -Wno-long-long"
         CXX="g++"
         CXXFLAGS="-g -O0 -std=c++98 -pedantic -Wall -Wextra -Werror -Wno-long-long"
-        CPPFLAGS="-I include -I $PortDir/test_linux"
+        CPPFLAGS="-I include -I $PortDir"
         LD="gcc"
         LDFLAGS=""
 
