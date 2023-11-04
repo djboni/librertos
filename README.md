@@ -1,6 +1,6 @@
 # [LibreRTOS](https://github.com/djboni/librertos)
 
-Copyright (c) 2022 Djones A. Boni - MIT License
+Copyright (c) 2016-2023 Djones A. Boni - MIT License
 
 LibreRTOS is a portable Single-Stack Real-Time Operating System.
 

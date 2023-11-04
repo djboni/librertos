@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Djones A. Boni - MIT License */
+/* Copyright (c) 2016-2023 Djones A. Boni - MIT License */
 
 #ifndef LIBRERTOS_PORT_H_
 #define LIBRERTOS_PORT_H_

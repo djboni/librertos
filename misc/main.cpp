@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Djones A. Boni - MIT License */
+/* Copyright (c) 2016-2023 Djones A. Boni - MIT License */
 
 #include "CppUTest/CommandLineTestRunner.h"
 #include "CppUTest/TestRegistry.h"

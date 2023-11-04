@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Djones A. Boni - MIT License */
+/* Copyright (c) 2016-2023 Djones A. Boni - MIT License */
 
 /*
  * Project tested on Atmega2560 with Arduino bootloader.
