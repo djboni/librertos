@@ -26,9 +26,7 @@ extern "C" {
         difftick_t __diff = __now - __last; \
         if (__diff >= __delay) { \
             __last += __delay; \
-            { \
-                code; \
-            } \
+            { code; } \
         } \
     } while (0)
 
@@ -122,18 +120,14 @@ typedef struct
 
 void librertos_init(void);
 void librertos_tick_interrupt(void);
-void librertos_create_task(
-    int8_t priority,
-    task_t *task,
-    task_function_t func,
-    task_parameter_t param);
+void librertos_create_task(int8_t priority, task_t *task, task_function_t func, task_parameter_t param);
 void librertos_start(void);
 void librertos_sched(void);
 
 void scheduler_lock(void);
 void scheduler_unlock(void);
 task_t *interrupt_lock(void);
-void interrupt_unlock(task_t *task);
+void interrupt_unlock(task_t *interrupted_task);
 
 tick_t get_tick(void);
 void task_delay(tick_t ticks_to_delay);
@@ -170,10 +164,13 @@ uint8_t queue_get_item_size(queue_t *que);
 void queue_suspend(queue_t *que, tick_t ticks_to_delay);
 result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
+/*
+ * Define LIBRERTOS_DEBUG_DECLARATIONS before including this header to
+ * make these definitions available.
+ */
 #ifdef LIBRERTOS_DEBUG_DECLARATIONS
 
-    #define NONZERO_INITVAL 0x5A
-    #define NO_TASK_PRIORITY (-1)
+    #define NO_TASK_PRIORITY -1
     #define LIST_HEAD(list) ((struct node_t *)(list))
 
 extern librertos_t librertos;
@@ -186,8 +183,7 @@ void node_init(struct node_t *node, void *owner);
 uint8_t node_in_list(struct node_t *node);
 void list_insert_first(struct list_t *list, struct node_t *node);
 void list_insert_last(struct list_t *list, struct node_t *node);
-void list_insert_after(
-    struct list_t *list, struct node_t *pos, struct node_t *node);
+void list_insert_after(struct list_t *list, struct node_t *pos, struct node_t *node);
 void list_remove(struct node_t *node);
 struct node_t *list_get_first(struct list_t *list);
 uint8_t list_is_empty(struct list_t *list);

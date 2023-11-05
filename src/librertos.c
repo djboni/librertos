@@ -6,6 +6,11 @@
 #include <stddef.h>
 #include <string.h>
 
+#define NONZERO_INITVAL 0x5A
+
+/*
+ * Constants.
+ */
 enum {
     MUTEX_UNLOCKED = 0,
     TASK_NOT_RUNNING = 0,
@@ -17,11 +22,29 @@ enum {
  */
 librertos_t librertos;
 
-/*
+/**
  * Initialize LibreRTOS state.
  *
  * Must be called before starting the tick timer interrupt or any other
  * interrupt that uses LibreRTOS functions.
+ *
+ * Example:
+ *
+ * ```cpp
+ * int main(void) {
+ *     librertos_init();
+ *     // Create tasks
+ *     // ...
+ *
+ *     // Enable tick timer
+ *     // ...
+ *
+ *     INTERRUPTS_ENABLE();
+ *     librertos_start();
+ *     for(;;)
+ *         librertos_sched();
+ * }
+ * ```
  */
 void librertos_init(void) {
     int8_t i;
@@ -67,15 +90,24 @@ void librertos_init(void) {
     CRITICAL_EXIT();
 }
 
-/*
+/**
  * Create a task.
+ *
+ * Example:
+ *
+ * ```cpp
+ * // Create tasks
+ * librertos_create_task(LOW_PRIORITY, &task_idle, &func_idle, NULL);
+ * librertos_create_task(HIGH_PRIORITY, &task_work, &func_work, &data_work);
+ * librertos_create_task(HIGH_PRIORITY, &task_more_work, &func_more_work, &data_more_work);
  *
  * @param priority Task priority. Integer in the range from LOW_PRIORITY to
  * HIGH_PRIORITY (0 to NUM_PRIORITIES-1).
  * @param task Task scruct information.
- * @param func Function executed by the task, with prototype
- * void task_function(void *param).
+ * @param func Function executed by the task. The task prototype must be
+ * `void func_task(void *param)`.
  * @param param Parameter passed to the task function.
+ * ```
  */
 void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param) {
@@ -103,21 +135,32 @@ void librertos_create_task(
 
     list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
 
+    /* TODO: Check for higher priority task ready. */
+
     CRITICAL_EXIT();
     scheduler_unlock();
 }
 
-/*
+/**
  * Start LibreRTOS, allows the scheduler to run on interrupts and when resuming
  * tasks.
  *
- * Call after initializing the hardware, tasks, but before calling the scheduler
- * in a loop.
+ * Call **once** after initializing the hardware, tasks, but before calling the
+ * scheduler in a loop.
+ *
+ * For an example @see librertos_init().
  */
 void librertos_start(void) {
     librertos.scheduler_lock = 0;
 }
 
+/*
+ * Get the highest priority task that is ready to be scheduled. Return NULL
+ * if there is no task ready with higher priority than the current task.
+ *
+ * @param current_task Pointer to the current task.
+ * @return Pointer to the task or NULL.
+ */
 static task_t *get_higher_priority_task(task_t *current_task) {
     struct node_t *node;
     task_t *task;
@@ -145,10 +188,12 @@ static task_t *get_higher_priority_task(task_t *current_task) {
     return NULL;
 }
 
-/*
+/**
  * Run scheduled tasks.
  *
  * Picks and runs the higher priority task that is ready.
+ *
+ * For an example @see librertos_init().
  */
 void librertos_sched(void) {
     task_t *current_task;
@@ -185,8 +230,27 @@ void librertos_sched(void) {
     INTERRUPTS_ENABLE();
 }
 
-/*
- * Lock scheduler, avoids preemption when using the preemptive kernel.
+/**
+ * Lock scheduler, avoids preemption from tasks when using the preemptive
+ * kernel.
+ *
+ * Example:
+ *
+ * ```cpp
+ * void task_example(void *param) {
+ *     // Do task work (can be preempted)
+ *     // ...
+ *
+ *     scheduler_lock();
+ *     // Do time-sensitive part with scheduler locked (cannot be preempted
+ *     // by other task, but can be preempted by an interrupt)
+ *     // ...
+ *     scheduler_unlock();
+ *
+ *     // Continue task work work (can be preempted)
+ *     // ...
+ * }
+ * ```
  */
 void scheduler_lock(void) {
     if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
@@ -197,14 +261,17 @@ void scheduler_lock(void) {
     }
 }
 
-/*
+/**
  * Unlock scheduler, causes preemption when using the preemptive kernel and a
  * higher priority tasks is ready.
+ *
+ * For an example @see scheduler_lock().
  */
 void scheduler_unlock(void) {
     if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
         CRITICAL_ENTER();
+        /* TODO: Check for higher priority task ready. */
         if (--librertos.scheduler_lock == 0) {
             CRITICAL_EXIT();
             librertos_sched();
@@ -214,93 +281,60 @@ void scheduler_unlock(void) {
     }
 }
 
-/*
- * Lock scheduler for interrupts, avoids preemption when using the preemptive
- * kernel. Returns the current task so it can be restored when unlocking the
- * scheduler.
+/**
+ * Lock scheduler for interrupts, avoids running tasks in the middle of the
+ * interrupt when using the preemptive kernel. Returns the current task so
+ * it can be restored when unlocking the scheduler.
  *
- * This function must be called in the beginning of interrupts that use LibreRTOS
- * functions.
+ * This function **must** be called in the beginning of interrupts that use
+ * LibreRTOS functions.
+ *
+ * Call with interrupts disabled. If the application requires it, the interrupts
+ * can be reenabled after calling this function.
+ *
+ * Reasoning: Calling this function and its counterpart in the interrupts will
+ * guarantee that the interrupt function finishes processing without running
+ * any tasks in the mean time. It also avoids problems with mutex ownership
+ * when locking mutexes in interrupts.
+ *
+ * Example:
+ *
+ * ```cpp
+ * void interrupt_example(void) {
+ *     task_t *interrupted_task = interrupt_lock();
+ *
+ *     // Do interrupt work
+ *     // ...
+ *
+ *     interrupt_unlock(interrupted_task);
+ * }
+ * ```
  *
  * @return Task preempted by the interrupt.
  */
 task_t *interrupt_lock(void) {
-    task_t *task;
+    task_t *interrupted_task;
     scheduler_lock();
-    task = get_current_task();
+    interrupted_task = get_current_task();
     set_current_task(INTERRUPT_TASK_PTR);
-    return task;
+    return interrupted_task;
 }
 
-/*
+/**
  * Unlock scheduler for interrupts, causes preemption when using the preemptive
  * kernel and a higher priority tasks is ready. Pass the task returned by
  * interrupt_lock().
  *
- * This function must be called in the end of interrupts that use LibreRTOS
+ * This function **must** be called in the end of interrupts that use LibreRTOS
  * functions.
+ *
+ * For an example @see interrupt_lock().
  *
  * @param task Task preempted by the interrupt.
  */
-void interrupt_unlock(task_t *task) {
-    set_current_task(task);
+void interrupt_unlock(task_t *interrupted_task) {
+    set_current_task(interrupted_task);
     scheduler_unlock();
-}
-
-static void resume_delayed_tasks(tick_t now);
-
-/*
- * Process a tick timer interrupt. Increment the tick counter and resume
- * suspended tasks.
- *
- * Must be called periodically by a timer interrupt.
- */
-void librertos_tick_interrupt(void) {
-    task_t *task = interrupt_lock();
-    tick_t now;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    now = ++librertos.tick;
-    resume_delayed_tasks(now);
-    CRITICAL_EXIT();
-    interrupt_unlock(task);
-}
-
-/*
- * Get the tick count, the number of ticks since initialization.
- *
- * Note that the tick count can overflow.
- */
-tick_t get_tick(void) {
-    tick_t tick;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    tick = librertos.tick;
-    CRITICAL_EXIT();
-    return tick;
-}
-
-/*
- * Get the currently running task, NO_TASK_PTR (a.k.a NULL) if no task is
- * running and INTERRUPT_TASK_PTR if an interrupt is running.
- */
-task_t *get_current_task(void) {
-    task_t *task;
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    task = librertos.current_task;
-    CRITICAL_EXIT();
-    return task;
-}
-
-/*
- * Set the currently running task.
- */
-void set_current_task(task_t *task) {
-    CRITICAL_VAL();
-    CRITICAL_ENTER();
-    librertos.current_task = task;
-    CRITICAL_EXIT();
 }
 
 /* Call with interrupts disabled and scheduler locked. */
@@ -336,6 +370,74 @@ static void resume_delayed_tasks(tick_t now) {
         resume_list_of_tasks(librertos.tasks_delayed_overflow, MAX_DELAY);
     }
     resume_list_of_tasks(librertos.tasks_delayed_current, now);
+}
+
+/**
+ * Process a tick timer interrupt. Increment the tick counter and resume
+ * the delayed tasks that expired.
+ *
+ * Must be called periodically by a timer interrupt.
+ *
+ * Example:
+ *
+ * ```cpp
+ * void Timer0_IRQ(void) {
+ *     librertos_tick_interrupt();
+ * }
+ * ```
+ */
+void librertos_tick_interrupt(void) {
+    task_t *interrupted_task = interrupt_lock();
+    tick_t now;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    now = ++librertos.tick;
+    resume_delayed_tasks(now);
+    CRITICAL_EXIT();
+    interrupt_unlock(interrupted_task);
+}
+
+/**
+ * Get the tick counter, the number of ticks since initialization.
+ *
+ * Note that the tick counter can overflow.
+ *
+ * @return Tick counter.
+ */
+tick_t get_tick(void) {
+    tick_t tick;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    tick = librertos.tick;
+    CRITICAL_EXIT();
+    return tick;
+}
+
+/*
+ * Get the currently running task, NO_TASK_PTR (NULL pointer) if no task is
+ * running and INTERRUPT_TASK_PTR if an interrupt is running.
+ *
+ * @return Running task or NULL.
+ */
+task_t *get_current_task(void) {
+    task_t *task;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    task = librertos.current_task;
+    CRITICAL_EXIT();
+    return task;
+}
+
+/*
+ * Set the currently running task.
+ *
+ * @param task New running task.
+ */
+void set_current_task(task_t *task) {
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    librertos.current_task = task;
+    CRITICAL_EXIT();
 }
 
 /* Call with interrupts disabled and scheduler locked. */
@@ -380,7 +482,7 @@ static struct node_t *delay_find_tick_position(struct list_t *list, tick_t tick)
     return pos;
 }
 
-/* No restrictions when calling. */
+/* Must be called by a task. No other restrictions when calling. */
 static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     task_t *task;
     struct node_t *node;
@@ -413,12 +515,15 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     scheduler_unlock();
 }
 
-/*
+/**
  * Delay task for a certain amount of ticks.
  *
- * This function can be used only by tasks.
+ * Must be called by a task.
  *
- * If the task is currently running, it will keep running until it returns.
+ * Note: If the task is currently running, it will run to completion (it keeps
+ * running until it returns).
+ *
+ * @param ticks_to_delay Number of ticks to delay the task.
  */
 void task_delay(tick_t ticks_to_delay) {
     tick_t now = get_tick();
@@ -426,12 +531,15 @@ void task_delay(tick_t ticks_to_delay) {
     task_delay_now_until(now, tick_to_wakeup);
 }
 
-/*
- * Suspend task.
+/**
+ * Suspend task until it is resumed.
  *
- * If the task is currently running, it will keep running until it returns.
+ * Pass CURRENT_TASK_PTR (NULL pointer) to suspend the current task.
  *
- * Pass CURRENT_TASK_PTR (a.k.a NULL pointer) to suspend the current task.
+ * Note: If the task is currently running, it will run to completion (it keeps
+ * running until it returns).
+ *
+ * @param task Task to suspend.
  */
 void task_suspend(task_t *task) {
     CRITICAL_VAL();
@@ -452,8 +560,10 @@ void task_suspend(task_t *task) {
     CRITICAL_EXIT();
 }
 
-/*
+/**
  * Resume task.
+ *
+ * @param task Task to resume.
  */
 void task_resume(task_t *task) {
     struct list_t *list_ready;
@@ -474,6 +584,8 @@ void task_resume(task_t *task) {
     if (node_in_list(node_event))
         list_remove(node_event);
 
+    /* TODO: Check for higher priority task ready. */
+
     /* The scheduler is locked and unlocked only if a task was actually
      * resumed. When the scheduler unlocks the current task can be preempted
      * by a higher priority task.
@@ -482,7 +594,7 @@ void task_resume(task_t *task) {
     scheduler_unlock();
 }
 
-/*
+/**
  * Resume all tasks.
  */
 void task_resume_all(void) {
@@ -663,7 +775,7 @@ void event_resume_task(event_t *event) {
     }
 }
 
-/*
+/**
  * Initialize the semaphore with an initial value and a maximum value.
  *
  * It is recommended to use the functions below instead of this:
@@ -693,7 +805,7 @@ void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count) {
     CRITICAL_EXIT();
 }
 
-/*
+/**
  * Initialize the semaphore in the locked state (initial value equals zero).
  *
  * @param max_count Maximum value of the semaphore.
@@ -702,7 +814,7 @@ void semaphore_init_locked(semaphore_t *sem, uint8_t max_count) {
     semaphore_init(sem, 0, max_count);
 }
 
-/*
+/**
  * Initialize semaphore in the unlocked state (initial value equals maximum
  * value).
  *
@@ -722,7 +834,7 @@ static uint8_t semaphore_can_be_unlocked(semaphore_t *sem) {
     return sem->count < sem->max;
 }
 
-/*
+/**
  * Lock the semaphore.
  *
  * @return 1 with success, 0 otherwise.
@@ -741,7 +853,7 @@ result_t semaphore_lock(semaphore_t *sem) {
     return result;
 }
 
-/*
+/**
  * Unlock the semaphore.
  *
  * @return 1 with success, 0 otherwise.
@@ -768,7 +880,7 @@ result_t semaphore_unlock(semaphore_t *sem) {
     return result;
 }
 
-/*
+/**
  * Get the current value of the semaphore.
  */
 uint8_t semaphore_get_count(semaphore_t *sem) {
@@ -780,7 +892,7 @@ uint8_t semaphore_get_count(semaphore_t *sem) {
     return count;
 }
 
-/*
+/**
  * Get the maximum value of the semaphore.
  */
 uint8_t semaphore_get_max(semaphore_t *sem) {
@@ -789,7 +901,7 @@ uint8_t semaphore_get_max(semaphore_t *sem) {
     return sem->max;
 }
 
-/*
+/**
  * Suspend the task on the semaphore, waiting a maximum number for ticks to pass
  * before resuming.
  *
@@ -804,9 +916,7 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
 
     if (!semaphore_can_be_locked(sem)) {
         scheduler_lock();
-
         event_delay_task(&sem->event_unlock, ticks_to_delay);
-
         CRITICAL_EXIT();
         scheduler_unlock();
     } else {
@@ -814,7 +924,7 @@ void semaphore_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     }
 }
 
-/*
+/**
  * Lock the semaphore if unlocked, else tries to suspend the task on the
  * semaphore, waiting a maximum number for ticks to pass before resuming.
  *
@@ -831,7 +941,7 @@ result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
     return result;
 }
 
-/*
+/**
  * Initialize mutex.
  */
 void mutex_init(mutex_t *mtx) {
@@ -853,7 +963,7 @@ static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
     return mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner;
 }
 
-/*
+/**
  * Lock the mutex.
  *
  * @return 1 with success, 0 otherwise.
@@ -904,7 +1014,7 @@ static void task_set_priority(task_t *task, int8_t priority) {
     }
 }
 
-/*
+/**
  * Unlock the mutex.
  */
 void mutex_unlock(mutex_t *mtx) {
@@ -929,7 +1039,7 @@ void mutex_unlock(mutex_t *mtx) {
         owner = (task_t *)mtx->task_owner;
 
         if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR) {
-            /* Cannot change priority of no task or interrupt. */
+            /* Cannot change priority if no task or interrupt. */
         } else {
             if (owner->priority != owner->original_priority)
                 task_set_priority(owner, owner->original_priority);
@@ -944,7 +1054,7 @@ void mutex_unlock(mutex_t *mtx) {
     }
 }
 
-/*
+/**
  * Check if the mutex is locked.
  */
 uint8_t mutex_is_locked(mutex_t *mtx) {
@@ -956,7 +1066,7 @@ uint8_t mutex_is_locked(mutex_t *mtx) {
     return locked;
 }
 
-/*
+/**
  * Suspend the task on the mutex, waiting a maximum number for ticks to pass
  * before resuming.
  *
@@ -991,7 +1101,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     }
 }
 
-/*
+/**
  * Lock the mutex if unlocked, else tries to suspend the task on the
  * mutex, waiting a maximum number for ticks to pass before resuming.
  *
@@ -1008,7 +1118,7 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
     return result;
 }
 
-/*
+/**
  * Initialize the queue.
  *
  * @param buff Pointer to a buffer with size que_size*item_size.
@@ -1044,7 +1154,7 @@ static uint8_t queue_can_be_written(queue_t *que) {
     return que->free > 0;
 }
 
-/*
+/**
  * Read an item from the queue.
  *
  * @param data Pointer to a buffer with size que->item_size.
@@ -1071,7 +1181,7 @@ result_t queue_read(queue_t *que, void *data) {
     return result;
 }
 
-/*
+/**
  * Write an item to the queue.
  *
  * @param data Pointer to a buffer with size que->item_size.
@@ -1106,7 +1216,7 @@ result_t queue_write(queue_t *que, const void *data) {
     return result;
 }
 
-/*
+/**
  * Get number of free items in the queue.
  */
 uint8_t queue_get_num_free(queue_t *que) {
@@ -1118,7 +1228,7 @@ uint8_t queue_get_num_free(queue_t *que) {
     return value;
 }
 
-/*
+/**
  * Get number of used items in the queue.
  */
 uint8_t queue_get_num_used(queue_t *que) {
@@ -1130,21 +1240,21 @@ uint8_t queue_get_num_used(queue_t *que) {
     return value;
 }
 
-/*
+/**
  * Check if the queue is empty (zero items used).
  */
 uint8_t queue_is_empty(queue_t *que) {
     return queue_get_num_used(que) == 0;
 }
 
-/*
+/**
  * Check if the queue is full (all items used).
  */
 uint8_t queue_is_full(queue_t *que) {
     return queue_get_num_free(que) == 0;
 }
 
-/*
+/**
  * Get total number of items in the queue (free + used).
  */
 uint8_t queue_get_num_items(queue_t *que) {
@@ -1156,7 +1266,7 @@ uint8_t queue_get_num_items(queue_t *que) {
     return value;
 }
 
-/*
+/**
  * Get the size of the items in the queue.
  */
 uint8_t queue_get_item_size(queue_t *que) {
@@ -1165,7 +1275,7 @@ uint8_t queue_get_item_size(queue_t *que) {
     return que->item_size;
 }
 
-/*
+/**
  * Suspend the task waiting to read the queue, waiting a maximum number for
  * ticks to pass before resuming.
  *
@@ -1180,9 +1290,7 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay) {
 
     if (!queue_can_be_read(que)) {
         scheduler_lock();
-
         event_delay_task(&que->event_write, ticks_to_delay);
-
         CRITICAL_EXIT();
         scheduler_unlock();
     } else {
@@ -1190,7 +1298,7 @@ void queue_suspend(queue_t *que, tick_t ticks_to_delay) {
     }
 }
 
-/*
+/**
  * Read an item from the the queue if not empty, else tries to suspend the task
  * waiting to read the queue, waiting a maximum number for ticks to pass before
  * resuming.
