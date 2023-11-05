@@ -1,7 +1,8 @@
 /* Copyright (c) 2016-2023 Djones A. Boni - MIT License */
 
 /*
- * Project tested on Atmega2560 with Arduino bootloader.
+ * Project tested on Atmega2560 with Arduino bootloader,
+ * building on Ubuntu 22.04.
  *
  * One task blinks with frequency 1 Hz.
  *

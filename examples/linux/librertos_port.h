@@ -9,8 +9,6 @@ extern "C" {
 
 #include "librertos_proj.h"
 
-#define KERNEL_MODE LIBRERTOS_PREEMPTIVE
-
 #define INTERRUPTS_VAL()
 void INTERRUPTS_DISABLE(void);
 void INTERRUPTS_ENABLE(void);
@@ -20,8 +18,8 @@ void CRITICAL_ENTER(void);
 void CRITICAL_EXIT(void);
 
 void port_init(void);
-void idle_wait_interrupt(void);
 void port_enable_tick_interrupt(void);
+void idle_wait_interrupt(void);
 
 #ifdef __cplusplus
 }

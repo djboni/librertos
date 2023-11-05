@@ -1,2 +1,5 @@
 build/
 cov.xml
+main
+main.elf
+main.hex

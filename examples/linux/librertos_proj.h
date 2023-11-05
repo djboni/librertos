@@ -12,13 +12,14 @@ extern "C" {
 
 #define LIBRERTOS_ASSERT(expr, val, msg) assert(expr)
 
+#define KERNEL_MODE LIBRERTOS_PREEMPTIVE
 #define NUM_PRIORITIES 2
 
 #define TICKS_PER_SECOND 100
 #define TICK_PERIOD (1.0 / TICKS_PER_SECOND)
 
-typedef uint16_t tick_t;
-typedef int16_t difftick_t;
+typedef uint32_t tick_t;
+typedef int32_t difftick_t;
 
 #ifdef __cplusplus
 }

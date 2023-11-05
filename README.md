@@ -45,7 +45,7 @@ Notes:
 
 This project contains unit tests.
 
-1. Install the dependencies (Ubuntu 20.04 and 22.04):
+1. Install the dependencies (Ubuntu 22.04):
 
 ```sh
 sudo apt install git make gcc g++ dh-autoreconf gcovr
@@ -59,7 +59,7 @@ cd librertos
 git submodule update --init
 ```
 
-One command to build and to run the unit-tests:
+3. One command to build and to run the unit-tests:
 
 ```sh
 make run_tests
@@ -78,7 +78,7 @@ The test framework CppUTest is build automatically when you first run the tests.
 However, the build can fail if is any of the necessary programs or libraries is
 missing.
 
-It is also possible to run the tests and check the code coverage information:
+4. It is also possible to run the tests and check the code coverage information:
 
 ```sh
 make run_coverage

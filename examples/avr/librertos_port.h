@@ -26,8 +26,8 @@ extern "C" {
                      : "memory")
 
 void port_init(void);
-void idle_wait_interrupt(void);
 void port_enable_tick_interrupt(void);
+void idle_wait_interrupt(void);
 
 void led_config(void);
 void led_on(void);

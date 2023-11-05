@@ -1,8 +1,27 @@
-# Memory Usage
+# LibreRTOS on AVR
 
+- Board: Arduino Mega 2560
 - Microcontroller: AVR ATmega2560
 - Compiler: GCC
 - Tick: 16 bits
+
+1. Install the dependencies (Ubuntu 22.04):
+
+```sh
+sudo apt install make gcc-avr avr-libc avrdude
+```
+
+2. Compile:
+
+```sh
+make main.hex
+```
+
+3. Write flash:
+
+```sh
+make flash
+```
 
 ## RAM Usage
 
