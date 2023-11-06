@@ -1,3 +1,6 @@
+CC = gcc
+CFLAGS = -O0 -g3
+
 SOURCES = ./main.c ./librertos_port.c ../../src/librertos.c
 HEADERS = ./librertos_proj.h ./librertos_port.h ../../include/librertos.h
 OUTPUTS = main

@@ -11,10 +11,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define NUM_TASKS_PRINT 5
+
 task_t task_idle;
-task_t task_print1;
-task_t task_print2;
-task_t task_print3;
+task_t task_print[NUM_TASKS_PRINT];
 
 void func_task_idle(void *param) {
     (void)param;
@@ -23,24 +23,26 @@ void func_task_idle(void *param) {
 }
 
 void func_task_print(void *param) {
-    int value = (intptr_t)param;
+    int value = (intptr_t)param * TICKS_PER_SECOND;
 
-    printf("func_task_print %d %u\n", TICKS_PER_SECOND * value, get_tick());
-    task_delay(TICKS_PER_SECOND * value);
+    printf("func_task_print %d %u\n", value, get_tick());
+
+    task_delay(value);
 }
 
 int main(void) {
+    uintptr_t i;
+
     port_init();
     librertos_init();
 
     librertos_create_task(LOW_PRIORITY, &task_idle, &func_task_idle, NULL);
-    librertos_create_task(HIGH_PRIORITY, &task_print1, &func_task_print, (void *)1);
-    librertos_create_task(HIGH_PRIORITY, &task_print2, &func_task_print, (void *)2);
-    librertos_create_task(HIGH_PRIORITY, &task_print3, &func_task_print, (void *)3);
+    for (i = 0; i < NUM_TASKS_PRINT; ++i)
+        librertos_create_task(HIGH_PRIORITY, &task_print[i], &func_task_print, (void *)(i + 1));
 
     port_enable_tick_interrupt();
 
-    printf("FUNC delay ticks\n");
+    printf("FUNC delay tick\n");
 
     librertos_start();
     for (;;)

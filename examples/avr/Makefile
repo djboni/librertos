@@ -1,5 +1,5 @@
 CC = avr-gcc
-CFLAGS = -mmcu=atmega2560 -O1
+CFLAGS = -mmcu=atmega2560 -O1 -g3
 
 SOURCES = ./main.c ./librertos_port.c ../../src/librertos.c
 HEADERS = ./librertos_proj.h ./librertos_port.h ../../include/librertos.h

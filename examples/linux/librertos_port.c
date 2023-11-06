@@ -3,28 +3,19 @@
 #include "librertos.h"
 #include <pthread.h>
 #include <semaphore.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 
-static pthread_t main_thread;
 static pthread_t tick_interrupt;
 static sem_t idle_wakeup;
-static sem_t interrupt_go;
 static pthread_mutex_t mutual_exclusion;
 
-static void sig_handler(int sig_num) {
+static void *func_tick_interrupt(void *param) {
     int retval;
     INTERRUPTS_VAL();
+    (void)param;
 
-    if (sig_num == SIGUSR1) {
-        retval = sem_post(&interrupt_go);
-        LIBRERTOS_ASSERT(
-            retval == 0,
-            retval,
-            "func_tick_interrupt(): Could not unlock (post) semaphore.");
-
+    for (;;) {
+        usleep(1000000 * TICK_PERIOD);
         INTERRUPTS_DISABLE();
         librertos_tick_interrupt();
         INTERRUPTS_ENABLE();
@@ -34,31 +25,6 @@ static void sig_handler(int sig_num) {
             retval == 0,
             retval,
             "func_tick_interrupt(): Could not unlock (post) semaphore.");
-    } else {
-        printf("sig_handler(): Caught the wrong signal number [%d].", sig_num);
-        exit(sig_num);
-    }
-}
-
-static void *func_tick_interrupt(void *param) {
-    int retval;
-    INTERRUPTS_VAL();
-    (void)param;
-
-    for (;;) {
-        usleep(1000000 * TICK_PERIOD);
-
-        INTERRUPTS_DISABLE();
-
-        pthread_kill(main_thread, SIGUSR1);
-
-        retval = sem_wait(&interrupt_go);
-        LIBRERTOS_ASSERT(
-            retval == 0,
-            retval,
-            "func_tick_interrupt(): Could not lock (wait) semaphore.");
-
-        INTERRUPTS_ENABLE();
     }
 
     return NULL;
@@ -71,13 +37,6 @@ void port_init(void) {
     retval = sem_init(&idle_wakeup, 0, 0);
     LIBRERTOS_ASSERT(
         retval == 0, retval, "port_init(): Could not initialize semaphore.");
-
-    retval = sem_init(&interrupt_go, 0, 0);
-    LIBRERTOS_ASSERT(
-        retval == 0, retval, "port_init(): Could not initialize semaphore.");
-
-    main_thread = pthread_self();
-    signal(SIGUSR1, sig_handler);
 
     retval = pthread_mutexattr_init(&attr);
     retval |= pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
