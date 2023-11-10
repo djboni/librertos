@@ -75,7 +75,7 @@ typedef struct
 
 typedef struct
 {
-    uint8_t locked;
+    uint8_t count;
     struct os_task_t *task_owner;
     event_t event_unlock;
 } mutex_t;

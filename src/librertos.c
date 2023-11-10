@@ -961,7 +961,7 @@ void mutex_init(mutex_t *mtx) {
     /* Make non-zero, to be easy to spot uninitialized fields. */
     memset(mtx, NONZERO_INITVAL, sizeof(*mtx));
 
-    mtx->locked = 0;
+    mtx->count = 0;
     mtx->task_owner = NO_TASK_PTR;
     event_init(&mtx->event_unlock);
 
@@ -970,7 +970,7 @@ void mutex_init(mutex_t *mtx) {
 
 /* Call with interrupts disabled. */
 static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
-    return mtx->locked == MUTEX_UNLOCKED || current_task == mtx->task_owner;
+    return mtx->count == MUTEX_UNLOCKED || current_task == mtx->task_owner;
 }
 
 /**
@@ -987,7 +987,7 @@ result_t mutex_lock(mutex_t *mtx) {
     current_task = librertos.current_task;
 
     if (mutex_can_be_locked(mtx, current_task)) {
-        mtx->locked++;
+        mtx->count++;
         mtx->task_owner = current_task;
         result = LIBRERTOS_SUCCESS;
     }
@@ -1031,17 +1031,17 @@ void mutex_unlock(mutex_t *mtx) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
-        mtx->locked != MUTEX_UNLOCKED,
-        mtx->locked,
+        mtx->count != MUTEX_UNLOCKED,
+        mtx->count,
         "mutex_unlock(): mutex already unlocked.");
 
     CRITICAL_ENTER();
 
-    if (mtx->locked != MUTEX_UNLOCKED) {
-        mtx->locked--;
+    if (mtx->count != MUTEX_UNLOCKED) {
+        mtx->count--;
     }
 
-    if (mtx->locked == MUTEX_UNLOCKED) {
+    if (mtx->count == MUTEX_UNLOCKED) {
         task_t *owner;
 
         scheduler_lock();
