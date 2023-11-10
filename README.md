@@ -4,89 +4,45 @@ Copyright (c) 2016-2023 Djones A. Boni - MIT License
 
 LibreRTOS is a portable Single-Stack Real-Time Operating System.
 
-The objective of LibreRTOS is to run a microcontroller application one step
-above the bare metal.
+The main objective of LibreRTOS is to run in microcontrollers.
+
+Features:
+
+- Preemptive and cooperative kernel modes.
+- Tasks and timers with priorities.
+- Synchronization with queues, semaphores and mutexes.
 
 Design goals:
 
-- Portability: use of strictly standard C.
-  - No use of C compiler extensions, and
-  - Assembly is used only to manage interrupts.
-- Readability: clean code, easy to read and to reason about.
+- Portability:
+  - Strictly standard C (no compiler extensions), and
+  - Minimal assembly required (only 4 macros to manage interrupts).
 - Real-Time: all operations that disable interrupts take constant time O(1).
 - Single-Stack: all tasks share the same stack, allowing a large number of
   tasks to be created on RAM constrained projects.
   - The tasks must run to completion and must hold state in static memory.
-- Static allocation.
-  - No malloc/free and such.
-
-Features:
-
-- Provide preemptive and cooperative kernel modes.
-- Provide synchronization with queues, semaphores and mutexes.
+- Static allocation: no use of malloc/free and such.
 
 Notes:
 
 - Interrupts that use LibreRTOS API must lock the scheduler at the beginning and
   unlock it before returning.
 
-## Using This Project
+## Using LibreRTOS in Your Project
 
-0. Clone this project using `git` or download the project as a
-   [zip file](https://github.com/djboni/librertos/archive/refs/heads/master.zip)
-   and extract it
-1. Add `src/librertos.c` to the build
-2. Add `include/` to the include directories
-3. Add `#include librertos.h` to the source files
-4. Create a port file `librertos_port.h` and a project file `librertos_proj.h`
-   (see the [examples](examples/) directory)
+1. Get the code:
+   - Clone this project using Git, or
+   - Download LibreRTOS as a
+     [zip file](https://github.com/djboni/librertos/archive/refs/heads/master.zip)
+     and extract it.
+2. Copy `src/librertos.c` and `include/librertos.h` to your project
+3. Create a port file `librertos_port.h` for your hardware (see the [examples](examples/))
+4. Create a project file `librertos_proj.h` for your project (see the [examples](examples/))
+5. Add `#include "librertos.h"` to your source files and use LibreRTOS
+6. Initialize and use LibreRTOS in your project (see more in the [documentation](doc/home))
 
-## Running Tests
+## Examples and Documentation
 
-This project contains unit tests.
-
-1. Install the dependencies (Ubuntu 22.04):
-
-```sh
-sudo apt install git make gcc g++ dh-autoreconf gcovr
-```
-
-2. Clone the project with `git` and initialize the submodules:
-
-```sh
-git clone https://github.com/djboni/librertos
-cd librertos
-git submodule update --init
-```
-
-3. One command to build and to run the unit-tests:
-
-```sh
-make run_tests
-```
-
-The end of the test log should be something like this (no failures):
-
-```
-...
-==============================================
-10 Tests, 0 Inexistent, 0 Failures
-OK
-```
-
-The test framework CppUTest is build automatically when you first run the tests.
-However, the build can fail if is any of the necessary programs or libraries is
-missing.
-
-4. It is also possible to run the tests and check the code coverage information:
-
-```sh
-make run_coverage
-```
-
-If you want to run a specific test use the script `tests/run_tests.sh` and pass
-the **test** path. Example:
-
-```sh
-tests/run_tests.sh tests/src/semaphore_test.cpp
-```
+- The user documentation is available in the [doc/](doc/home) directory.
+- Examples can be found in the [examples/](examples/) directory
+- Implementation details are documented in the code.
