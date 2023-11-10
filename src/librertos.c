@@ -72,7 +72,7 @@ void librertos_init(void) {
      * while initializing the hardware and when creating the tasks on
      * initialization.
      */
-    librertos.scheduler_lock = 1;
+    librertos.scheduler_depth = 1;
 
     librertos.tick = 0;
     librertos.current_task = NO_TASK_PTR;
@@ -100,6 +100,7 @@ void librertos_init(void) {
  * librertos_create_task(LOW_PRIORITY, &task_idle, &func_idle, NULL);
  * librertos_create_task(HIGH_PRIORITY, &task_work, &func_work, &data_work);
  * librertos_create_task(HIGH_PRIORITY, &task_more_work, &func_more_work, &data_more_work);
+ * ```
  *
  * @param priority Task priority. Integer in the range from LOW_PRIORITY to
  * HIGH_PRIORITY (0 to NUM_PRIORITIES-1).
@@ -107,7 +108,6 @@ void librertos_init(void) {
  * @param func Function executed by the task. The task prototype must be
  * `void func_task(void *param)`.
  * @param param Parameter passed to the task function.
- * ```
  */
 void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param) {
@@ -151,12 +151,17 @@ void librertos_create_task(
  * For an example @see librertos_init().
  */
 void librertos_start(void) {
-    librertos.scheduler_lock = 0;
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    librertos.scheduler_depth = 0;
+    CRITICAL_EXIT();
 }
 
 /*
  * Get the highest priority task that is ready to be scheduled. Return NULL
  * if there is no task ready with higher priority than the current task.
+ *
+ * Call with interrupts disabled.
  *
  * @param current_task Pointer to the current task.
  * @return Pointer to the task or NULL.
@@ -199,10 +204,15 @@ void librertos_sched(void) {
     task_t *current_task;
     INTERRUPTS_VAL();
 
+    /* It makes sense to call the scheduler only when unlocked. Calling the
+     * scheduler when locked (scheduler_depth != 0) is probably a mistake in
+     * the program that did not unlocked it after locking or the user forgot
+     * to call once librertos_start().
+     */
     LIBRERTOS_ASSERT(
-        librertos.scheduler_lock == 0,
-        librertos.scheduler_lock,
-        "librertos_sched(): must call librertos_start() before the scheduler.");
+        librertos.scheduler_depth == 0,
+        librertos.scheduler_depth,
+        "Cannot run the scheduler when it is locked.");
 
     /* Disable interrupts to determine the highest priority task that is ready
      * to run.
@@ -256,7 +266,7 @@ void scheduler_lock(void) {
     if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
         CRITICAL_VAL();
         CRITICAL_ENTER();
-        ++librertos.scheduler_lock;
+        ++librertos.scheduler_depth;
         CRITICAL_EXIT();
     }
 }
@@ -272,7 +282,7 @@ void scheduler_unlock(void) {
         CRITICAL_VAL();
         CRITICAL_ENTER();
         /* TODO: Check for higher priority task ready. */
-        if (--librertos.scheduler_lock == 0) {
+        if (--librertos.scheduler_depth == 0) {
             CRITICAL_EXIT();
             librertos_sched();
         } else {

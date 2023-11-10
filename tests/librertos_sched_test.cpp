@@ -597,8 +597,7 @@ TEST(SchedulerStart, Preemptive_IfNotStarted_ScheulerCallsAssertFunction) {
         .withParameter("val", 1)
         .withParameter(
             "msg",
-            "librertos_sched(): must call librertos_start() before the "
-            "scheduler.");
+            "Cannot run the scheduler when it is locked.");
 
     CHECK_THROWS(AssertionError, librertos_sched());
 }
@@ -611,8 +610,7 @@ TEST(SchedulerStart, Cooperative_IfNotStarted_ScheulerCallsAssertFunction) {
         .withParameter("val", 1)
         .withParameter(
             "msg",
-            "librertos_sched(): must call librertos_start() before the "
-            "scheduler.");
+            "Cannot run the scheduler when it is locked.");
 
     CHECK_THROWS(AssertionError, librertos_sched());
 }

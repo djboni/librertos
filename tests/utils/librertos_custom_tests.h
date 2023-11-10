@@ -58,7 +58,7 @@ void taskX_is_suspended(T *test, int i) {
 
 template <class T>
 void call_the_scheduler(T *) {
-    if (librertos.scheduler_lock)
+    if (librertos.scheduler_depth)
         librertos_start();
     librertos_sched();
 }

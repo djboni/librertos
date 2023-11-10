@@ -108,7 +108,7 @@ typedef struct os_task_t {
 
 typedef struct
 {
-    int8_t scheduler_lock;
+    int8_t scheduler_depth;
     tick_t tick;
     task_t *current_task;
     struct list_t tasks_ready[NUM_PRIORITIES];
