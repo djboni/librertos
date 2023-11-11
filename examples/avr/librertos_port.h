@@ -30,9 +30,12 @@ void port_enable_tick_interrupt(void);
 void idle_wait_interrupt(void);
 
 void led_config(void);
-void led_on(void);
-void led_off(void);
+void led_write(uint8_t value);
 void led_toggle(void);
+
+void serial_init(uint32_t speed);
+void serial_write_byte(uint8_t data);
+int16_t serial_read(void);
 
 #ifdef __cplusplus
 }
