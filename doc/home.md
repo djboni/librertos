@@ -3,22 +3,23 @@
 If you want to use LibreRTOS in your project:
 
 - Project Setup:
-  - TODO: Port file `librertos_port.h`
-  - TODO: Project file `librertos_proj.h`
-- First Steps:
-  - TODO: Initialization and Scheduler Loop
-  - TODO: Tick Interrupt and Tick Counter
-  - TODO: Tasks
-    - TODO: Delaying Tasks
-    - TODO: Suspending Tasks
-    - TODO: Resuming Tasks
-- Intermediate:
-  - TODO: Queues
-  - TODO: Semaphores
-  - TODO: Mutexes
+  - [Port File - `librertos_port.h`](Project-Setup#port-file)
+  - [Project File - `librertos_proj.h`](Project-Setup#project-file)
+  - [Initialization and Scheduler Loop - `main()`](Project-Setup#initialization-and-scheduler-loop)
+  - [Tick Interrupt](Project-Setup#tick-interrupt)
+- Tasks:
+  - [Creating Tasks](Tasks#creating-tasks)
+  - [Delaying Tasks](Tasks#delaying-tasks)
+  - [Suspending Tasks](Tasks#suspending-tasks)
+  - [Resuming Tasks](Tasks#resuming-tasks)
+- Events:
+  - [Queues](Queues)
+  - [Semaphores](Semaphores)
+  - [Mutexes](Mutexes)
 - Advanced:
-  - TODO: Timers
-  - TODO: Locking the Scheduler and Interrupts
+  - [Timers](Timers)
+  - [Tick Counter](Tick-Counter)
+  - [Locking the Scheduler and Interrupts](Scheduler-Lock)
 
 ## LibreRTOS Developers
 

@@ -16,8 +16,8 @@ extern "C" {
 
 #define F_CPU 16000000
 #define TIMER_PRESCALER 64
-#define TICKS_PER_SECOND ((tick_t)(F_CPU / (256.0 * TIMER_PRESCALER)))
-#define TICK_PERIOD (1.0 / TICKS_PER_SECOND)
+#define TICK_PERIOD (256.0 * TIMER_PRESCALER / F_CPU)
+#define TICKS_PER_SECOND ((tick_t)(1.0 / TICK_PERIOD + 0.5))
 
 typedef uint16_t tick_t;
 typedef int16_t difftick_t;

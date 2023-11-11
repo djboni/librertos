@@ -36,9 +36,9 @@ Notes:
      [zip file](https://github.com/djboni/librertos/archive/refs/heads/master.zip)
      and extract it.
 2. Copy `src/librertos.c` and `include/librertos.h` to your project
-3. Create a port file `librertos_port.h` for your hardware (see the [examples](examples/))
-4. Create a project file `librertos_proj.h` for your project (see the [examples](examples/))
-5. Add `#include "librertos.h"` to your source files and use LibreRTOS
+3. Add `#include "librertos.h"` to your source files and use LibreRTOS
+4. Create a port file `librertos_port.h` for your hardware (see the [examples](examples/))
+5. Create a project file `librertos_proj.h` for your project (see the [examples](examples/))
 6. Initialize and use LibreRTOS in your project (see more in the [documentation](doc/home))
 
 ## Examples and Documentation

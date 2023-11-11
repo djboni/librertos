@@ -15,9 +15,14 @@ static void *func_tick_interrupt(void *param) {
     (void)param;
 
     for (;;) {
+        task_t *interrupted_task;
+
         usleep(1000000 * TICK_PERIOD);
+
         INTERRUPTS_DISABLE();
+        interrupted_task = interrupt_lock();
         librertos_tick_interrupt();
+        interrupt_unlock(interrupted_task);
         INTERRUPTS_ENABLE();
 
         retval = sem_post(&idle_wakeup);

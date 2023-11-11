@@ -83,5 +83,7 @@ void port_enable_tick_interrupt(void) {
 
 /* Timer0 overflow ISR. */
 ISR(TIMER0_OVF_vect) {
+    task_t *interrupted_task = interrupt_lock();
     librertos_tick_interrupt();
+    interrupt_unlock(interrupted_task);
 }
