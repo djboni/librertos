@@ -20,9 +20,13 @@
 #include "librertos.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+
+#define NUM_TASKS_PRINT 2
 
 task_t task_idle;
 task_t task_blink;
+task_t task_print[NUM_TASKS_PRINT];
 
 void func_task_idle(void *param) {
     (void)param;
@@ -39,13 +43,25 @@ void func_task_blink(void *param) {
     task_delay(0.5 * TICKS_PER_SECOND);
 }
 
+void func_task_print(void *param) {
+    int value = (intptr_t)param * TICKS_PER_SECOND;
+
+    printf("func_task_print %d %u\n", (int)param, get_tick());
+
+    task_delay(value);
+}
+
 int main(void) {
+    uintptr_t i;
+
     port_init();
     serial_init(115200);
     librertos_init();
 
     librertos_create_task(LOW_PRIORITY, &task_idle, &func_task_idle, NULL);
     librertos_create_task(HIGH_PRIORITY, &task_blink, &func_task_blink, NULL);
+    for (i = 0; i < NUM_TASKS_PRINT; ++i)
+        librertos_create_task(HIGH_PRIORITY, &task_print[i], &func_task_print, (void *)(i + 1));
 
     port_enable_tick_interrupt();
 

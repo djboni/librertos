@@ -4,6 +4,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <stdio.h>
 
 #if defined(__AVR_ATmega2560__)
     #define LED_DDR DDRB
@@ -47,6 +48,13 @@ void led_toggle(void) {
  * Serial
  ******************************************************************************/
 
+static int serial_putchar(char var, FILE *stream) {
+    serial_write_byte(var);
+    return 0;
+}
+
+static FILE serial_stdout = FDEV_SETUP_STREAM(serial_putchar, NULL, _FDEV_SETUP_WRITE);
+
 void serial_init(uint32_t speed) {
     uint8_t ucsra = 0;
     uint32_t ubrr;
@@ -74,6 +82,9 @@ void serial_init(uint32_t speed) {
              (3 << UCSZ00);                /* 8 bits data */
     UCSR0B = (1 << RXEN0) | (1 << TXEN0) | /* Enable TX and RX. */
              (0 << UCSZ02);                /* 8 bits data */
+
+    stdout = &serial_stdout;
+    stderr = &serial_stdout;
 }
 
 void serial_write_byte(uint8_t data) {
