@@ -31,9 +31,16 @@ void func_task_idle(void *param) {
 }
 
 void func_task_blink(void *param) {
+    static uint8_t led_state = 0;
     (void)param;
 
-    led_toggle();
+    if (led_state) {
+        led_off();
+    } else {
+        led_on();
+    }
+    led_state = !led_state;
+
     task_delay(0.5 * TICKS_PER_SECOND);
 }
 
@@ -47,8 +54,9 @@ int main(void) {
     port_enable_tick_interrupt();
 
     librertos_start();
-    for (;;)
+    while (1) {
         librertos_sched();
+    }
 
     return 0;
 }

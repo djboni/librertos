@@ -56,7 +56,7 @@ TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction) {
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)&task1)
         .withParameter(
-            "msg", "event_delay_task(): this task is already suspended.");
+            "msg", "This task is already suspended.");
 
     librertos_create_task(
         LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
@@ -72,7 +72,7 @@ TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction) {
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)NO_TASK_PTR)
         .withParameter(
-            "msg", "event_delay_task(): no task or interrupt is running.");
+            "msg", "No task or interrupt is running.");
 
     CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
@@ -82,7 +82,7 @@ TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction) {
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
         .withParameter(
-            "msg", "event_delay_task(): no task or interrupt is running.");
+            "msg", "No task or interrupt is running.");
 
     (void)interrupt_lock();
 

@@ -62,10 +62,7 @@ void port_enable_tick_interrupt(void) {
         break;
     default:
         /* Invalid prescaler value. */
-        LIBRERTOS_ASSERT(
-            0,
-            TIMER_PRESCALER,
-            "port_enable_tick_interrupt(): Invalid timer prescaler.");
+        LIBRERTOS_ASSERT(0, TIMER_PRESCALER, "Invalid timer prescaler.");
         prescaler = 0x05U;
     }
 

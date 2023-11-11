@@ -136,7 +136,7 @@ TEST(Sempahore, InvalidInitCount_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", 2)
-        .withParameter("msg", "semaphore_init(): invalid init_count.");
+        .withParameter("msg", "Invalid init_count.");
 
     CHECK_THROWS(AssertionError, semaphore_init(&sem, 2, 1));
 }

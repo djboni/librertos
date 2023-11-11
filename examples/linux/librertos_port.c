@@ -14,7 +14,7 @@ static void *func_tick_interrupt(void *param) {
     INTERRUPTS_VAL();
     (void)param;
 
-    for (;;) {
+    while (1) {
         task_t *interrupted_task;
 
         usleep(1000000 * TICK_PERIOD);

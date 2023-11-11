@@ -142,8 +142,9 @@ int main(void) {
 
     /* Enable LibreRTOS then call the scheduler in a loop. */
     librertos_start();
-    for (;;)
+    while (1) {
         librertos_sched();
+    }
 
     return 0;
 }

@@ -93,7 +93,7 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", LOW_PRIORITY - 1)
-        .withParameter("msg", "librertos_create_task(): invalid priority.");
+        .withParameter("msg", "Invalid priority.");
 
     CHECK_THROWS(
         AssertionError,
@@ -105,7 +105,7 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction_2) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter("val", HIGH_PRIORITY + 1)
-        .withParameter("msg", "librertos_create_task(): invalid priority.");
+        .withParameter("msg", "Invalid priority.");
 
     CHECK_THROWS(
         AssertionError,
@@ -162,7 +162,7 @@ TEST(Scheduler, Suspend_CallSuspendWithNoTaskRunning_CallsAssertFunction) {
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)NO_TASK_PTR)
         .withParameter(
-            "msg", "task_suspend(): no task or interrupt is running.");
+            "msg", "No task or interrupt is running.");
 
     CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
 }
@@ -172,7 +172,7 @@ TEST(Scheduler, Suspend_CallSuspendWithInterruptRunning_CallsAssertFunction) {
         .expectOneCall("librertos_assert")
         .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
         .withParameter(
-            "msg", "task_suspend(): no task or interrupt is running.");
+            "msg", "No task or interrupt is running.");
 
     (void)interrupt_lock();
 

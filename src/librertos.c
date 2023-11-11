@@ -41,8 +41,9 @@ librertos_t librertos;
  *
  *     INTERRUPTS_ENABLE();
  *     librertos_start();
- *     for(;;)
+ *     while (1) {
  *         librertos_sched();
+ *     }
  * }
  * ```
  */
@@ -50,17 +51,11 @@ void librertos_init(void) {
     int8_t i;
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        (tick_t)-1 > 0, (tick_t)-1, "tick_t must be an unsigned integer.");
-
-    LIBRERTOS_ASSERT(
-        (difftick_t)-1 == -1,
-        (difftick_t)-1,
+    LIBRERTOS_ASSERT((tick_t)-1 > 0, (tick_t)-1,
+        "tick_t must be an unsigned integer.");
+    LIBRERTOS_ASSERT((difftick_t)-1 == -1, (difftick_t)-1,
         "difftick_t must be a signed integer.");
-
-    LIBRERTOS_ASSERT(
-        sizeof(difftick_t) == sizeof(tick_t),
-        sizeof(difftick_t),
+    LIBRERTOS_ASSERT(sizeof(difftick_t) == sizeof(tick_t), sizeof(difftick_t),
         "difftick_t must be the same size as tick_t.");
 
     CRITICAL_ENTER();
@@ -113,10 +108,8 @@ void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY,
-        priority,
-        "librertos_create_task(): invalid priority.");
+    LIBRERTOS_ASSERT(priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY,
+        priority, "Invalid priority.");
 
     scheduler_lock();
     CRITICAL_ENTER();
@@ -413,9 +406,7 @@ void librertos_tick_interrupt(void) {
      * Forgetting to call interrupt_unlock() after this call will trigger
      * this or other assertions.
      */
-    LIBRERTOS_ASSERT(
-        librertos.scheduler_depth > 0,
-        librertos.scheduler_depth,
+    LIBRERTOS_ASSERT(librertos.scheduler_depth > 0, librertos.scheduler_depth,
         "Cannot process tick when the scheduler is unlocked.");
 
     CRITICAL_ENTER();
@@ -572,9 +563,10 @@ void task_suspend(task_t *task) {
     CRITICAL_VAL();
 
     LIBRERTOS_ASSERT(
-        !(task == CURRENT_TASK_PTR && (librertos.current_task == NO_TASK_PTR || librertos.current_task == INTERRUPT_TASK_PTR)),
-        (intptr_t)librertos.current_task,
-        "task_suspend(): no task or interrupt is running.");
+        !(task == CURRENT_TASK_PTR &&
+            (librertos.current_task == NO_TASK_PTR ||
+                librertos.current_task == INTERRUPT_TASK_PTR)),
+        (intptr_t)librertos.current_task, "No task or interrupt is running.");
 
     CRITICAL_ENTER();
 
@@ -771,14 +763,13 @@ void event_add_task_to_event(event_t *event) {
 /* Call with interrupts disabled and scheduler locked. */
 void event_delay_task(event_t *event, tick_t ticks_to_delay) {
     LIBRERTOS_ASSERT(
-        !(librertos.current_task == NO_TASK_PTR || librertos.current_task == INTERRUPT_TASK_PTR),
-        (intptr_t)librertos.current_task,
-        "event_delay_task(): no task or interrupt is running.");
+        !(librertos.current_task == NO_TASK_PTR ||
+            librertos.current_task == INTERRUPT_TASK_PTR),
+        (intptr_t)librertos.current_task, "No task or interrupt is running.");
 
     LIBRERTOS_ASSERT(
         !node_in_list(&librertos.current_task->event_node),
-        (intptr_t)librertos.current_task,
-        "event_delay_task(): this task is already suspended.");
+        (intptr_t)librertos.current_task, "This task is already suspended.");
 
     /* Suspend the task and insert in the end of the list so that the event
      * can resume the task.
@@ -815,10 +806,7 @@ void event_resume_task(event_t *event) {
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        init_count <= max_count,
-        init_count,
-        "semaphore_init(): invalid init_count.");
+    LIBRERTOS_ASSERT(init_count <= max_count, init_count, "Invalid init_count.");
 
     CRITICAL_ENTER();
 
@@ -1047,10 +1035,8 @@ static void task_set_priority(task_t *task, int8_t priority) {
 void mutex_unlock(mutex_t *mtx) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        mtx->count != MUTEX_UNLOCKED,
-        mtx->count,
-        "mutex_unlock(): mutex already unlocked.");
+    LIBRERTOS_ASSERT(mtx->count != MUTEX_UNLOCKED, mtx->count,
+        "Mutex already unlocked.");
 
     CRITICAL_ENTER();
 

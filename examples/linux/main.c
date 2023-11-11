@@ -45,8 +45,9 @@ int main(void) {
     printf("FUNC delay tick\n");
 
     librertos_start();
-    for (;;)
+    while (1) {
         librertos_sched();
+    }
 
     return 0;
 }
