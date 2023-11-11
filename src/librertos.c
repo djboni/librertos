@@ -209,9 +209,7 @@ void librertos_sched(void) {
      * the program that did not unlocked it after locking or the user forgot
      * to call once librertos_start().
      */
-    LIBRERTOS_ASSERT(
-        librertos.scheduler_depth == 0,
-        librertos.scheduler_depth,
+    LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, librertos.scheduler_depth,
         "Cannot run the scheduler when it is locked.");
 
     /* Disable interrupts to determine the highest priority task that is ready
@@ -230,7 +228,13 @@ void librertos_sched(void) {
 
         /* Enable interrupts while running the task. */
         INTERRUPTS_ENABLE();
+
+        /* Assert here too so it checks every time a tasks is scheduled. */
+        LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, librertos.scheduler_depth,
+            "Cannot run the scheduler when it is locked.");
+
         task->func(task->param);
+
         INTERRUPTS_DISABLE();
 
         task->task_state = TASK_NOT_RUNNING;
@@ -387,24 +391,37 @@ static void resume_delayed_tasks(tick_t now) {
  * the delayed tasks that expired.
  *
  * Must be called periodically by a timer interrupt.
+ * Must lock the scheduler for interrupts before calling and unlock after
+ * it returns.
  *
  * Example:
  *
  * ```cpp
  * void Timer0_IRQ(void) {
+ *     task_t *interrupted_task = interrupt_lock();
  *     librertos_tick_interrupt();
+ *     interrupt_unlock(interrupted_task);
  * }
  * ```
  */
 void librertos_tick_interrupt(void) {
-    task_t *interrupted_task = interrupt_lock();
     tick_t now;
     CRITICAL_VAL();
+
+    /* If this assertion triggers, the user probably forgot to lock the
+     * scheduler for interrupts with interrupt_lock().
+     * Forgetting to call interrupt_unlock() after this call will trigger
+     * this or other assertions.
+     */
+    LIBRERTOS_ASSERT(
+        librertos.scheduler_depth > 0,
+        librertos.scheduler_depth,
+        "Cannot process tick when the scheduler is unlocked.");
+
     CRITICAL_ENTER();
     now = ++librertos.tick;
     resume_delayed_tasks(now);
     CRITICAL_EXIT();
-    interrupt_unlock(interrupted_task);
 }
 
 /**
