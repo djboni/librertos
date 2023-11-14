@@ -7,21 +7,45 @@
 
 1. Install the dependencies (Ubuntu 22.04):
 
-```sh
-sudo apt install make gcc-avr avr-libc avrdude
-```
+   ```sh
+   sudo apt install make gcc-avr avr-libc avrdude
+   ```
 
 2. Compile:
 
-```sh
-make main.hex
-```
+   ```sh
+   make
+   ```
 
 3. Write flash:
 
-```sh
-make flash
-```
+   ```sh
+   make flash
+   ```
+
+4. Read the serial:
+
+- Cutecom:
+
+  ```sh
+  sudo apt install cutecom
+  cutecom
+  ```
+
+- Terminal
+
+  ```sh
+  stty -F /dev/ttyACM0 speed 115200
+  cat /dev/ttyACM0
+  ```
+
+  Note that to read the serial (/dev/ttyACM0) the user must be in the dialout
+  group. To add the current user to the group use the command below and
+  login again or restart the computer.
+
+  ```sh
+  sudo adduser $USER dialout
+  ```
 
 ## RAM Usage
 

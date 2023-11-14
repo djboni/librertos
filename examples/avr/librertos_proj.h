@@ -7,15 +7,11 @@
 extern "C" {
 #endif
 
+#define __ASSERT_USE_STDERR
+#include <assert.h>
 #include <stdint.h>
 
-#define LIBRERTOS_ASSERT(expr, val, msg) \
-    do { \
-        if (!(expr)) { \
-            while (1) { \
-            } \
-        } \
-    } while (0)
+#define LIBRERTOS_ASSERT(expr, val, msg) assert(expr)
 
 #define KERNEL_MODE LIBRERTOS_PREEMPTIVE
 #define NUM_PRIORITIES 2

@@ -49,11 +49,12 @@ void led_toggle(void) {
  ******************************************************************************/
 
 static int serial_putchar(char var, FILE *stream) {
+    (void)stream;
     serial_write_byte(var);
     return 0;
 }
 
-static FILE serial_stdout = FDEV_SETUP_STREAM(serial_putchar, NULL, _FDEV_SETUP_WRITE);
+static FILE serial_stdout = FDEV_SETUP_STREAM(&serial_putchar, NULL, _FDEV_SETUP_WRITE);
 
 void serial_init(uint32_t speed) {
     uint8_t ucsra = 0;
@@ -61,13 +62,13 @@ void serial_init(uint32_t speed) {
 
     ubrr = (F_CPU - 4 * speed) / (8 * speed);
 
-    if (ubrr <= 0x0FFFU) {
-        /* Prescaler 8 is OK. */
-        ucsra |= (1 << U2X0); /* Prescaler = 8 */
+    if (ubrr <= 0x0FFF) {
+        /* Clock divider 8 is OK. */
+        ucsra |= (1 << U2X0); /* Clock divider = 8 */
     } else {
-        /* Prescaler 8 cannot be used. */
+        /* Clock divider 8 cannot be used. */
         ubrr = (F_CPU - 8 * speed) / (16 * speed);
-        ucsra &= ~(1 << U2X0); /* Prescaler = 16 */
+        ucsra &= ~(1 << U2X0); /* Clock divider = 16 */
     }
 
     PRR0 &= ~(1 << PRUSART0); /* Enable UART clock. */
@@ -77,11 +78,11 @@ void serial_init(uint32_t speed) {
     /* Set speed and other configurations. */
     UBRR0 = ubrr;
     UCSR0A = ucsra;
-    UCSR0C = (0 << UPM00) |                /* No parity */
+    UCSR0C = (0 << UPM00) |                /* No parity UPM01:0=0b00*/
              (0 << USBS0) |                /* 1 Stop bit */
-             (3 << UCSZ00);                /* 8 bits data */
+             (3 << UCSZ00);                /* 8 bits data UCSZ02:0=0b011 */
     UCSR0B = (1 << RXEN0) | (1 << TXEN0) | /* Enable TX and RX. */
-             (0 << UCSZ02);                /* 8 bits data */
+             (0 << UCSZ02);                /* 8 bits data UCSZ02:0=0b011 */
 
     stdout = &serial_stdout;
     stderr = &serial_stdout;
@@ -94,13 +95,9 @@ void serial_write_byte(uint8_t data) {
 }
 
 int16_t serial_read(void) {
-    int16_t data = -1;
-
-    if (UCSR0A & (1 << RXC0)) {
-        data = UDR0;
-    }
-
-    return data;
+    if (UCSR0A & (1 << RXC0))
+        return UDR0;
+    return -1;
 }
 
 /* USART0, Rx Complete. */
@@ -134,10 +131,6 @@ void idle_wait_interrupt(void) {
 void port_enable_tick_interrupt(void) {
     uint8_t prescaler;
 
-    PRR0 &= ~(1 << PRTIM0); /* Enable timer clock. */
-
-    TIMSK0 = 0; /* Disable timer interrupts. */
-
     switch (TIMER_PRESCALER) {
     case 1:
         prescaler = 0x01;
@@ -160,16 +153,21 @@ void port_enable_tick_interrupt(void) {
         prescaler = 0x05;
     }
 
+    PRR0 &= ~(1 << PRTIM0); /* Enable timer clock. */
+
+    TIMSK0 = 0; /* Disable timer interrupts. */
+
     TCCR0A = (0x00 << COM0A0) | /* Normal port operation, OC0A disconnected. */
              (0x00 << COM0B0) | /* Normal port operation, OC0B disconnected. */
              (0x03 << WGM00);   /* Mode: Fast PWM (WGM02:0=0b011). */
 
-    TCCR0B = (0x00 << FOC0A) | (0x00 << FOC0B) | /* */
-             (0x00 << WGM02) |                   /* Mode: Fast PWM (WGM02:0=0b011). */
-             (prescaler << CS00);                /* Clock source. */
+    TCCR0B = (0x00 << FOC0A) |    /* */
+             (0x00 << FOC0B) |    /* */
+             (0x00 << WGM02) |    /* Mode: Fast PWM (WGM02:0=0b011). */
+             (prescaler << CS00); /* Clock source. */
 
     TCNT0 = 0;             /* Clear counter. */
-    TIFR0 = 0xFFU;         /* Clear interrupt flags. */
+    TIFR0 = 0xFF;          /* Clear interrupt flags. */
     TIMSK0 = (1 << TOIE0); /* Enable timer overflow interrupt. */
 }
 

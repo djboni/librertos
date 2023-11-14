@@ -6,18 +6,18 @@
 
 1. Install the dependencies (Ubuntu 22.04):
 
-```sh
-sudo apt install make gcc
-```
+   ```sh
+   sudo apt install make gcc
+   ```
 
 2. Compile:
 
-```sh
-make main
-```
+   ```sh
+   make
+   ```
 
 3. Run:
 
-```sh
-./main
-```
+   ```sh
+   ./main
+   ```

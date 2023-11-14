@@ -18,6 +18,7 @@
  */
 
 #include "librertos.h"
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -46,7 +47,7 @@ void func_task_blink(void *param) {
 void func_task_print(void *param) {
     int value = (intptr_t)param * TICKS_PER_SECOND;
 
-    printf("func_task_print %d %u\n", (int)param, get_tick());
+    printf("func_task_print %" PRIdPTR " %u\n", (intptr_t)param, get_tick());
 
     task_delay(value);
 }
