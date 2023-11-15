@@ -54,7 +54,6 @@ TEST(Event, TaskSuspendsOnEvent_ShouldNotBeScheduled) {
 TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)&task1)
         .withParameter(
             "msg", "This task is already suspended.");
 
@@ -70,9 +69,8 @@ TEST(Event, TaskSuspendsOnTwoEvent_CallsAssertFunction) {
 TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)NO_TASK_PTR)
         .withParameter(
-            "msg", "No task or interrupt is running.");
+            "msg", "Cannot delay without a task.");
 
     CHECK_THROWS(AssertionError, event_delay_task(&event, MAX_DELAY));
 }
@@ -80,9 +78,8 @@ TEST(Event, CallSuspendWithNoTaskRunning_CallsAssertFunction) {
 TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
         .withParameter(
-            "msg", "No task or interrupt is running.");
+            "msg", "Cannot delay in an interrupt.");
 
     (void)interrupt_lock();
 

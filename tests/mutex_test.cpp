@@ -35,7 +35,6 @@ TEST(Mutex, Unlocked_Locks) {
 TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", 0)
         .withParameter("msg", "Mutex already unlocked.");
 
     CHECK_THROWS(AssertionError, mutex_unlock(&mtx));

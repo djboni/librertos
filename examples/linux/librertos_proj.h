@@ -10,7 +10,7 @@ extern "C" {
 #include <assert.h>
 #include <stdint.h>
 
-#define LIBRERTOS_ASSERT(expr, val, msg) assert(expr)
+#define LIBRERTOS_ASSERT(expr, msg) assert(expr)
 
 #define KERNEL_MODE LIBRERTOS_PREEMPTIVE
 #define NUM_PRIORITIES 2

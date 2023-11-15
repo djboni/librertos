@@ -92,7 +92,6 @@ TEST(Scheduler, TwoTasks_HigherPriorityHasPrecedence) {
 TEST(Scheduler, InvalidPriority_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", LOW_PRIORITY - 1)
         .withParameter("msg", "Invalid priority.");
 
     CHECK_THROWS(
@@ -104,7 +103,6 @@ TEST(Scheduler, InvalidPriority_CallsAssertFunction) {
 TEST(Scheduler, InvalidPriority_CallsAssertFunction_2) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", HIGH_PRIORITY + 1)
         .withParameter("msg", "Invalid priority.");
 
     CHECK_THROWS(
@@ -160,9 +158,8 @@ TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNullAkaCurrentTaskPtr) {
 TEST(Scheduler, Suspend_CallSuspendWithNoTaskRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)NO_TASK_PTR)
         .withParameter(
-            "msg", "No task or interrupt is running.");
+            "msg", "Cannot delay without a task.");
 
     CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
 }
@@ -170,9 +167,8 @@ TEST(Scheduler, Suspend_CallSuspendWithNoTaskRunning_CallsAssertFunction) {
 TEST(Scheduler, Suspend_CallSuspendWithInterruptRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", (intptr_t)INTERRUPT_TASK_PTR)
         .withParameter(
-            "msg", "No task or interrupt is running.");
+            "msg", "Cannot delay in an interrupt.");
 
     (void)interrupt_lock();
 
@@ -594,7 +590,6 @@ TEST(SchedulerStart, Preemptive_IfNotStarted_ScheulerCallsAssertFunction) {
 
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", 1)
         .withParameter(
             "msg",
             "Cannot run the scheduler when it is locked.");
@@ -607,7 +602,6 @@ TEST(SchedulerStart, Cooperative_IfNotStarted_ScheulerCallsAssertFunction) {
 
     mock()
         .expectOneCall("librertos_assert")
-        .withParameter("val", 1)
         .withParameter(
             "msg",
             "Cannot run the scheduler when it is locked.");

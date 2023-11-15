@@ -9,10 +9,10 @@ extern "C" {
 
 #include <stdint.h>
 
-#define LIBRERTOS_ASSERT(expr, val, msg) \
+#define LIBRERTOS_ASSERT(expr, msg) \
     do { \
         if (!(expr)) \
-            librertos_assert((val), (msg)); \
+            librertos_assert((msg)); \
     } while (0)
 
 #define NUM_PRIORITIES 4
@@ -26,7 +26,7 @@ typedef int16_t difftick_t;
 
 extern int8_t kernel_mode;
 
-extern void librertos_assert(intptr_t val, const char *msg);
+extern void librertos_assert(const char *msg);
 
 #ifdef __cplusplus
 }

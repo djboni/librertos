@@ -61,7 +61,7 @@ In other words, it is the way to customize LibreRTOS for your project needs.
 
 The project file must define the following macros and types:
 
-- `#define LIBRERTOS_ASSERT(expr, val, msg) ...` - Macro used for assertions
+- `#define LIBRERTOS_ASSERT(expr, msg) ...` - Macro used for assertions
   (ex: `assert(expr)`)
 - `#define KERNEL_MODE ...` - Kernel mode selection, can be defined as:
   - `LIBRERTOS_PREEMPTIVE` - Preemptive kernel mode: the current highest priority
@@ -87,7 +87,7 @@ Linux can be found in the [examples/](../examples/) directory.
 
 ```cpp
 /* File: arm/librertos_proj.h */
-#define LIBRERTOS_ASSERT(expr, val, msg) /* Empty */
+#define LIBRERTOS_ASSERT(expr, msg) /* Empty */
 
 #define KERNEL_MODE LIBRERTOS_PREEMPTIVE
 #define NUM_PRIORITIES 8

@@ -51,12 +51,9 @@ void librertos_init(void) {
     int8_t i;
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT((tick_t)-1 > 0, (tick_t)-1,
-        "tick_t must be an unsigned integer.");
-    LIBRERTOS_ASSERT((difftick_t)-1 == -1, (difftick_t)-1,
-        "difftick_t must be a signed integer.");
-    LIBRERTOS_ASSERT(sizeof(difftick_t) == sizeof(tick_t), sizeof(difftick_t),
-        "difftick_t must be the same size as tick_t.");
+    LIBRERTOS_ASSERT((tick_t)-1 > 0, "tick_t must be an unsigned integer.");
+    LIBRERTOS_ASSERT((difftick_t)-1 == -1, "difftick_t must be a signed integer.");
+    LIBRERTOS_ASSERT(sizeof(difftick_t) == sizeof(tick_t), "difftick_t must be the same size as tick_t.");
 
     CRITICAL_ENTER();
 
@@ -108,8 +105,7 @@ void librertos_create_task(
     int8_t priority, task_t *task, task_function_t func, task_parameter_t param) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY,
-        priority, "Invalid priority.");
+    LIBRERTOS_ASSERT(priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY, "Invalid priority.");
 
     scheduler_lock();
     CRITICAL_ENTER();
@@ -202,8 +198,7 @@ void librertos_sched(void) {
      * the program that did not unlocked it after locking or the user forgot
      * to call once librertos_start().
      */
-    LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, librertos.scheduler_depth,
-        "Cannot run the scheduler when it is locked.");
+    LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, "Cannot run the scheduler when it is locked.");
 
     /* Disable interrupts to determine the highest priority task that is ready
      * to run.
@@ -223,8 +218,7 @@ void librertos_sched(void) {
         INTERRUPTS_ENABLE();
 
         /* Assert here too so it checks every time a tasks is scheduled. */
-        LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, librertos.scheduler_depth,
-            "Cannot run the scheduler when it is locked.");
+        LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, "Cannot run the scheduler when it is locked.");
 
         task->func(task->param);
 
@@ -406,8 +400,7 @@ void librertos_tick_interrupt(void) {
      * Forgetting to call interrupt_unlock() after this call will trigger
      * this or other assertions.
      */
-    LIBRERTOS_ASSERT(librertos.scheduler_depth > 0, librertos.scheduler_depth,
-        "Cannot process tick when the scheduler is unlocked.");
+    LIBRERTOS_ASSERT(librertos.scheduler_depth > 0, "Cannot process tick when the scheduler is unlocked.");
 
     CRITICAL_ENTER();
     now = ++librertos.tick;
@@ -511,6 +504,9 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     scheduler_lock();
     CRITICAL_ENTER();
 
+    LIBRERTOS_ASSERT(librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
+    LIBRERTOS_ASSERT(librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
+
     task = librertos.current_task;
     node = &task->sched_node;
     task->delay_until = tick_to_wakeup;
@@ -562,11 +558,8 @@ void task_delay(tick_t ticks_to_delay) {
 void task_suspend(task_t *task) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(
-        !(task == CURRENT_TASK_PTR &&
-            (librertos.current_task == NO_TASK_PTR ||
-                librertos.current_task == INTERRUPT_TASK_PTR)),
-        (intptr_t)librertos.current_task, "No task or interrupt is running.");
+    LIBRERTOS_ASSERT(task != NULL || librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
+    LIBRERTOS_ASSERT(task != NULL || librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
 
     CRITICAL_ENTER();
 
@@ -655,6 +648,7 @@ void list_insert_after(
     pos->next->prev = node;
     pos->next = node;
     node->list = list;
+    LIBRERTOS_ASSERT(list->length < 255, "List size overflow.");
     list->length++;
 }
 
@@ -676,6 +670,7 @@ void list_remove(struct node_t *node) {
     node->next = NULL;
     node->prev = NULL;
     node->list = NULL;
+    LIBRERTOS_ASSERT(list->length > 0, "List size underflow.");
     list->length--;
 }
 
@@ -762,14 +757,9 @@ void event_add_task_to_event(event_t *event) {
 
 /* Call with interrupts disabled and scheduler locked. */
 void event_delay_task(event_t *event, tick_t ticks_to_delay) {
-    LIBRERTOS_ASSERT(
-        !(librertos.current_task == NO_TASK_PTR ||
-            librertos.current_task == INTERRUPT_TASK_PTR),
-        (intptr_t)librertos.current_task, "No task or interrupt is running.");
-
-    LIBRERTOS_ASSERT(
-        !node_in_list(&librertos.current_task->event_node),
-        (intptr_t)librertos.current_task, "This task is already suspended.");
+    LIBRERTOS_ASSERT(librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
+    LIBRERTOS_ASSERT(librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
+    LIBRERTOS_ASSERT(!node_in_list(&librertos.current_task->event_node), "This task is already suspended.");
 
     /* Suspend the task and insert in the end of the list so that the event
      * can resume the task.
@@ -806,7 +796,7 @@ void event_resume_task(event_t *event) {
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(init_count <= max_count, init_count, "Invalid init_count.");
+    LIBRERTOS_ASSERT(init_count <= max_count, "Invalid init_count.");
 
     CRITICAL_ENTER();
 
@@ -1035,8 +1025,7 @@ static void task_set_priority(task_t *task, int8_t priority) {
 void mutex_unlock(mutex_t *mtx) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(mtx->count != MUTEX_UNLOCKED, mtx->count,
-        "Mutex already unlocked.");
+    LIBRERTOS_ASSERT(mtx->count != MUTEX_UNLOCKED, "Mutex already unlocked.");
 
     CRITICAL_ENTER();
 
