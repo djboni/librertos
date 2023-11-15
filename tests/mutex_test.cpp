@@ -41,11 +41,17 @@ TEST(Mutex, TryUnlockAnUnlockedMutex_CallsAssertFunction) {
 }
 
 TEST(Mutex, Locked_Unlocks) {
+    set_current_task(&task1);
+
     mutex_lock(&mtx);
     mutex_unlock(&mtx);
+
+    set_current_task(NO_TASK_PTR);
 }
 
 TEST(Mutex, IsLocked_SameTask) {
+    set_current_task(&task1);
+
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
 
     mutex_lock(&mtx);
@@ -53,6 +59,8 @@ TEST(Mutex, IsLocked_SameTask) {
 
     mutex_lock(&mtx);
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
+
+    set_current_task(NO_TASK_PTR);
 }
 
 TEST(Mutex, IsLocked_OtherTask) {
@@ -137,7 +145,7 @@ TEST(Mutex, Locked_InterruptCannotLock) {
     LONGS_EQUAL(LIBRERTOS_FAIL, mutex_lock(&mtx));
 }
 
-TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes) {
+TEST(Mutex, Unlocked_InterruptCanLockOnce) {
     librertos_init();
 
     (void)interrupt_lock();
@@ -146,15 +154,18 @@ TEST(Mutex, Unlocked_InterruptCanLockMultipleTimes) {
     mutex_unlock(&mtx);
 
     LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
+    LONGS_EQUAL(LIBRERTOS_FAIL, mutex_lock(&mtx));
     mutex_unlock(&mtx);
+}
+
+TEST(Mutex, Unlocked_NoTaskCanLockOnce) {
+    librertos_init();
+
+    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
     mutex_unlock(&mtx);
 
     LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
-    LONGS_EQUAL(LIBRERTOS_SUCCESS, mutex_lock(&mtx));
-    mutex_unlock(&mtx);
-    mutex_unlock(&mtx);
+    LONGS_EQUAL(LIBRERTOS_FAIL, mutex_lock(&mtx));
     mutex_unlock(&mtx);
 }
 

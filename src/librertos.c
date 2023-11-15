@@ -965,7 +965,10 @@ void mutex_init(mutex_t *mtx) {
 
 /* Call with interrupts disabled. */
 static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
-    return mtx->count == MUTEX_UNLOCKED || current_task == mtx->task_owner;
+    return (mtx->count == MUTEX_UNLOCKED ||
+            (current_task == mtx->task_owner &&
+                current_task != NO_TASK_PTR &&
+                current_task != INTERRUPT_TASK_PTR));
 }
 
 /**
