@@ -48,6 +48,11 @@ typedef enum {
     LIBRERTOS_COOPERATIVE
 } kernel_mode_t;
 
+typedef enum {
+    TIMERTYPE_AUTO = 1, /* Auto reset timer after it has run. */
+    TIMERTYPE_ONESHOT   /* Timer need to be reset to run. */
+} timer_type_t;
+
 struct list_t {
     struct node_t *head;
     struct node_t *tail;
@@ -61,27 +66,23 @@ struct node_t {
     void *owner;
 };
 
-typedef struct
-{
+typedef struct {
     struct list_t suspended_tasks;
 } event_t;
 
-typedef struct
-{
+typedef struct {
     uint8_t count;
     uint8_t max;
     event_t event_unlock;
 } semaphore_t;
 
-typedef struct
-{
+typedef struct {
     uint8_t count;
     struct os_task_t *task_owner;
     event_t event_unlock;
 } mutex_t;
 
-typedef struct
-{
+typedef struct {
     uint8_t free;
     uint8_t used;
     uint16_t head;
@@ -106,21 +107,19 @@ typedef struct os_task_t {
     struct node_t event_node;
 } task_t;
 
-typedef struct
-{
-    int8_t scheduler_depth;
-    tick_t tick;
-    task_t *current_task;
-    struct list_t tasks_ready[NUM_PRIORITIES];
-    struct list_t tasks_suspended;
-    struct list_t *tasks_delayed_current;
-    struct list_t *tasks_delayed_overflow;
-    struct list_t tasks_delayed[2];
-} librertos_t;
+struct timer_task_t;
+typedef void *timer_parameter_t;
+typedef void (*timer_function_t)(struct timer_task_t *timer, timer_parameter_t param);
+
+typedef struct timer_task_t {
+    timer_type_t type;
+    tick_t period;
+    timer_function_t func;
+    timer_parameter_t param;
+    task_t timer_task;
+} timer_task_t;
 
 void librertos_init(void);
-void librertos_tick_interrupt(void);
-void librertos_create_task(int8_t priority, task_t *task, task_function_t func, task_parameter_t param);
 void librertos_start(void);
 void librertos_sched(void);
 
@@ -129,11 +128,22 @@ void scheduler_unlock(void);
 task_t *interrupt_lock(void);
 void interrupt_unlock(task_t *interrupted_task);
 
+void librertos_tick_interrupt(void);
 tick_t get_tick(void);
+
+void librertos_create_task(int8_t priority, task_t *task,
+    task_function_t func, task_parameter_t param);
 void task_delay(tick_t ticks_to_delay);
 void task_suspend(task_t *task);
 void task_resume(task_t *task);
 void task_resume_all(void);
+
+void librertos_create_timer(int8_t priority, timer_task_t *timer,
+    timer_function_t func, timer_parameter_t param,
+    timer_type_t timer_type, tick_t timer_period);
+void timer_start(timer_task_t *timer);
+void timer_reset(timer_task_t *timer);
+void timer_stop(timer_task_t *timer);
 
 void semaphore_init(semaphore_t *sem, uint8_t init_count, uint8_t max_count);
 void semaphore_init_locked(semaphore_t *sem, uint8_t max_count);
@@ -172,6 +182,17 @@ result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
     #define NO_TASK_PRIORITY -1
     #define LIST_HEAD(list) ((struct node_t *)(list))
+
+typedef struct {
+    int8_t scheduler_depth;
+    tick_t tick;
+    task_t *current_task;
+    struct list_t tasks_ready[NUM_PRIORITIES];
+    struct list_t tasks_suspended;
+    struct list_t *tasks_delayed_current;
+    struct list_t *tasks_delayed_overflow;
+    struct list_t tasks_delayed[2];
+} librertos_t;
 
 extern librertos_t librertos;
 

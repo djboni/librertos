@@ -107,9 +107,6 @@ void librertos_create_task(
 
     LIBRERTOS_ASSERT(priority >= LOW_PRIORITY && priority <= HIGH_PRIORITY, "Invalid priority.");
 
-    scheduler_lock();
-    CRITICAL_ENTER();
-
     /* Make non-zero, to be easy to spot uninitialized fields. */
     memset(task, NONZERO_INITVAL, sizeof(*task));
 
@@ -121,6 +118,9 @@ void librertos_create_task(
     task->delay_until = 0;
     node_init(&task->sched_node, task);
     node_init(&task->event_node, task);
+
+    scheduler_lock();
+    CRITICAL_ENTER();
 
     list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
 
@@ -356,7 +356,6 @@ static void resume_list_of_tasks(struct list_t *list, tick_t now) {
         if (now < task->delay_until)
             break;
 
-        /* Check if the task is not already resumed. */
         INTERRUPTS_ENABLE();
         task_resume(task);
         INTERRUPTS_DISABLE();
@@ -606,16 +605,238 @@ void task_resume(task_t *task) {
     scheduler_unlock();
 }
 
+/* Call with interrupts disabled. */
+static int8_t timer_is_reset(timer_task_t *timer) {
+    return (timer->timer_task.sched_node.list == &librertos.tasks_delayed[0] ||
+            timer->timer_task.sched_node.list == &librertos.tasks_delayed[1]);
+}
+
+/* Call with interrupts disabled. */
+static int8_t timer_is_stopped(timer_task_t *timer) {
+    return timer->timer_task.sched_node.list == &librertos.tasks_suspended;
+}
+
+/* This function sets up the next state of the timer.
+ * Call this function in the context of the timer task with the scheduler
+ * locked.
+ *
+ * An auto-reset timer continues to run, unless it was already delayed
+ * (timer reset/started) or suspended (timer stopped).
+ *
+ * An one-shot timer stops running, unless it was already delayed
+ * (timer reset/started) or suspended (timer stopped).
+ */
+static void librertos_timer_next_state(timer_task_t *timer) {
+    CRITICAL_VAL();
+
+    LIBRERTOS_ASSERT(timer->timer_task.event_node.list == NULL,
+        "Timers should not wait for events.");
+
+    CRITICAL_ENTER();
+    if (timer->type == TIMERTYPE_AUTO) {
+        CRITICAL_EXIT();
+        task_resume(&timer->timer_task);
+        task_delay(timer->period);
+    } else if (timer->type == TIMERTYPE_ONESHOT) {
+        if (!timer_is_reset(timer)) {
+            CRITICAL_EXIT();
+            task_suspend(&timer->timer_task);
+        } else {
+            CRITICAL_EXIT();
+        }
+    } else {
+        CRITICAL_EXIT();
+        task_suspend(&timer->timer_task);
+        LIBRERTOS_ASSERT(0, "Unreachable.");
+    }
+}
+
+/* This function executes the timer function and sets up the next state. */
+static void librertos_timer_function(task_parameter_t param) {
+    timer_task_t *timer = (timer_task_t *)param;
+
+    timer->func(timer, timer->param);
+
+    scheduler_lock();
+    librertos_timer_next_state(timer);
+    scheduler_unlock();
+}
+
+/**
+ * Create a timer.
+ *
+ * Example:
+ *
+ * ```cpp
+ * // Create timers
+ * librertos_create_timer(LOW_PRIORITY, &timer_blink,
+ *         &func_timer_blink, NULL, TIMERTYPE_AUTO, 0.5*TICKS_PER_SECOND);
+ * librertos_create_timer(HIGH_PRIORITY, &timer_buttons,
+ *         &func_timer_buttons, NULL, TIMERTYPE_AUTO, 0.033*TICKS_PER_SECOND);
+ * ```
+ *
+ * @param priority Timer task priority. Integer in the range from LOW_PRIORITY
+ * to HIGH_PRIORITY (0 to NUM_PRIORITIES-1).
+ * @param timer Timer scruct information.
+ * @param func Function executed by the timer when it expires. The timer
+ * prototype must be `void func_timer(timer_task_t *timer, void *param)`.
+ * @param param Parameter passed to the timer function.
+ * @param timer_type Timer type, which can be TIMERTYPE_AUTO or
+ * TIMERTYPE_ONESHOT. An auto-reset timer is created already running and
+ * continues running after it executes. An one-shot timer is created stopped
+ * and runs only once unless it is reset or started again.
+ * @param timer_period Timer period, the number of ticks (time necessary) for
+ * a running timer to expire and execute its function.
+ */
+void librertos_create_timer(int8_t priority, timer_task_t *timer,
+    timer_function_t func, timer_parameter_t param,
+    timer_type_t timer_type, tick_t timer_period) {
+    task_t *current_task;
+
+    LIBRERTOS_ASSERT(timer_type == TIMERTYPE_AUTO || timer_type == TIMERTYPE_ONESHOT,
+        "Invalid timer type.");
+    LIBRERTOS_ASSERT((timer_type == TIMERTYPE_AUTO && timer_period > 0) ||
+                         timer_type == TIMERTYPE_ONESHOT,
+        "Auto-reset timer period must be > 0.");
+
+    /* Make non-zero, to be easy to spot uninitialized fields. */
+    memset(timer, NONZERO_INITVAL, sizeof(*timer));
+
+    timer->type = timer_type;
+    timer->period = timer_period;
+    timer->func = func;
+    timer->param = param;
+
+    /* Lock the scheduler so that the created task is unable to preempt while
+     * setting up the timer. */
+    scheduler_lock();
+
+    librertos_create_task(priority, &timer->timer_task, &librertos_timer_function, timer);
+
+    /* Setup the context of the timer task to call librertos_timer_next_state():
+     * Save the current task, setup the timer task as if it was running,
+     * call the function, and then restore the current task.
+     */
+    current_task = librertos.current_task;
+    librertos.current_task = &timer->timer_task;
+    librertos_timer_next_state(timer);
+    librertos.current_task = current_task;
+
+    scheduler_unlock();
+}
+
+/**
+ * Start a timer.
+ *
+ * Starts a stopped timer, making the timer to expire and execute after its
+ * configured period. Does nothing if the timer is already running.
+ *
+ * @param timer Timer to start.
+ */
+void timer_start(timer_task_t *timer) {
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    if (timer_is_stopped(timer)) {
+        scheduler_lock();
+        CRITICAL_EXIT();
+
+        timer_reset(timer);
+
+        scheduler_unlock();
+    } else {
+        CRITICAL_EXIT();
+    }
+}
+
+/**
+ * Reset a timer.
+ *
+ * Starts a stopped timer, making the timer to expire and execute after its
+ * configured period. Resets the timers expiration if the timer is already
+ * running.
+ *
+ * @param timer Timer to reset.
+ */
+void timer_reset(timer_task_t *timer) {
+    task_t *current_task;
+
+    scheduler_lock();
+
+    current_task = librertos.current_task;
+    librertos.current_task = &timer->timer_task;
+
+    task_resume(&timer->timer_task);
+    task_delay(timer->period);
+
+    librertos.current_task = current_task;
+
+    scheduler_unlock();
+}
+
+/**
+ * Stop a timer.
+ *
+ * Stops a running timer, making the timer to never expire and never execute.
+ * Does nothing if the timer is already stopped.
+ *
+ * @param timer Timer to reset.
+ */
+void timer_stop(timer_task_t *timer) {
+    CRITICAL_VAL();
+
+    CRITICAL_ENTER();
+    if (!timer_is_stopped(timer)) {
+        scheduler_lock();
+        CRITICAL_EXIT();
+
+        task_suspend(&timer->timer_task);
+
+        scheduler_unlock();
+    } else {
+        CRITICAL_EXIT();
+    }
+}
+
+/* Call with interrupts disabled and scheduler locked. */
+static void resume_list_of_tasks_not_timers(struct list_t *list) {
+    struct node_t *next_node;
+    INTERRUPTS_VAL();
+
+    next_node = list->head;
+
+    while (next_node != LIST_HEAD(list)) {
+        struct node_t *node = next_node;
+        task_t *task = (task_t *)node->owner;
+        next_node = next_node->next;
+
+        INTERRUPTS_ENABLE();
+        if (task->func == &librertos_timer_function) {
+            INTERRUPTS_DISABLE();
+            continue;
+        }
+
+        /* Check if the task is not already resumed. */
+        task_resume(task);
+        INTERRUPTS_DISABLE();
+    }
+}
+
 /**
  * Resume all tasks.
+ *
+ * It does not resume any timers.
  */
 void task_resume_all(void) {
     CRITICAL_VAL();
+
     scheduler_lock();
     CRITICAL_ENTER();
-    resume_list_of_tasks(&librertos.tasks_suspended, MAX_DELAY);
-    resume_list_of_tasks(&librertos.tasks_delayed[0], MAX_DELAY);
-    resume_list_of_tasks(&librertos.tasks_delayed[1], MAX_DELAY);
+
+    resume_list_of_tasks_not_timers(&librertos.tasks_suspended);
+    resume_list_of_tasks_not_timers(&librertos.tasks_delayed[0]);
+    resume_list_of_tasks_not_timers(&librertos.tasks_delayed[1]);
+
     CRITICAL_EXIT();
     scheduler_unlock();
 }
