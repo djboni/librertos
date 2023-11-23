@@ -149,7 +149,7 @@ TEST(Scheduler, Suspend_SuspendTwoTasks) {
 TEST(Scheduler, Suspend_TaskSuspendsItselfUsingNullAkaCurrentTaskPtr) {
     /* Dummy test. Nothing to test, because Param::task_sequencing() already
      * uses the feature which a task suspends itself by calling
-     * task_suspend(CURRENT_TASK_PTR).
+     * task_suspend(NULL).
      */
     volatile task_function_t func = &Param::task_sequencing;
     CHECK_TRUE(func != NULL);
@@ -159,20 +159,20 @@ TEST(Scheduler, Suspend_CallSuspendWithNoTaskRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter(
-            "msg", "Cannot delay without a task.");
+            "msg", "Cannot suspend without a task.");
 
-    CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
+    CHECK_THROWS(AssertionError, task_suspend(NULL));
 }
 
 TEST(Scheduler, Suspend_CallSuspendWithInterruptRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter(
-            "msg", "Cannot delay in an interrupt.");
+            "msg", "Cannot suspend without a task.");
 
     (void)interrupt_lock();
 
-    CHECK_THROWS(AssertionError, task_suspend(CURRENT_TASK_PTR));
+    CHECK_THROWS(AssertionError, task_suspend(NULL));
 }
 
 TEST(Scheduler, Resume_HigherPriority_GoesFirst) {
@@ -272,17 +272,17 @@ TEST(Scheduler, ResumeAll_NoSuspendedTasks) {
 }
 
 TEST(Scheduler, GetCurrentTask_NoTask_ReturnNullAkaNoTaskPtr) {
-    POINTERS_EQUAL(NO_TASK_PTR, get_current_task());
+    POINTERS_EQUAL(NULL, get_current_task());
 }
 
 static void check_current_task(void *param) {
     task_t **task = (task_t **)param;
     *task = get_current_task();
-    task_suspend(CURRENT_TASK_PTR);
+    task_suspend(NULL);
 }
 
 TEST(Scheduler, GetCurrentTask_RunTask_ReturnsPointer) {
-    task_t *task = NO_TASK_PTR;
+    task_t *task = NULL;
 
     librertos_create_task(LOW_PRIORITY, &task1, &check_current_task, &task);
     librertos_start();
@@ -516,7 +516,7 @@ TEST(
 
     POINTERS_EQUAL(&task1, get_current_task());
     task_t *task = interrupt_lock();
-    POINTERS_EQUAL(INTERRUPT_TASK_PTR, get_current_task());
+    POINTERS_EQUAL(NULL, get_current_task());
     interrupt_unlock(task);
     POINTERS_EQUAL(&task1, get_current_task());
 }
@@ -532,7 +532,7 @@ TEST(
 
     POINTERS_EQUAL(&task1, get_current_task());
     task_t *task = interrupt_lock();
-    POINTERS_EQUAL(INTERRUPT_TASK_PTR, get_current_task());
+    POINTERS_EQUAL(NULL, get_current_task());
     interrupt_unlock(task);
     POINTERS_EQUAL(&task1, get_current_task());
 }

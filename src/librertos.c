@@ -67,7 +67,7 @@ void librertos_init(void) {
     librertos.scheduler_depth = 1;
 
     librertos.tick = 0;
-    librertos.current_task = NO_TASK_PTR;
+    librertos.current_task = NULL;
 
     for (i = 0; i < NUM_PRIORITIES; ++i)
         list_init(&librertos.tasks_ready[i]);
@@ -158,7 +158,7 @@ void librertos_start(void) {
 static task_t *get_higher_priority_task(task_t *current_task) {
     struct node_t *node;
     task_t *task;
-    int8_t current_priority = (current_task == NO_TASK_PTR)
+    int8_t current_priority = (current_task == NULL)
                                   ? NO_TASK_PRIORITY
                                   : current_task->priority;
     int8_t i;
@@ -317,7 +317,7 @@ task_t *interrupt_lock(void) {
     task_t *interrupted_task;
     scheduler_lock();
     interrupted_task = get_current_task();
-    set_current_task(INTERRUPT_TASK_PTR);
+    set_current_task(NULL);
     return interrupted_task;
 }
 
@@ -424,8 +424,8 @@ tick_t get_tick(void) {
 }
 
 /*
- * Get the currently running task, NO_TASK_PTR (NULL pointer) if no task is
- * running and INTERRUPT_TASK_PTR if an interrupt is running.
+ * Get the currently running task, NULL if no task is running or an interrupt
+ * is running.
  *
  * @return Running task or NULL.
  */
@@ -503,8 +503,7 @@ static void task_delay_now_until(tick_t now, tick_t tick_to_wakeup) {
     scheduler_lock();
     CRITICAL_ENTER();
 
-    LIBRERTOS_ASSERT(librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
-    LIBRERTOS_ASSERT(librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
+    LIBRERTOS_ASSERT(librertos.current_task != NULL, "Cannot delay without a task.");
 
     task = librertos.current_task;
     node = &task->sched_node;
@@ -547,7 +546,7 @@ void task_delay(tick_t ticks_to_delay) {
 /**
  * Suspend task until it is resumed.
  *
- * Pass CURRENT_TASK_PTR (NULL pointer) to suspend the current task.
+ * Pass a NULL pointer to suspend the current task.
  *
  * Note: If the task is currently running, it will run to completion (it keeps
  * running until it returns).
@@ -557,12 +556,11 @@ void task_delay(tick_t ticks_to_delay) {
 void task_suspend(task_t *task) {
     CRITICAL_VAL();
 
-    LIBRERTOS_ASSERT(task != NULL || librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
-    LIBRERTOS_ASSERT(task != NULL || librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
+    LIBRERTOS_ASSERT(task != NULL || librertos.current_task != NULL, "Cannot suspend without a task.");
 
     CRITICAL_ENTER();
 
-    if (task == CURRENT_TASK_PTR)
+    if (task == NULL)
         task = librertos.current_task;
 
     list_remove(&task->sched_node);
@@ -978,14 +976,13 @@ void event_add_task_to_event(event_t *event) {
 
 /* Call with interrupts disabled and scheduler locked. */
 void event_delay_task(event_t *event, tick_t ticks_to_delay) {
-    LIBRERTOS_ASSERT(librertos.current_task != NO_TASK_PTR, "Cannot delay without a task.");
-    LIBRERTOS_ASSERT(librertos.current_task != INTERRUPT_TASK_PTR, "Cannot delay in an interrupt.");
+    LIBRERTOS_ASSERT(librertos.current_task != NULL, "Cannot delay without a task.");
     LIBRERTOS_ASSERT(!node_in_list(&librertos.current_task->event_node), "This task is already suspended.");
 
     /* Suspend the task and insert in the end of the list so that the event
      * can resume the task.
      */
-    task_suspend(CURRENT_TASK_PTR);
+    task_suspend(NULL);
 
     event_add_task_to_event(event);
 
@@ -1178,7 +1175,7 @@ void mutex_init(mutex_t *mtx) {
     memset(mtx, NONZERO_INITVAL, sizeof(*mtx));
 
     mtx->count = 0;
-    mtx->task_owner = NO_TASK_PTR;
+    mtx->task_owner = NULL;
     event_init(&mtx->event_unlock);
 
     CRITICAL_EXIT();
@@ -1187,9 +1184,7 @@ void mutex_init(mutex_t *mtx) {
 /* Call with interrupts disabled. */
 static uint8_t mutex_can_be_locked(mutex_t *mtx, task_t *current_task) {
     return (mtx->count == MUTEX_UNLOCKED ||
-            (current_task == mtx->task_owner &&
-                current_task != NO_TASK_PTR &&
-                current_task != INTERRUPT_TASK_PTR));
+            (current_task == mtx->task_owner && current_task != NULL));
 }
 
 /**
@@ -1264,12 +1259,12 @@ void mutex_unlock(mutex_t *mtx) {
 
         owner = (task_t *)mtx->task_owner;
 
-        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR) {
+        if (owner == NULL) {
             /* Cannot change priority if no task or interrupt. */
         } else {
             if (owner->priority != owner->original_priority)
                 task_set_priority(owner, owner->original_priority);
-            mtx->task_owner = NO_TASK_PTR;
+            mtx->task_owner = NULL;
         }
 
         event_resume_task(&mtx->event_unlock);
@@ -1311,7 +1306,7 @@ void mutex_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
 
         scheduler_lock();
 
-        if (owner == NO_TASK_PTR || owner == INTERRUPT_TASK_PTR) {
+        if (owner == NULL) {
             /* Cannot change priority of no task or interrupt. */
         } else {
             if (owner->priority < current_priority)

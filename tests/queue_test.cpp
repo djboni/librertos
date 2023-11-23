@@ -308,7 +308,7 @@ TEST(QueueEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled) {
 
     set_current_task(&task1);
     queue_suspend(&que, MAX_DELAY);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     librertos_start();
     librertos_sched();

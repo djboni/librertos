@@ -46,7 +46,7 @@ TEST(Mutex, Locked_Unlocks) {
     mutex_lock(&mtx);
     mutex_unlock(&mtx);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
 TEST(Mutex, IsLocked_SameTask) {
@@ -60,7 +60,7 @@ TEST(Mutex, IsLocked_SameTask) {
     mutex_lock(&mtx);
     LONGS_EQUAL(0, mutex_is_locked(&mtx));
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
 TEST(Mutex, IsLocked_OtherTask) {
@@ -68,13 +68,13 @@ TEST(Mutex, IsLocked_OtherTask) {
 
     set_current_task(&task1);
     mutex_lock(&mtx);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     LONGS_EQUAL(1, mutex_is_locked(&mtx));
 
     set_current_task(&task1);
     mutex_lock(&mtx);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     LONGS_EQUAL(1, mutex_is_locked(&mtx));
 }
@@ -210,7 +210,7 @@ TEST(MutexEvent, TaskSuspendsOnAvailableEvent_ShouldBeScheduled) {
 
     set_current_task(&task1);
     mutex_suspend(&mtx, MAX_DELAY);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     librertos_start();
     librertos_sched();
@@ -258,7 +258,7 @@ TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldNotBeScheduled) {
 
     set_current_task(&task2);
     mutex_lock(&mtx);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     librertos_sched();
 
@@ -275,7 +275,7 @@ TEST(MutexEvent, TaskLockSuspend_UnavailableMutex_ShouldBeScheduledWhenUnlocked)
 
     set_current_task(&task2);
     mutex_lock(&mtx);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     librertos_sched();
 
@@ -318,7 +318,7 @@ TEST_GROUP (MutexPriorityInversion) {
 static void func(void *param) {
     std::vector<task_t *> *sequence = (std::vector<task_t *> *)param;
     sequence->push_back(get_current_task());
-    task_suspend(CURRENT_TASK_PTR);
+    task_suspend(NULL);
 }
 
 TEST(
@@ -472,7 +472,7 @@ static void func_lock_mutex_and_resume_2tasks(void *param) {
 
     // Sequence after possible preemption.
     sequence->push_back(get_current_task());
-    task_suspend(CURRENT_TASK_PTR);
+    task_suspend(NULL);
 }
 
 static void func_suspend_on_mutex(void *param) {
@@ -485,7 +485,7 @@ static void func_suspend_on_mutex(void *param) {
 
     // Sequence after possible preemption.
     sequence->push_back(get_current_task());
-    task_suspend(CURRENT_TASK_PTR);
+    task_suspend(NULL);
 }
 
 TEST(

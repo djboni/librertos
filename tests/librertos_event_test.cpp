@@ -79,7 +79,7 @@ TEST(Event, CallSuspendWithInterruptRunning_CallsAssertFunction) {
     mock()
         .expectOneCall("librertos_assert")
         .withParameter(
-            "msg", "Cannot delay in an interrupt.");
+            "msg", "Cannot delay without a task.");
 
     (void)interrupt_lock();
 
@@ -93,7 +93,7 @@ TEST(Event, TaskResumedOnEvent_ShouldBeScheduled) {
     set_current_task(&task1);
     event_delay_task(&event, MAX_DELAY);
     event_resume_task(&event);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     librertos_start();
     librertos_sched();
@@ -118,7 +118,7 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_BothSuspend) {
     set_current_task(&task2);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -142,7 +142,7 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst) {
     set_current_task(&task1);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -179,7 +179,7 @@ TEST(Event, TwoTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2) {
     set_current_task(&task2);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -221,7 +221,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst) {
     set_current_task(&task1);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -263,7 +263,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_2) {
     set_current_task(&task2);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -305,7 +305,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_3) {
     set_current_task(&task1);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -347,7 +347,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_4) {
     set_current_task(&task3);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -389,7 +389,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_5) {
     set_current_task(&task2);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,
@@ -431,7 +431,7 @@ TEST(Event, ThreeTasksSuspendOnTheSameEvent_HigherPriorityResumesFirst_6) {
     set_current_task(&task3);
     event_delay_task(&event, MAX_DELAY);
 
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 
     list_tester(
         &event.suspended_tasks,

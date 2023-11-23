@@ -12,10 +12,6 @@ extern "C" {
 #include "librertos_port.h"
 #include <stdint.h>
 
-#define NO_TASK_PTR ((task_t *)0)
-#define CURRENT_TASK_PTR ((task_t *)0)
-#define INTERRUPT_TASK_PTR ((task_t *)1)
-
 #define MAX_DELAY ((tick_t)-1)
 
 #define PERIODIC(delay_ticks, code) \

@@ -95,7 +95,7 @@ template <class T>
 void taskX_is_scheduled_and_locks_mutex(T *test, int i) {
     set_current_task(&test->task[i]);
     mutex_lock(&test->mtx);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
 template <class T>
@@ -107,7 +107,7 @@ template <class T>
 void taskX_is_scheduled_and_suspends_on_mutex(T *test, int i) {
     set_current_task(&test->task[i]);
     mutex_suspend(&test->mtx, MAX_DELAY);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
 /*******************************************************************************
@@ -121,9 +121,9 @@ void initialize_helper_mutex(T *test) {
 
 template <class T>
 void interrupt_locks_helper_mutex(T *test) {
-    set_current_task(INTERRUPT_TASK_PTR);
+    set_current_task(NULL);
     mutex_lock(&test->helper);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
 template <class T>
@@ -135,7 +135,7 @@ template <class T>
 void taskX_is_scheduled_and_suspends_helper_on_mutex(T *test, int i) {
     set_current_task(&test->task[i]);
     mutex_suspend(&test->helper, MAX_DELAY);
-    set_current_task(NO_TASK_PTR);
+    set_current_task(NULL);
 }
 
     #define NUM_TASKS 4
