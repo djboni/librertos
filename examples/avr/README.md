@@ -53,6 +53,7 @@
 | --------- | ------------------ |
 | LibreRTOS | 25 + 5\*priorities |
 | Task      | 25                 |
+| Timer     | 33                 |
 | Semaphore | 7                  |
 | Mutex     | 8                  |
 | Queue     | 17 + buff          |
@@ -61,14 +62,12 @@
 
 ## Flash Usage
 
-| Kernel Mode | Optimization | Tasks and Events | Only Tasks |
-| ----------- | ------------ | ---------------- | ---------- |
-| Preemptive  | -Os (size)   | 3720             | 1948       |
-| Cooperative | -Os (size)   | 3456             | 1872       |
-| Preemptive  | -O1          | 3856             | 2100       |
-| Cooperative | -O1          | 3626             | 2014       |
+| Kernel Mode | Optimization | Everything | Only Tasks |
+| ----------- | ------------ | ---------- | ---------- |
+| Preemptive  | -Os (size)   | 4923       | 2059       |
+| Preemptive  | -O1          | 5121       | 2267       |
 
 - Size in bytes.
-- The column "Tasks and Events" includes code for tasks, semaphores, mutexes,
+- The column "Everything" includes code for tasks, timers, semaphores, mutexes,
   and queues.
 - The column "Only Tasks" includes only the code for tasks.
