@@ -334,35 +334,6 @@ TEST(SchedulerMode, Cooperative_OtherTaskRunning_DoNotRunHigherPriority) {
     STRCMP_EQUAL("ABCefg", buff);
 }
 
-TEST(SchedulerMode, Cooperative_DoNotPreemptWithSchedulerLocked) {
-    /*
-     * - Task A (lower priority) runs
-     *   - Resumes task B (higher priority) and finishes
-     *   - Task A does not get preempted because of the cooperative kernel
-     * - Task B runs and finishes
-     */
-
-    kernel_mode = LIBRERTOS_COOPERATIVE;
-
-    char buff[BUFF_SIZE] = "";
-    Param param1 = {&buff[0], "A", "B", "C", &task2, 1};
-    Param param2 = {&buff[0], "e", "f", "g", NULL, 1};
-
-    librertos_create_task(
-        LOW_PRIORITY, &task1, &Param::task_sequencing, &param1);
-    librertos_create_task(
-        HIGH_PRIORITY, &task2, &Param::task_sequencing, &param2);
-
-    task_suspend(&task2);
-
-    librertos_start();
-    scheduler_lock();
-    librertos_sched();
-    scheduler_unlock();
-
-    STRCMP_EQUAL("ABCefg", buff);
-}
-
 TEST(SchedulerMode, Preemptive_DoNotRunSamePriorityTask) {
     /*
      * - Task A runs

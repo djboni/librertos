@@ -176,9 +176,6 @@ result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
  */
 #ifdef LIBRERTOS_DEBUG_DECLARATIONS
 
-    #define NO_TASK_PRIORITY -1
-    #define LIST_HEAD(list) ((struct node_t *)(list))
-
 typedef struct {
     int8_t scheduler_depth;
     tick_t tick;

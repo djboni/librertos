@@ -23,6 +23,7 @@
 #endif
 
 #define NONZERO_INITVAL 0x5A
+#define LIST_HEAD(list) ((struct node_t *)(list))
 
 /*
  * Constants.
@@ -174,9 +175,7 @@ void librertos_start(void) {
 static task_t *get_higher_priority_task(task_t *current_task) {
     struct node_t *node;
     task_t *task;
-    int8_t current_priority = (current_task == NULL)
-                                  ? NO_TASK_PRIORITY
-                                  : current_task->priority;
+    int8_t current_priority = (current_task != NULL) ? current_task->priority : -1;
     int8_t i;
 
     for (i = HIGH_PRIORITY; i > current_priority; --i) {
@@ -270,12 +269,10 @@ void librertos_sched(void) {
  * ```
  */
 void scheduler_lock(void) {
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
-        CRITICAL_VAL();
-        CRITICAL_ENTER();
-        ++librertos.scheduler_depth;
-        CRITICAL_EXIT();
-    }
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+    ++librertos.scheduler_depth;
+    CRITICAL_EXIT();
 }
 
 /**
@@ -285,16 +282,17 @@ void scheduler_lock(void) {
  * For an example @see scheduler_lock().
  */
 void scheduler_unlock(void) {
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE) {
-        CRITICAL_VAL();
-        CRITICAL_ENTER();
+    CRITICAL_VAL();
+    CRITICAL_ENTER();
+
+    --librertos.scheduler_depth;
+
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE && librertos.scheduler_depth == 0) {
         /* TODO: Check for higher priority task ready. */
-        if (--librertos.scheduler_depth == 0) {
-            CRITICAL_EXIT();
-            librertos_sched();
-        } else {
-            CRITICAL_EXIT();
-        }
+        CRITICAL_EXIT();
+        librertos_sched();
+    } else {
+        CRITICAL_EXIT();
     }
 }
 
@@ -591,23 +589,16 @@ void task_suspend(task_t *task) {
  * @param task Task to resume.
  */
 void task_resume(task_t *task) {
-    struct list_t *list_ready;
-    struct node_t *node_sched;
-    struct node_t *node_event;
     CRITICAL_VAL();
 
     scheduler_lock();
     CRITICAL_ENTER();
 
-    list_ready = &librertos.tasks_ready[task->priority];
-    node_sched = &task->sched_node;
-    node_event = &task->event_node;
+    list_remove(&task->sched_node);
+    list_insert_last(&librertos.tasks_ready[task->priority], &task->sched_node);
 
-    list_remove(node_sched);
-    list_insert_last(list_ready, node_sched);
-
-    if (node_in_list(node_event))
-        list_remove(node_event);
+    if (node_in_list(&task->event_node))
+        list_remove(&task->event_node);
 
     /* TODO: Check for higher priority task ready. */
 
