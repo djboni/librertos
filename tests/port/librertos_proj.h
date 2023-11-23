@@ -18,11 +18,16 @@ extern "C" {
 #define NUM_PRIORITIES 4
 #define KERNEL_MODE kernel_mode
 
+#define TICKS_PER_SECOND 10
+#define TICK_PERIOD (1.0 / TICKS_PER_SECOND)
+
 typedef uint16_t tick_t;
 typedef int16_t difftick_t;
 
-#define TICKS_PER_SECOND 10
-#define TICK_PERIOD (1.0 / TICKS_PER_SECOND)
+#define LIBRERTOS_DISABLE_TIMERS 0
+#define LIBRERTOS_DISABLE_SEMAPHORES 0
+#define LIBRERTOS_DISABLE_MUTEXES 0
+#define LIBRERTOS_DISABLE_QUEUES 0
 
 extern int8_t kernel_mode;
 

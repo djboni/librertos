@@ -6,6 +6,22 @@
 #include <stddef.h>
 #include <string.h>
 
+#ifndef LIBRERTOS_DISABLE_TIMERS
+    #define LIBRERTOS_DISABLE_TIMERS 0 /* Enabled by default. */
+#endif
+
+#ifndef LIBRERTOS_DISABLE_SEMAPHORES
+    #define LIBRERTOS_DISABLE_SEMAPHORES 0 /* Enabled by default. */
+#endif
+
+#ifndef LIBRERTOS_DISABLE_MUTEXES
+    #define LIBRERTOS_DISABLE_MUTEXES 0 /* Enabled by default. */
+#endif
+
+#ifndef LIBRERTOS_DISABLE_QUEUES
+    #define LIBRERTOS_DISABLE_QUEUES 0 /* Enabled by default. */
+#endif
+
 #define NONZERO_INITVAL 0x5A
 
 /*
@@ -603,6 +619,8 @@ void task_resume(task_t *task) {
     scheduler_unlock();
 }
 
+#if (LIBRERTOS_DISABLE_TIMERS == 0)
+
 /* Call with interrupts disabled. */
 static int8_t timer_is_reset(timer_task_t *timer) {
     return (timer->timer_task.sched_node.list == &librertos.tasks_delayed[0] ||
@@ -796,6 +814,8 @@ void timer_stop(timer_task_t *timer) {
     }
 }
 
+#endif /* LIBRERTOS_DISABLE_TIMERS */
+
 /* Call with interrupts disabled and scheduler locked. */
 static void resume_list_of_tasks_not_timers(struct list_t *list) {
     struct node_t *next_node;
@@ -809,10 +829,13 @@ static void resume_list_of_tasks_not_timers(struct list_t *list) {
         next_node = next_node->next;
 
         INTERRUPTS_ENABLE();
+
+#if (LIBRERTOS_DISABLE_TIMERS == 0)
         if (task->func == &librertos_timer_function) {
             INTERRUPTS_DISABLE();
             continue;
         }
+#endif /* LIBRERTOS_DISABLE_TIMERS */
 
         /* Check if the task is not already resumed. */
         task_resume(task);
@@ -902,6 +925,9 @@ struct node_t *list_get_first(struct list_t *list) {
 uint8_t list_is_empty(struct list_t *list) {
     return list->length == 0;
 }
+
+#if (LIBRERTOS_DISABLE_SEMAPHORES == 0 || LIBRERTOS_DISABLE_MUTEXES == 0 || \
+     LIBRERTOS_DISABLE_QUEUES == 0)
 
 /* Call with interrupts disabled. */
 void event_init(event_t *event) {
@@ -1000,6 +1026,10 @@ void event_resume_task(event_t *event) {
         task_resume(task);
     }
 }
+
+#endif /* LIBRERTOS_DISABLE_SEMAPHORES || LIBRERTOS_DISABLE_MUTEXES || LIBRERTOS_DISABLE_QUEUES */
+
+#if (LIBRERTOS_DISABLE_SEMAPHORES == 0)
 
 /**
  * Initialize the semaphore with an initial value and a maximum value.
@@ -1163,6 +1193,10 @@ result_t semaphore_lock_suspend(semaphore_t *sem, tick_t ticks_to_delay) {
         semaphore_suspend(sem, ticks_to_delay);
     return result;
 }
+
+#endif /* LIBRERTOS_DISABLE_SEMAPHORES */
+
+#if (LIBRERTOS_DISABLE_MUTEXES == 0)
 
 /**
  * Initialize mutex.
@@ -1338,6 +1372,10 @@ result_t mutex_lock_suspend(mutex_t *mtx, tick_t ticks_to_delay) {
         mutex_suspend(mtx, ticks_to_delay);
     return result;
 }
+
+#endif /* LIBRERTOS_DISABLE_MUTEXES */
+
+#if (LIBRERTOS_DISABLE_QUEUES == 0)
 
 /**
  * Initialize the queue.
@@ -1537,3 +1575,5 @@ result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay) {
         queue_suspend(que, ticks_to_delay);
     return result;
 }
+
+#endif /* LIBRERTOS_DISABLE_QUEUES */

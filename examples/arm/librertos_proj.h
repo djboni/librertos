@@ -21,6 +21,11 @@ extern "C" {
 typedef uint32_t tick_t;
 typedef int32_t difftick_t;
 
+#define LIBRERTOS_DISABLE_TIMERS 0
+#define LIBRERTOS_DISABLE_SEMAPHORES 0
+#define LIBRERTOS_DISABLE_MUTEXES 0
+#define LIBRERTOS_DISABLE_QUEUES 0
+
 #ifdef __cplusplus
 }
 #endif
