@@ -64,10 +64,11 @@
 
 | Kernel Mode | Optimization | Everything | Only Tasks |
 | ----------- | ------------ | ---------- | ---------- |
-| Preemptive  | -Os (size)   | 4923       | 2059       |
-| Preemptive  | -O1          | 5121       | 2267       |
+| Preemptive  | -Os (size)   | 3636       | 1420       |
+| Preemptive  | -O1          | 3870       | 1646       |
 
 - Size in bytes.
+- Assertions disabled.
 - The column "Everything" includes code for tasks, timers, semaphores, mutexes,
   and queues.
 - The column "Only Tasks" includes only the code for tasks.
