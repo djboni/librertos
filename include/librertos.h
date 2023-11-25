@@ -203,6 +203,7 @@ result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
 
 typedef struct {
     int8_t scheduler_depth;
+    int8_t higher_priority_task_ready;
     tick_t tick;
     task_t *current_task;
     struct list_t tasks_ready[NUM_PRIORITIES];

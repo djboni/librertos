@@ -82,7 +82,7 @@ void librertos_init(void) {
      * initialization.
      */
     librertos.scheduler_depth = 1;
-
+    librertos.higher_priority_task_ready = 0;
     librertos.tick = 0;
     librertos.current_task = NULL;
 
@@ -138,12 +138,9 @@ void librertos_create_task(
 
     scheduler_lock();
     CRITICAL_ENTER();
-
-    list_insert_last(&librertos.tasks_ready[priority], &task->sched_node);
-
-    /* TODO: Check for higher priority task ready. */
-
+    list_insert_last(&librertos.tasks_suspended, &task->sched_node);
     CRITICAL_EXIT();
+    task_resume(task);
     scheduler_unlock();
 }
 
@@ -226,6 +223,7 @@ void librertos_sched(void) {
         if (task == NULL)
             break;
 
+        librertos.higher_priority_task_ready = 0;
         librertos.current_task = task;
         task->task_state = TASK_RUNNING;
 
@@ -287,8 +285,8 @@ void scheduler_unlock(void) {
 
     --librertos.scheduler_depth;
 
-    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE && librertos.scheduler_depth == 0) {
-        /* TODO: Check for higher priority task ready. */
+    if (KERNEL_MODE == LIBRERTOS_PREEMPTIVE && librertos.scheduler_depth == 0 &&
+        librertos.higher_priority_task_ready != 0) {
         CRITICAL_EXIT();
         librertos_sched();
     } else {
@@ -589,6 +587,7 @@ void task_suspend(task_t *task) {
  * @param task Task to resume.
  */
 void task_resume(task_t *task) {
+    int8_t current_priority;
     CRITICAL_VAL();
 
     scheduler_lock();
@@ -600,7 +599,10 @@ void task_resume(task_t *task) {
     if (node_in_list(&task->event_node))
         list_remove(&task->event_node);
 
-    /* TODO: Check for higher priority task ready. */
+    /* Check if a higher priority task is ready. */
+    current_priority = (librertos.current_task != NULL) ? librertos.current_task->priority : -1;
+    if (task->priority > current_priority)
+        librertos.higher_priority_task_ready = 1;
 
     /* The scheduler is locked and unlocked only if a task was actually
      * resumed. When the scheduler unlocks the current task can be preempted
