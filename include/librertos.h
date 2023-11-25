@@ -14,18 +14,6 @@ extern "C" {
 
 #define MAX_DELAY ((tick_t)-1)
 
-#define PERIODIC(delay_ticks, code) \
-    do { \
-        const difftick_t __delay = (delay_ticks); \
-        static tick_t __last = -__delay; \
-        tick_t __now = get_tick(); \
-        difftick_t __diff = __now - __last; \
-        if (__diff >= __delay) { \
-            __last += __delay; \
-            { code; } \
-        } \
-    } while (0)
-
 struct os_task_t;
 struct node_t;
 
@@ -169,6 +157,43 @@ uint8_t queue_get_num_items(queue_t *que);
 uint8_t queue_get_item_size(queue_t *que);
 void queue_suspend(queue_t *que, tick_t ticks_to_delay);
 result_t queue_read_suspend(queue_t *que, void *data, tick_t ticks_to_delay);
+
+/**
+ * Run block periodically, every 'delay_ticks' ticks.
+ *
+ * This is useful to run non-time-critical procedures in a low priority
+ * task, such as the IDLE task.
+ *
+ * With C90 (the oldest C standard) this macro may
+ * generate warnings about definitions after statements, which you can avoid
+ * by placing the macro in a block. See the examples below.
+ *
+ * Example:
+ *
+ * ```cpp
+ * PERIODIC_BLOCK(0.5 * TICKS_PER_SECOND) {
+ *     printf("tick=%u\n", get_tick());
+ * }
+ * ```
+ *
+ * Example with C90:
+ *
+ * ```cpp
+ * {
+ *     // In a block to avoid C90 warning.
+ *
+ *     PERIODIC_BLOCK(0.5 * TICKS_PER_SECOND) {
+ *         printf("tick=%u\n", get_tick());
+ *     }
+ * }
+ * ```
+ */
+#define PERIODIC_BLOCK(delay_ticks) \
+    static tick_t __last_##__LINE__; \
+    tick_t __now; \
+    for (__now = get_tick(); \
+         __now - __last_##__LINE__ >= (delay_ticks); \
+         __last_##__LINE__ = __now)
 
 /*
  * Define LIBRERTOS_DEBUG_DECLARATIONS before including this header to

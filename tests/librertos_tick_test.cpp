@@ -68,67 +68,51 @@ TEST_GROUP (PeriodicMacro) {
     }
 };
 
-TEST(PeriodicMacro, ShouldRunOnTick0) {
+TEST(PeriodicMacro, ShouldNotRunOnTick0) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
     increment_periodically_10ticks(var);
 
-    LONGS_EQUAL(1, var);
+    LONGS_EQUAL(0, var);
 }
 
-TEST(PeriodicMacro, ShouldRunOnceOnTick0) {
+TEST(PeriodicMacro, ShouldNotRunBeforePeriod) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
-
-    increment_periodically_10ticks(var);
-    increment_periodically_10ticks(var);
-
-    LONGS_EQUAL(1, var);
-}
-
-TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod) {
-    int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
     increment_periodically_10ticks(var);
 
     time_travel(9);
     increment_periodically_10ticks(var);
 
-    LONGS_EQUAL(1, var);
+    LONGS_EQUAL(0, var);
 }
 
 TEST(PeriodicMacro, ShouldRunAfterPeriod) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
-    increment_periodically_10ticks(var);
     time_travel(10);
-
     increment_periodically_10ticks(var);
 
-    LONGS_EQUAL(2, var);
+    LONGS_EQUAL(1, var);
 }
 
-TEST(PeriodicMacro, ShouldHaveStrictPeriod) {
+TEST(PeriodicMacro, ShouldRunOnceAfterPeriod) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
-    time_travel(1);
+    time_travel(10);
+    increment_periodically_10ticks(var);
     increment_periodically_10ticks(var);
 
-    time_travel(9);
-    increment_periodically_10ticks(var);
-
-    LONGS_EQUAL(2, var);
+    LONGS_EQUAL(1, var);
 }
 
-TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2) {
+TEST(PeriodicMacro, ShouldNotRunBeforePeriod_2) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
-
-    increment_periodically_10ticks(var);
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
     time_travel(10);
     increment_periodically_10ticks(var);
@@ -136,14 +120,12 @@ TEST(PeriodicMacro, ShouldNotRunAgainBeforePeriod_2) {
     time_travel(9);
     increment_periodically_10ticks(var);
 
-    LONGS_EQUAL(2, var);
+    LONGS_EQUAL(1, var);
 }
 
 TEST(PeriodicMacro, ShouldRunAfterPeriod_2) {
     int var = 0;
-    auto increment_periodically_10ticks = [](int &v) { PERIODIC(10, v++); };
-
-    increment_periodically_10ticks(var);
+    auto increment_periodically_10ticks = [](int &v) { PERIODIC_BLOCK(10) { v++; }; };
 
     time_travel(10);
     increment_periodically_10ticks(var);
@@ -151,5 +133,5 @@ TEST(PeriodicMacro, ShouldRunAfterPeriod_2) {
     time_travel(10);
     increment_periodically_10ticks(var);
 
-    LONGS_EQUAL(3, var);
+    LONGS_EQUAL(2, var);
 }
