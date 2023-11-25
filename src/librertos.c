@@ -230,10 +230,10 @@ void librertos_sched(void) {
         /* Enable interrupts while running the task. */
         INTERRUPTS_ENABLE();
 
-        /* Assert here too so it checks every time a tasks is scheduled. */
-        LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, "Cannot run the scheduler when it is locked.");
-
         task->func(task->param);
+
+        /* Assert that the task did not keep the scheduler locked. */
+        LIBRERTOS_ASSERT(librertos.scheduler_depth == 0, "The task kept the scheduler locked.");
 
         INTERRUPTS_DISABLE();
 
