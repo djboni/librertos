@@ -27,7 +27,6 @@ static const que_struct que_struct_zero = {0x00000000};
 static const que_struct que_struct_val_A = {0x5B5B5B5B};
 static const que_struct que_struct_val_B = {0x5C5C5C5C};
 static const que_struct que_struct_val_C = {0x5D5D5D5D};
-static const que_struct que_struct_val_D = {0x5E5E5E5E};
 
 static void initialize_buff(que_struct *buff, uint8_t size) {
     // First and last elements of buff are guards

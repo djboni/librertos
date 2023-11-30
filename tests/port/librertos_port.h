@@ -43,6 +43,7 @@ extern "C" {
 class InterruptsBalanced {
   public:
     struct Imbalanced {
+        uint8_t empty_struct;
     };
 
     InterruptsBalanced(bool strict_order = true)

@@ -1,4 +1,6 @@
 build/
+zig-cache/
+zig-out/
 cov.xml
 main
 *.elf
